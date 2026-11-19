@@ -16,7 +16,16 @@ jobs:
         with:
           node-version: 22
       - name: Installer NSIS
-        run: choco install nsis -y --no-progress
+        shell: pwsh
+        run: |
+          # NSIS est souvent déjà présent sur la machine GitHub ; sinon on l'installe (3 essais si le site répond mal).
+          if ((Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -or (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Host 'NSIS déjà installé'; exit 0 }
+          for ($i = 1; $i -le 3; $i++) {
+            choco install nsis -y --no-progress
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            Write-Host "Essai $i raté, nouvel essai dans 30 s"; Start-Sleep -Seconds 30
+          }
+          exit 1
       - name: Installer les dépendances
         run: npm ci
         env:

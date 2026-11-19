@@ -27,3 +27,32 @@ assert.strictEqual(d.mine.length, 1);
 assert.strictEqual(new Planning(dir).get(now).mine.length, 1, 'enregistré sur le PC');
 assert.strictEqual(new Planning(dir).get(now + 86400000).flights.length, 0, 'nouveau jour = nouveau planning');
 console.log('PLANNING : TOUS LES TESTS PASSENT');
+
+// ----- programme officiel (AeroDataBox) -----
+const { toFlight, icaoType } = require('../scripts/planning-fetch');
+assert.strictEqual(icaoType('Airbus A350-900'), 'A359');
+assert.strictEqual(icaoType('Boeing 777-300ER'), 'B77W');
+assert.strictEqual(icaoType('Airbus A220-300'), 'BCS3');
+assert.strictEqual(icaoType('Airbus A321neo'), 'A21N');
+assert.strictEqual(icaoType('Embraer 190'), 'E190');
+const mv = { number: 'AF 1234', status: 'Expected', isCargo: false, airline: { name: 'Air France', iata: 'AF', icao: 'AFR' },
+  aircraft: { reg: 'F-HEPA', model: 'Airbus A320' },
+  departure: { airport: { icao: 'LFPG', iata: 'CDG', name: 'Paris Charles de Gaulle', municipalityName: 'Paris' }, scheduledTime: { utc: '2026-11-19 14:05Z', local: '2026-11-19 15:05+01:00' } },
+  arrival: { airport: { icao: 'LFMN', iata: 'NCE', name: 'Nice', municipalityName: 'Nice' }, scheduledTime: { utc: '2026-11-19 15:35Z', local: '2026-11-19 16:35+01:00' } } };
+const sf = toFlight(mv, 'LFPG', 'Departure');
+assert.deepStrictEqual([sf.number, sf.from, sf.to, sf.type, sf.reg, sf.depUtc], ['AF 1234', 'LFPG', 'LFMN', 'A320', 'F-HEPA', Date.parse('2026-11-19T14:05:00Z')]);
+assert.strictEqual(toFlight(Object.assign({}, mv, { number: 'KL 1234', airline: { iata: 'KL' } }), 'LFPG', 'Departure'), null, 'autres compagnies ignorées');
+// sans withLeg : le hub est complété
+assert.strictEqual(toFlight(Object.assign({}, mv, { departure: { scheduledTime: { utc: '2026-11-19 14:05Z' } } }), 'LFPG', 'Departure').from, 'LFPG');
+// fusion programme + direct
+const p2 = new Planning(fs.mkdtempSync(path.join(os.tmpdir(), 'afv-plan2-')));
+p2.record([f, Object.assign({}, f, { callsign: 'AFR77', number: 'AF 077', from: 'LFPG', to: 'KJFK', toPos: [40.6, -73.8] })], now);
+const sched = { generatedAt: new Date(now - 3600000).toISOString(), source: 'AeroDataBox', flights: [Object.assign({}, sf, { distKm: 690, cat: 'court', blockMin: 90 }),
+  { number: 'AF 6000', from: 'LFPO', to: 'LFBO', depUtc: now + 3600000, arrUtc: now + 7200000, status: 'Expected', cat: 'court' }] };
+const mg = p2.merged(sched, ['AFR1234'], now);
+assert.strictEqual(mg.flights.length, 3, 'programme + vol vu en direct hors programme, sans doublon');
+assert.strictEqual(mg.flights.find((x) => x.number === 'AF 1234').status, 'En vol');
+assert.strictEqual(mg.flights.find((x) => x.number === 'AF 6000').status, 'Programmé');
+assert.strictEqual(mg.flights.find((x) => x.callsign === 'AFR77').scheduled, false);
+assert.strictEqual(p2.merged({ generatedAt: new Date(now - 3 * 86400000).toISOString(), flights: sched.flights }, [], now).source, null, 'programme trop ancien ignoré');
+console.log('PROGRAMME OFFICIEL : TOUS LES TESTS PASSENT');

@@ -1089,7 +1089,8 @@ function renderPlanning() {
   const d = S.plan2.data; if (!d) return;
   const all = d.flights.slice().sort((a, b) => (a.depEst || a.lastSeen) - (b.depEst || b.lastSeen));
   const count = (c) => all.filter((f) => f.cat === c).length;
-  $('planSub').textContent = all.length + ' vols Air France relevés aujourd’hui (' + new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ')';
+  const dayTxt = new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('planSub').textContent = all.length + ' vols Air France · ' + dayTxt + ' · ' + (d.source ? 'programme officiel (' + d.source.name + ', mis à jour à ' + new Date(d.source.generatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ') et vols en direct' : 'vols vus en direct seulement (programme officiel pas encore disponible)');
   const cats = [['tous', 'Tous', all.length], ['court', 'Court-courrier', count('court')], ['moyen', 'Moyen-courrier', count('moyen')], ['long', 'Long-courrier', count('long')]];
   $('planCats').innerHTML = cats.map(([k, l, n]) => '<button class="tag' + (S.plan2.cat === k ? ' on' : '') + '" data-pcat="' + k + '" aria-pressed="' + (S.plan2.cat === k) + '">' + l + ' · ' + n + '</button>').join('');
   const byKey = Object.fromEntries(all.map((f) => [f.key, f]));
@@ -1097,11 +1098,13 @@ function renderPlanning() {
   $('planMine').innerHTML = '<h3 class="caps">Ma journée</h3>' + (mine.length ? '<div class="mine">' + mine.map((f, i) => '<div class="am"><div class="t">' + (i + 1) + '. ' + esc(f.number || f.callsign) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</div><div class="muted small">' + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <a href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a> · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>').join('') + '</div>'
     : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>');
   const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
-  $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Distance</th><th>Durée est.</th><th>Décollage est.</th><th></th></tr></thead><tbody>' +
+  $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
     list.map((f) => '<tr><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
-      '<td>' + (f.type ? '<b>' + esc(f.type) + '</b>' + (f.reg ? '<div class="muted small">' + esc(f.reg) + '</div>' : '') : '<span class="muted">…</span>') + '</td>' +
-      '<td><span class="cat ' + esc(f.cat) + '">' + esc(CAT[f.cat] || f.cat) + '</span></td><td>' + (f.distKm != null ? fmt(f.distKm) + ' km' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
-      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td>' +
+      '<td>' + (f.type || f.model ? '<b>' + esc(f.model || f.type) + '</b>' + (f.reg || (f.model && f.type) ? '<div class="muted small">' + esc([f.model ? f.type : '', f.reg].filter(Boolean).join(' · ')) + '</div>' : '') : '<span class="muted">…</span>') + '</td>' +
+      '<td><span class="cat ' + esc(f.cat) + '">' + esc(CAT[f.cat] || f.cat) + '</span>' + (f.distKm != null ? '<div class="muted small">' + fmt(f.distKm) + ' km</div>' : '') + '</td>' +
+      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + (f.scheduled ? '' : '<div class="muted small">estimé</div>') + '</td>' +
+      '<td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
+      '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
       '<td><div class="row"><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +
       '<button class="star' + (d.mine.includes(f.key) ? ' on' : '') + '" data-pmine="' + esc(f.key) + '" aria-pressed="' + d.mine.includes(f.key) + '" aria-label="Ajouter à ma journée">' + (d.mine.includes(f.key) ? '★' : '☆') + '</button></div></td></tr>').join('') + '</tbody></table>'
     : '<div class="empty" style="margin:16px">Aucun vol relevé pour le moment' + (S.plan2.cat !== 'tous' ? ' dans cette catégorie' : '') + '. Clique sur Actualiser.</div>';

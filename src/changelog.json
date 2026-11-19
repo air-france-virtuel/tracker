@@ -4,6 +4,7 @@
     "date": "2026-11-19",
     "added": [
       "Planning du jour : les vrais vols Air France de la journée avec l’avion utilisé, classés en court, moyen et long-courrier, durée estimée, bouton SimBrief et « Ma journée » pour préparer ses vols",
+      "Planning du jour : programme officiel des vols Air France de Paris (CDG et Orly) avec heures de départ et d’arrivée, avion prévu et statut (programmé, en vol, arrivé, annulé), mis à jour chaque jour",
       "Infos du jour : l’actualité d’Air France (salle de presse officielle, ou Google Actualités en secours), avec un lien vers chaque article"
     ],
     "removed": [],

@@ -186,3 +186,5 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .star{min-width:36px;min-height:36px;font-size:18px}
 .mine{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .mine .am{margin:0;min-width:220px}
+.pst{font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px;white-space:nowrap;background:#ECEEF2;color:#4A5568}
+.pst.en-vol{background:#FBE9EC;color:#8A1026}.pst.programme{background:#E4EAF7;color:#0A1E4A}.pst.arrive{background:#E3F3E8;color:#1B5E32}.pst.annule{background:#3A0D16;color:#fff}

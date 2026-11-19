@@ -68,9 +68,38 @@ class Planning {
   toggle(key, now) {
     const d = this.load(now);
     if (d.mine.includes(key)) d.mine = d.mine.filter((k) => k !== key);
-    else if (d.flights[key]) d.mine.push(key);
+    else if (key) d.mine.push(key);
     this.save();
     return this.get(now);
+  }
+  // Fusionne le programme officiel du jour (s'il existe) avec les vols vus en direct.
+  // liveNow : indicatifs des vols Air France en l'air au dernier relevé.
+  merged(sched, liveNow, now) {
+    const t = now || Date.now();
+    const base = this.get(t);
+    const live = new Set((liveNow || []).map((cs) => String(cs).replace(/^AFR/, '')));
+    const digits = (n) => String(n || '').replace(/\D/g, '').replace(/^0+/, '');
+    const fresh = sched && sched.flights && sched.generatedAt && t - Date.parse(sched.generatedAt) < 36 * 3600000;
+    const out = [];
+    const seen = new Set();
+    if (fresh) {
+      for (const f of sched.flights) {
+        const key = f.number + '|' + f.from + '|' + f.to;
+        const dg = digits(f.number);
+        seen.add(dg + '|' + f.from + '|' + f.to);
+        let status = 'Programmé';
+        if (/cancel/i.test(f.status)) status = 'Annulé';
+        else if ([...live].some((c) => c.replace(/^0+/, '') === dg)) status = 'En vol';
+        else if (f.arrUtc && f.arrUtc < t) status = 'Arrivé';
+        else if (f.depUtc && f.depUtc < t) status = 'En cours';
+        out.push(Object.assign({}, f, { key, callsign: 'AFR' + dg, depEst: f.depUtc, arrEst: f.arrUtc, scheduled: true, status, lastSeen: f.depUtc || 0 }));
+      }
+    }
+    for (const f of base.flights) {
+      if (seen.has(digits(f.number || f.callsign.replace(/^AFR/, '')) + '|' + f.from + '|' + f.to)) continue;
+      out.push(Object.assign({}, f, { scheduled: false, status: live.has(f.callsign.replace(/^AFR/, '')) ? 'En vol' : 'Vu en vol' }));
+    }
+    return { day: base.day, flights: out, mine: base.mine, source: fresh ? { name: sched.source, generatedAt: sched.generatedAt, count: sched.flights.length } : null };
   }
 }
 

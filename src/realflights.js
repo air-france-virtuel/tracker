@@ -184,4 +184,6 @@ async function types(flights, max) {
 const typeCacheDump = () => Object.fromEntries([...typeCache].filter(([, v]) => v));
 const typeCacheLoad = (o) => { for (const [k, v] of Object.entries(o || {})) typeCache.set(k, v); };
 
-module.exports = { setFetch, live, details, types, typeCacheDump, typeCacheLoad, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };
+const lastLive = () => cache;
+
+module.exports = { setFetch, lastLive, live, details, types, typeCacheDump, typeCacheLoad, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };

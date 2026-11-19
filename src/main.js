@@ -291,15 +291,29 @@ app.whenReady().then(() => {
         planning.record(withTypes, r.at);
         fs.mkdirSync(path.dirname(typesFile), { recursive: true });
         fs.writeFileSync(typesFile, JSON.stringify(real.typeCacheDump()));
-        send('planning:changed', planning.get());
+        mergedPlanning().then((d) => send('planning:changed', d));
       }).catch((e) => console.error('planning :', e));
     }
     return r;
   }
   let recording = null;
   ipcMain.handle('real:live', (_e, force) => liveAndRecord(!!force));
-  ipcMain.handle('planning:get', async (_e, refresh) => { if (refresh) await liveAndRecord(false); return planning.get(); });
-  ipcMain.handle('planning:toggle', (_e, key) => planning.toggle(String(key || '')));
+  // Programme officiel du jour, publié une fois par jour par GitHub (branche « donnees »)
+  let sched = null;
+  async function schedule() {
+    if (sched && Date.now() - sched.at < 60 * 60 * 1000) return sched.data;
+    try {
+      const { net } = require('electron');
+      const r = await net.fetch('https://raw.githubusercontent.com/air-france-virtuel/tracker/donnees/planning/latest.json?t=' + Date.now(), { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error(String(r.status));
+      sched = { at: Date.now(), data: await r.json() };
+    } catch (e) { sched = { at: Date.now() - 50 * 60 * 1000, data: sched ? sched.data : null }; } // nouvel essai dans 10 min
+    return sched.data;
+  }
+  const liveNow = () => { const c = real.lastLive && real.lastLive(); return c && c.flights ? c.flights.map((f) => f.callsign) : []; };
+  const mergedPlanning = async () => planning.merged(await schedule(), liveNow());
+  ipcMain.handle('planning:get', async (_e, refresh) => { if (refresh) await liveAndRecord(false); return mergedPlanning(); });
+  ipcMain.handle('planning:toggle', async (_e, key) => { planning.toggle(String(key || '')); return mergedPlanning(); });
   ipcMain.handle('real:details', (_e, cs, hex) => real.details(String(cs || ''), String(hex || '')));
 
   // ---------- voix de Max ----------

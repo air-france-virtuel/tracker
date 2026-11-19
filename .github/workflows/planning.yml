@@ -1,0 +1,35 @@
+name: Planning du jour (vols Air France)
+
+# Une fois par jour (et à la demande) : récupère le programme des vols Air France de Paris
+# avec AeroDataBox et le publie dans la branche « donnees » (fichier planning/latest.json).
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  planning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Récupérer le programme du jour
+        env:
+          AERODATABOX_KEY: ${{ secrets.AERODATABOX_KEY }}
+        run: node scripts/planning-fetch.js out
+      - name: Publier dans la branche donnees
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          git init -q -b donnees
+          git config user.name "AFV planning"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Planning du $(date -u +%F)"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" donnees

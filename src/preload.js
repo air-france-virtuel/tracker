@@ -41,9 +41,10 @@ contextBridge.exposeInMainWorld('afv', {
   togglePlanning: (key) => ipcRenderer.invoke('planning:toggle', key),
   realLive: (force) => ipcRenderer.invoke('real:live', !!force),
   realDetails: (cs, hex) => ipcRenderer.invoke('real:details', cs, hex),
+  trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

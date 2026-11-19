@@ -3,7 +3,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
 const { SimLink } = require('./sim');
 const { FlightEngine, PHASES } = require('./flight');
 const { fetchOfp } = require('./simbrief');
@@ -24,7 +24,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9 },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -184,9 +184,95 @@ function setupUpdater() {
   setInterval(check, 2 * 60 * 60 * 1000);
 }
 
+
+// ---------- icône près de l'horloge de Windows (zone de notification) ----------
+let tray = null;
+let quitting = false;
+let trayState = { flying: false, callsign: '', route: '', phase: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
+app.on('before-quit', () => { quitting = true; });
+function showMain(tab, action) {
+  if (!win || win.isDestroyed()) createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show(); win.focus();
+  if (tab || action) {
+    const go = () => send('tray:go', { tab: tab || null, action: action || null });
+    if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(go, 300)); else go();
+  }
+}
+function trayMenu() {
+  const t = trayState;
+  const login = process.platform === 'win32' ? app.getLoginItemSettings().openAtLogin : false;
+  return Menu.buildFromTemplate([
+    { label: 'Air France Virtuel – Tracker ' + VERSION, enabled: false },
+    { label: t.flying ? '✈  ' + [t.callsign, t.route, t.phase].filter(Boolean).join(' · ') : 'Aucun vol en cours', enabled: false },
+    { label: sim.connected ? '●  Simulateur connecté' : '○  Simulateur non connecté', enabled: false },
+    { type: 'separator' },
+    { label: 'Ouvrir le tracker', click: () => showMain() },
+    { label: t.flying ? 'Revenir à mon vol' : 'Démarrer un vol', click: () => showMain('vol') },
+    { label: 'Briefing de Max', enabled: !!t.plan, click: () => showMain('vol', 'briefing') },
+    { label: 'Panneau compact', type: 'checkbox', checked: !!t.compact, click: () => showMain(null, 'compact') },
+    { type: 'separator' },
+    { label: 'Infos du jour', click: () => showMain('infos') },
+    { label: 'Planning du jour', click: () => showMain('planning') },
+    { label: 'Vols réels', click: () => showMain('reels') },
+    { label: 'Ma carrière', click: () => showMain('carriere') },
+    { label: 'Missions & rôles', click: () => showMain('missions') },
+    { type: 'separator' },
+    { label: 'Rechercher une mise à jour', click: () => { showMain('maj'); if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {}); } },
+    { label: 'Réglages', click: () => showMain('reglages') },
+    { label: 'Options', submenu: [
+      { label: 'Garder le tracker ici quand je ferme la fenêtre', type: 'checkbox', checked: !!store.settings.closeToTray, click: (m) => { store.settings.closeToTray = m.checked; saveStore(); send('settings:changed', store.settings); } },
+      { label: 'Lancer le tracker au démarrage de Windows', type: 'checkbox', checked: login, enabled: process.platform === 'win32' && app.isPackaged, click: (m) => { app.setLoginItemSettings({ openAtLogin: m.checked, args: ['--cache'] }); } },
+      { label: 'Afficher mon vol sur Discord', type: 'checkbox', checked: !!store.settings.discord, click: (m) => { store.settings.discord = m.checked; saveStore(); discordApply(); send('settings:changed', store.settings); } }
+    ] },
+    { type: 'separator' },
+    { label: 'Quitter le tracker', click: async () => {
+      if (t.flying) {
+        const r = await dialog.showMessageBox({ type: 'warning', buttons: ['Quitter quand même', 'Annuler'], defaultId: 1, cancelId: 1, title: 'Vol en cours', message: 'Un vol est en cours de suivi.', detail: 'Si tu quittes maintenant, ce vol ne sera pas enregistré.' });
+        if (r.response !== 0) return;
+      }
+      quitting = true; app.quit();
+    } }
+  ]);
+}
+function trayRefresh() {
+  if (!tray) return;
+  const t = trayState;
+  const tip = 'Air France Virtuel – Tracker\n' + (t.flying ? [t.callsign, t.route, t.phase].filter(Boolean).join(' · ') : (sim.connected ? 'Simulateur connecté' : 'Simulateur non connecté'));
+  tray.setToolTip(tip.slice(0, 127));
+  tray.setContextMenu(trayMenu());
+}
+function createTray() {
+  try {
+    const ico = path.join(__dirname, '..', 'renderer', 'assets', process.platform === 'win32' ? 'tray.ico' : 'icon.png');
+    let img = nativeImage.createFromPath(ico);
+    if (process.platform !== 'win32') img = img.resize({ width: 22, height: 22 });
+    tray = new Tray(img);
+    tray.on('click', () => showMain());
+    tray.on('double-click', () => showMain());
+    trayRefresh();
+  } catch (e) { tray = null; }
+}
+
+
+// ---------- Discord : « Joue à Air France Virtuel » ----------
+const discordMod = require('./discord');
+const discord = new discordMod.DiscordPresence({ log: (m) => console.log(m) });
+const discordCfg = () => (careerData && careerData.get('discord.json').data) || {};
+function discordApply() { discord.configure(discordCfg().clientId, store.settings.discord); discordUpdate(); }
+let discordLast = '';
+function discordUpdate() {
+  if (!discord.enabled) return;
+  const a = discordMod.buildActivity(trayState, discordCfg());
+  const k = JSON.stringify(a);
+  if (k !== discordLast) { discordLast = k; discord.set(a); }
+}
+function discordStop() { try { discord.stop(); } catch (e) { /* rien */ } }
+
 // ---------- fenêtre ----------
-function createWindow() {
+function createWindow(hidden) {
   win = new BrowserWindow({
+    show: !hidden,
     width: 1360, height: 860, minWidth: 1100, minHeight: 720,
     title: 'Air France Virtuel – Tracker ' + VERSION,
     icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
@@ -195,10 +281,23 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
   });
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  // la croix range le tracker près de l'horloge de Windows (réglable depuis l'icône)
+  win.on('close', (e) => {
+    if (quitting || !tray || !store.settings.closeToTray) return;
+    e.preventDefault();
+    win.hide();
+    if (!store.trayHintShown && process.platform === 'win32') {
+      store.trayHintShown = true; saveStore();
+      try { tray.displayBalloon({ iconType: 'info', title: 'Le tracker reste ouvert', content: 'Il continue près de l’horloge. Clic droit sur l’icône AFV pour les raccourcis ou pour quitter.' }); } catch (err) { /* rien */ }
+    }
+  });
   // fermer la fenêtre principale ferme aussi le panneau compact
   win.on('closed', () => { win = null; for (const w of BrowserWindow.getAllWindows()) w.close(); });
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
 }
+
+if (!app.requestSingleInstanceLock()) app.quit();
+else app.on('second-instance', () => showMain());
 
 app.whenReady().then(() => {
   loadStore();
@@ -233,6 +332,7 @@ app.whenReady().then(() => {
       return (Array.isArray(j) ? j : []).map((m) => ({ icao: m.icaoId, raw: m.rawOb, wdir: m.wdir, wspd: m.wspd, temp: m.temp, cat: m.fltCat, time: m.reportTime || m.obsTime }));
     } catch (e) { return null; }
   });
+  careerData.refresh('discord.json').then(() => discordApply());
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
 
@@ -338,7 +438,7 @@ app.whenReady().then(() => {
   ipcMain.handle('update:install', () => { if (upd.state === 'ready') { stopFlight(); setImmediate(() => autoUpdater.quitAndInstall(true, true)); } return true; });
   ipcMain.handle('changelog:get', () => CHANGELOG);
   ipcMain.handle('changelog:seen', () => { store.lastSeenVersion = VERSION; saveStore(); return true; });
-  ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); return store.settings; });
+  ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); discordApply(); trayRefresh(); return store.settings; });
   ipcMain.handle('fleet:set', (_e, fleet) => { store.fleet = Array.isArray(fleet) ? fleet : []; saveStore(); return store.fleet; });
   ipcMain.handle('simbrief:load', async () => fetchOfp(store.settings.simbrief));
   ipcMain.handle('demo:plan', () => demoPlan());
@@ -406,8 +506,13 @@ app.whenReady().then(() => {
   sim.on('data', (t) => { if (flight && flight.mode === 'demo') return; if (flight) flight.title = t.title; handleTelemetry(t); });
   sim.start();
 
-  createWindow();
+  ipcMain.on('tray:status', (_e, st) => { trayState = Object.assign({}, trayState, st || {}); trayRefresh(); discordUpdate(); });
+  sim.on('status', () => trayRefresh());
+  const hidden = process.argv.includes('--cache');
+  createWindow(hidden);
+  createTray();
+  discordApply();
   setupUpdater();
 });
 
-app.on('window-all-closed', () => { sim.stop(); app.quit(); });
+app.on('window-all-closed', () => { sim.stop(); discordStop(); app.quit(); });

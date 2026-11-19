@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.5.1-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Icône AFV près de l’horloge de Windows : clic pour ouvrir le tracker, clic droit pour les raccourcis (démarrer un vol, briefing de Max, panneau compact, planning, vols réels, carrière, mises à jour, réglages)",
+      "La croix de la fenêtre garde le tracker ouvert près de l’horloge (un vol en cours n’est plus perdu) ; réglable dans Réglages",
+      "Option « Lancer le tracker au démarrage de Windows » (clic droit sur l’icône › Options)",
+      "Discord : ton profil affiche « Joue à Air France Virtuel » avec ton vol en cours (indicatif, route, phase, niveau, avion et durée) ; désactivable dans Réglages"
+    ],
+    "removed": [],
+    "fixed": [
+      "Lancer le tracker une deuxième fois ramène la fenêtre déjà ouverte au lieu d’ouvrir un second tracker"
+    ]
+  },
+  {
     "version": "0.5.0-beta",
     "date": "2026-11-19",
     "added": [

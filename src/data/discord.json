@@ -1,0 +1,8 @@
+{
+  "clientId": "",
+  "largeImage": "afv",
+  "smallImage": "",
+  "buttons": [
+    { "label": "Télécharger le tracker", "url": "https://github.com/air-france-virtuel/tracker/releases/latest/download/AirFranceVirtuel-Tracker-Setup.exe" }
+  ]
+}

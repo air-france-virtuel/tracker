@@ -521,7 +521,7 @@ function renderSettings() {
   const s = S.store.settings;
   $('sPilot').value = s.pilot; $('sSimbrief').value = s.simbrief; $('sAnn').checked = s.announcements;
   $('sVol').value = s.volume; $('sHard1').value = s.hard1; $('sHard2').value = s.hard2;
-  $('sMaxVoice').checked = s.maxVoice !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
+  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
 }
 
 // ---------------- voix de Max (réglages) ----------------
@@ -547,7 +547,7 @@ afv.on('voice:status', (v) => { S.voice = v; renderVoice(); renderMaxVoiceHint()
 $('btnSaveSettings').addEventListener('click', async () => {
   const h1 = Math.max(200, +$('sHard1').value || 600);
   const h2 = Math.max(h1 + 50, +$('sHard2').value || 900);
-  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value });
+  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, closeToTray: $('sTray').checked });
   $('setMsg').textContent = 'Réglages enregistrés.';
   if (!S.store.settings.maxVoice) maxStop();
   renderSettings(); renderFleet(); renderMaxVoiceHint();
@@ -1364,3 +1364,31 @@ function sideRefresh() {
 }
 setInterval(sideRefresh, 1000);
 sideRefresh();
+
+// ---------------- icône près de l'horloge et Discord ----------------
+afv.on('settings:changed', (st) => { if (S.store) { S.store.settings = st; renderSettings(); } });
+afv.on('tray:go', (g) => {
+  if (g.tab) showTab(g.tab);
+  if (g.action === 'briefing' && S.plan) showBriefing(S.plan, false);
+  if (g.action === 'compact') $('btnCompact').click();
+});
+let trayLast = '';
+function trayPush() {
+  const pl = S.plan, t = S.lastT, c = S.career;
+  if (S.flight && !S.flightStartedAt) S.flightStartedAt = Date.now();
+  if (!S.flight) S.flightStartedAt = 0;
+  const st = {
+    flying: !!S.flight,
+    callsign: S.flight ? ((pl && (pl.callsign || pl.flightNumber)) || 'Vol libre') : '',
+    route: S.flight && pl ? pl.origin.icao + ' → ' + pl.destination.icao : '',
+    phase: S.flight && S.phase != null ? PHASES[S.phase] : '',
+    alt: S.flight && t && !t.onGround ? (t.alt >= 18000 ? 'FL' + Math.round(t.alt / 1000) * 10 : Math.round(t.alt / 500) * 500 + ' ft') : '',
+    aircraft: S.flight ? ((S.flight.aircraft) || (pl && pl.aircraft) || '') : '',
+    startedAt: S.flightStartedAt || 0,
+    grade: c ? c.gradeName : '',
+    plan: !!S.plan, compact: !!S.compactOn
+  };
+  const k = JSON.stringify(st);
+  if (k !== trayLast) { trayLast = k; afv.trayStatus(st); }
+}
+setInterval(trayPush, 2000);

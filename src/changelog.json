@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.5.2-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Vols réels › À venir : l’avis de Max sur le vol choisi : un seul vol, ou la suite de la journée de l’avion à respecter dans l’ordre",
+      "Bouton « Prendre ce vol » : le vol est ajouté à « Ma journée » et Max t’explique (à voix haute si sa voix est installée) ce que tu dois faire avec cet avion",
+      "Planning du jour › Ma journée : choisis l’avion que tu veux prendre, Max te dit s’il fait un seul vol ou s’il faut suivre son planning, et ajoute les vols manquants en un clic"
+    ],
+    "removed": [],
+    "fixed": []
+  },
+  {
     "version": "0.5.1-beta",
     "date": "2026-11-19",
     "added": [

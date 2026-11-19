@@ -1146,7 +1146,7 @@ function renderPlanning() {
   const byKey = Object.fromEntries(all.map((f) => [f.key, f]));
   const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
   $('planMine').innerHTML = '<h3 class="caps">Ma journée</h3>' + (mine.length ? '<div class="mine">' + mine.map((f, i) => '<div class="am"><div class="t">' + (i + 1) + '. ' + esc(f.number || f.callsign) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</div><div class="muted small">' + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <a href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a> · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>').join('') + '</div>'
-    : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>');
+    : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>') + maxDayHtml(all, mine);
   renderRotation(all, d);
   const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
   $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
@@ -1164,6 +1164,12 @@ document.addEventListener('click', async (e) => {
   const c = e.target.closest('[data-pcat]'); if (c) { S.plan2.cat = c.dataset.pcat; renderPlanning(); return; }
   const m = e.target.closest('[data-pmine]'); if (m) { S.plan2.data = await afv.togglePlanning(m.dataset.pmine); renderPlanning(); return; }
   const r = e.target.closest('[data-prot]'); if (r) { S.plan2.reg = r.dataset.prot; renderPlanning(); $('planRot').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (e.target.closest('[data-maxday-say]')) { if (S.plan2.maxSay) { maxStop(); maxSpeak(S.plan2.maxSay, true); } return; }
+  if (e.target.closest('[data-maxday-add]')) {
+    const keys = (S.plan2.maxAdd || []).filter((k) => !S.plan2.data.mine.includes(k));
+    for (const k of keys) S.plan2.data = await afv.togglePlanning(k);
+    renderPlanning(); return;
+  }
   if (e.target.closest('[data-protclose]')) { S.plan2.reg = null; renderPlanning(); return; }
   if (e.target.closest('[data-protall]')) {
     // ajoute toute la journée de l'avion à « Ma journée », dans l'ordre des départs
@@ -1173,8 +1179,76 @@ document.addEventListener('click', async (e) => {
     renderPlanning();
   }
 });
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'maxDayReg') { S.plan2.myReg = e.target.value || null; S.plan2.myKey = null; renderPlanning(); }
+});
 $('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
-document.querySelector('[data-tab=planning]').addEventListener('click', () => loadPlanning(true));
+
+// Max, rubrique « Ma journée » : avec l'avion choisi, un seul vol ou toute sa journée à respecter ?
+const MAX_AVATAR = '<svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
+const hhZ = (ms) => ms ? new Date(ms).toISOString().slice(11, 16) + 'Z' : 'heure inconnue';
+const sayTime = (ms) => ms ? (+new Date(ms).toISOString().slice(11, 13)) + ' heures ' + new Date(ms).toISOString().slice(14, 16) + ' UTC' : '';
+// Journée d'un avion à partir du vol choisi (ou du prochain vol) :
+// kind = 'single' (un seul vol à faire), 'rotation' (planning de l'avion à respecter), 'done' (journée finie), 'none'.
+function aircraftPlan(all, reg, fromKey, now) {
+  const rot = all.filter((f) => f.reg === reg && f.status !== 'Annulé').sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
+  if (!rot.length) return { kind: 'none', rot, todo: [], before: [] };
+  const isDone = (f) => f.status === 'Arrivé' || (f.arrEst && f.arrEst < now && f.status !== 'Programmé' && f.status !== 'En vol');
+  let i = fromKey ? rot.findIndex((f) => f.key === fromKey) : -1;
+  if (i < 0) i = rot.findIndex((f) => !isDone(f));
+  if (i < 0) return { kind: 'done', rot, todo: [], before: rot };
+  const todo = rot.slice(i), before = rot.slice(0, i);
+  let gap = '';
+  for (let k = 1; k < rot.length; k++) if (rot[k].from !== rot[k - 1].to) { gap = rot[k - 1].to + ' → ' + rot[k].from; break; }
+  return { kind: todo.length === 1 ? 'single' : 'rotation', rot, todo, before, gap, last: todo.length === 1 && rot.length > 1, left: todo.reduce((s, f) => s + (f.blockMin || 0), 0) };
+}
+// Texte de Max (HTML court + phrase à dire) pour un avion et un vol de départ.
+function maxPlanText(p, reg, model, mineKeys) {
+  const line = (f) => '<li><b>' + esc(f.number || f.callsign) + '</b> · ' + esc(f.from) + ' → ' + esc(f.to) + ' · départ ' + hhZ(f.depEst) + ' · ' + hm(f.blockMin) + (mineKeys && mineKeys.includes(f.key) ? ' <span class="pst arrive">dans ma journée</span>' : '') + '</li>';
+  const who = esc(reg) + (model ? ' (' + esc(model) + ')' : '');
+  if (p.kind === 'none') return { html: 'Je ne trouve aucun vol pour ' + esc(reg) + ' aujourd’hui.', say: '' };
+  if (p.kind === 'done') return { html: who + ' a déjà terminé sa journée (' + p.rot.length + ' vol' + (p.rot.length > 1 ? 's' : '') + '). Choisis un autre avion.', say: reg + ' a déjà terminé sa journée. Choisis un autre avion.' };
+  const f = p.todo[0];
+  if (p.kind === 'single') {
+    return {
+      html: '<b>Un seul vol</b> avec ' + who + ' : ' + (p.last ? 'c’est le dernier vol de sa journée' : 'c’est son seul vol aujourd’hui') + ', pas de rotation à suivre.<ul class="mday">' + line(f) + '</ul>Tu fais ce vol et ta journée est terminée.',
+      say: 'Avec ' + reg + ', c’est un seul vol : ' + (f.number || f.callsign) + ', de ' + f.from + ' vers ' + f.to + (f.depEst ? ', départ à ' + sayTime(f.depEst) : '') + '. Pas de rotation à suivre.'
+    };
+  }
+  return {
+    html: '<b>Tu devras respecter le planning de l’avion.</b> Après ' + esc(f.number || f.callsign) + ', ' + who + ' enchaîne encore <b>' + (p.todo.length - 1) + ' vol' + (p.todo.length > 2 ? 's' : '') + '</b> aujourd’hui. ' +
+      'Fais ces ' + p.todo.length + ' vols dans l’ordre (' + hm(p.left) + ' de vol) :<ul class="mday">' + p.todo.map(line).join('') + '</ul>' +
+      (p.before.length ? '<span class="muted small">Avant toi, l’avion a déjà ' + (p.before.length > 1 ? 'fait ' + p.before.length + ' vols' : 'fait 1 vol') + ' ce jour-là. </span>' : '') +
+      (p.gap ? '<span class="muted small">Il manque peut-être un vol entre ' + esc(p.gap) + ' (hors de Paris, absent du programme).</span>' : ''),
+    say: 'Avec ' + reg + ', tu devras respecter le planning de l’avion : ' + p.todo.length + ' vols à enchaîner. Tu pars de ' + f.from + (f.depEst ? ' à ' + sayTime(f.depEst) : '') + ', puis ' + p.todo.map((x) => x.to).join(', puis ') + '. Respecte bien l’ordre des vols.'
+  };
+}
+function maxDayHtml(all, mine) {
+  const regs = {};
+  for (const f of all) if (f.reg) { const r = regs[f.reg] || (regs[f.reg] = { reg: f.reg, model: f.model || f.type || 'Type inconnu', n: 0 }); if (f.status !== 'Annulé') r.n++; }
+  const list = Object.values(regs);
+  if (!list.length) return '';
+  // par défaut : l'avion du premier vol de « Ma journée »
+  if (!S.plan2.myReg || !regs[S.plan2.myReg]) { const m = mine.find((f) => f.reg); S.plan2.myReg = m ? m.reg : null; S.plan2.myKey = m ? m.key : null; }
+  const byModel = {};
+  for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
+  const opts = '<option value="">Choisis ton avion…</option>' + Object.keys(byModel).sort().map((m) => '<optgroup label="' + esc(m) + '">' +
+    byModel[m].sort((a, b) => a.reg.localeCompare(b.reg)).map((r) => '<option value="' + esc(r.reg) + '"' + (r.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(r.reg) + ' · ' + r.n + ' vol' + (r.n > 1 ? 's' : '') + '</option>').join('') + '</optgroup>').join('');
+  const reg = S.plan2.myReg;
+  let t = { html: 'Choisis un vol dans <b>Vols réels › À venir</b> (bouton « Prendre ce vol ») ou dis-moi quel avion tu veux prendre : je te dirai si c’est un seul vol ou si tu dois suivre la journée de l’avion.', say: '' }, add = [];
+  if (reg) {
+    const p = aircraftPlan(all, reg, S.plan2.myKey, Date.now());
+    t = maxPlanText(p, reg, regs[reg].model, mine.map((m) => m.key));
+    add = p.todo.map((f) => f.key);
+  }
+  S.plan2.maxSay = t.say; S.plan2.maxAdd = add;
+  const missing = add.filter((k) => !mine.some((m) => m.key === k)).length;
+  return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">Max : quel avion prends-tu ?</div><div class="muted small">Un seul vol ou toute la journée de l’avion</div></div>' +
+    '<select id="maxDayReg" aria-label="Avion que je veux prendre">' + opts + '</select></div>' +
+    '<div class="max-say">' + t.html + '</div>' +
+    (reg ? '<div class="row" style="margin-top:8px">' + (missing ? '<button class="btn small red" data-maxday-add>' + (add.length > 1 ? 'Ajouter ' + (missing === add.length ? 'les ' + missing + ' vols' : 'les ' + missing + ' vols manquants') + ' à « Ma journée »' : 'Ajouter ce vol à « Ma journée »') + '</button>' : (add.length ? '<span class="muted small">Tout est déjà dans « Ma journée ».</span>' : '')) +
+      (t.say ? '<button class="btn small ghost" data-maxday-say>Écouter Max</button>' : '') + '<button class="btn small ghost" data-prot="' + esc(reg) + '">Voir la journée de l’avion</button></div>' : '') + '</div>';
+}
 
 // Journée d'un avion : tous ses vols du jour, dans l'ordre (rotation)
 function renderRotation(all, d) {
@@ -1203,14 +1277,42 @@ function renderSchedDetail() {
   const kv = (k, v) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
   $('realDetail').innerHTML = '<div class="muted small">' + esc(f.number) + ' · ' + esc(f.status || '') + '</div><h2>' + esc(f.from) + ' → ' + esc(f.to) + '</h2>' +
     '<div style="font-weight:600">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div>' +
-    '<div class="kv">' + kv('Départ prévu', hhmm(f.depEst)) + kv('Arrivée prévue', hhmm(f.arrEst)) + kv('Durée', hm(f.blockMin)) + kv('Distance', f.distKm != null ? fmt(f.distKm) + ' km' : '—') +
+    '<div class="kv">' + kv('Départ prévu', hhZ(f.depEst)) + kv('Arrivée prévue', hhmm(f.arrEst)) + kv('Durée', hm(f.blockMin)) + kv('Distance', f.distKm != null ? fmt(f.distKm) + ' km' : '—') +
     kv('Appareil', esc(f.model || f.type || 'Inconnu')) + kv('Immatriculation', esc(f.reg || '—')) + '</div>' +
     '<div class="row wrap"><a class="btn red" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Copier vers SimBrief</a>' +
-    (f.reg ? '<button class="btn ghost" data-goplanreg="' + esc(f.reg) + '">Journée de l’avion</button>' : '') + '</div>';
+    (f.reg ? '<button class="btn ghost" data-goplanreg="' + esc(f.reg) + '">Journée de l’avion</button>' : '') + '</div>' + realMaxHtml(f);
+}
+// Avis de Max sur un vol à venir : un seul vol, ou la suite de la journée de l'avion à respecter.
+function realMaxHtml(f) {
+  if (S.real.mode !== 'next' || f.status === 'Annulé') return '';
+  let body;
+  if (!f.reg) body = 'Je ne connais pas encore l’avion de ce vol : je ne peux pas te dire s’il enchaîne d’autres vols.';
+  else {
+    const p = aircraftPlan(S.real.sched, f.reg, f.key, Date.now());
+    body = maxPlanText(p, f.reg, f.model || f.type, []).html;
+  }
+  return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">L’avis de Max</div><div class="muted small">Un seul vol ou la journée de l’avion ?</div></div></div>' +
+    '<div class="max-say">' + body + '</div><div class="row" style="margin-top:8px"><button class="btn small red" data-takeflight="' + esc(f.key) + '">Prendre ce vol</button>' +
+    '<span class="muted small">Il est ajouté à « Ma journée » dans le Planning du jour, où Max te guide.</span></div></div>';
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-sreal]');
   if (b) { S.real.ssel = b.dataset.sreal; renderReal(); return; }
+  const tk = e.target.closest('[data-takeflight]');
+  if (tk) {
+    const f = S.real.sched.find((x) => x.key === tk.dataset.takeflight);
+    if (f) {
+      (async () => {
+        const d = await afv.getPlanning(false);
+        if (!d.mine.includes(f.key)) S.plan2.data = await afv.togglePlanning(f.key); else S.plan2.data = d;
+        S.plan2.myReg = f.reg || null; S.plan2.myKey = f.key;
+        showTab('planning'); renderPlanning();
+        const box = $('planMine'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const t = S.plan2.maxSay; if (t && S.store && S.store.settings.maxVoice) { maxStop(); maxSpeak(t); }
+      })();
+    }
+    return;
+  }
   const g = e.target.closest('[data-goplanreg]');
   if (g) { S.plan2.reg = g.dataset.goplanreg; showTab('planning'); loadPlanning(false); }
 });

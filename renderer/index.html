@@ -107,14 +107,14 @@
       </header>
       <div class="body">
         <div class="row wrap">
-          <button class="tag on" aria-pressed="true">En cours</button>
-          <button class="tag" disabled title="Prochaine étape">À venir · bientôt</button>
-          <button class="tag" disabled title="Prochaine étape">Précédents · bientôt</button>
+          <button class="tag on" data-rmode="live" aria-pressed="true">En cours</button>
+          <button class="tag" data-rmode="next" aria-pressed="false">À venir</button>
+          <button class="tag" data-rmode="past" aria-pressed="false">Précédents</button>
           <label class="field inline">Aéroport <select id="realAirport"></select></label>
           <label class="field inline">Rechercher <input id="realSearch" placeholder="AF 1234, Nice, KJFK…"></label>
         </div>
         <div class="card map-card">
-          <div class="row between wrap"><h2>Carte des vols en cours</h2>
+          <div class="row between wrap"><h2 id="realMapTitle">Carte des vols en cours</h2>
             <div class="row wrap"><button class="tag on" data-view="monde">Monde</button><button class="tag" data-view="europe">Europe</button><button class="tag" data-view="atlantique">Atlantique</button><button class="tag" data-view="antilles">Antilles</button>
             <span style="width:10px"></span><button class="tag on" data-layer="reels:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="reels:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="reels:radar" aria-pressed="false">Radar météo</button></div></div>
           <svg id="realMap" viewBox="0 0 360 150" role="img" aria-label="Carte des vols Air France en cours"></svg>

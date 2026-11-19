@@ -759,9 +759,10 @@ async function loadMetar() {
 $('btnMetar').addEventListener('click', loadMetar);
 
 // ---------------- vols réels (en cours) ----------------
-S.real = { flights: [], sel: null, det: {} };
+S.real = { flights: [], sel: null, det: {}, mode: 'live', sched: [], ssel: null };
 let realTimer = null;
 async function loadReal(force) {
+  if (S.real.mode !== 'live') return loadSched();
   $('realSub').textContent = 'Chargement des vols Air France en cours…';
   const r = await afv.realLive(force);
   S.real.flights = r.flights || [];
@@ -769,21 +770,58 @@ async function loadReal(force) {
   const when = r.at ? new Date(r.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
   $('realSub').textContent = r.error && !S.real.flights.length ? r.error
     : S.real.flights.length + ' vols Air France en l’air' + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '');
-  const aps = [...new Set(S.real.flights.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
+  fillAirports(S.real.flights);
+  renderReal();
+}
+// Vols du programme officiel : à venir (pas encore partis) ou précédents (déjà arrivés)
+function realSource() {
+  if (S.real.mode === 'live') return S.real.flights;
+  const now = Date.now();
+  if (S.real.mode === 'next') return S.real.sched.filter((f) => f.depEst && f.depEst > now).sort((a, b) => a.depEst - b.depEst);
+  return S.real.sched.filter((f) => f.arrEst && f.arrEst < now).sort((a, b) => b.arrEst - a.arrEst);
+}
+async function loadSched() {
+  $('realSub').textContent = 'Chargement du programme du jour…';
+  const d = await afv.getPlanning(false);
+  S.real.sched = (d.flights || []).filter((f) => f.scheduled);
+  S.real.schedSrc = d.source;
+  const list = realSource();
+  $('realSub').textContent = !d.source ? 'Programme du jour pas encore disponible (il est mis à jour chaque nuit).'
+    : list.length + ' vols Air France ' + (S.real.mode === 'next' ? 'à venir' : 'déjà arrivés') + ' aujourd’hui · programme AeroDataBox';
+  fillAirports(list);
+  renderReal();
+}
+function fillAirports(list) {
+  const aps = [...new Set(list.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
   const cur = $('realAirport').value || 'all';
   $('realAirport').innerHTML = '<option value="all">Tous</option>' + aps.map((a) => '<option>' + esc(a) + '</option>').join('');
   $('realAirport').value = aps.includes(cur) ? cur : 'all';
-  renderReal();
 }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rmode]'); if (!b) return;
+  S.real.mode = b.dataset.rmode;
+  document.querySelectorAll('[data-rmode]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+  if (S.real.mode === 'live') loadReal(false); else loadSched();
+});
 function realShown() {
   const ap = $('realAirport').value;
   const q = $('realSearch').value.trim().toUpperCase().replace(/\s+/g, '');
-  return S.real.flights.filter((f) => (ap === 'all' || f.from === ap || f.to === ap) &&
+  return realSource().filter((f) => (ap === 'all' || f.from === ap || f.to === ap) &&
     (!q || [f.callsign, f.number, f.from, f.to, f.fromName, f.toName, f.fromIata, f.toIata].some((x) => String(x || '').toUpperCase().replace(/\s+/g, '').includes(q))));
 }
+const hhmm = (t) => (t ? new Date(t).toISOString().slice(11, 16) + 'Z' : '—');
 function renderReal() {
   const list = realShown();
   renderRealMap(list);
+  $('realMapTitle').textContent = S.real.mode === 'live' ? 'Carte des vols en cours' : S.real.mode === 'next' ? 'Carte des vols à venir' : 'Carte des vols précédents';
+  if (S.real.mode !== 'live') {
+    $('realList').innerHTML = list.length ? list.slice(0, 250).map((f) => '<button class="rt' + (f.key === S.real.ssel ? ' on' : '') + '" data-sreal="' + esc(f.key) + '">' +
+      '<span class="n">' + esc(f.number) + '</span><span><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><br><span class="c">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + (f.type ? ' · ' + esc(f.type) : '') + '</span></span>' +
+      '<span class="a">' + (f.status === 'Annulé' ? '<b style="color:#8A1026">Annulé</b>' : S.real.mode === 'next' ? 'Départ<br>' + hhmm(f.depEst) : 'Arrivé<br>' + hhmm(f.arrEst)) + '</span></button>').join('')
+      : '<div class="empty">' + (S.real.schedSrc ? 'Aucun vol ne correspond à ces filtres.' : 'Le programme du jour n’est pas encore disponible.') + '</div>';
+    renderSchedDetail();
+    return;
+  }
   $('realList').innerHTML = list.length ? list.slice(0, 200).map((f) => '<button class="rt' + (f.callsign === S.real.sel ? ' on' : '') + '" data-real="' + esc(f.callsign) + '">' +
     '<span class="n">' + esc(f.number || f.callsign) + '</span><span><b>' + (f.from ? esc(f.from) + ' → ' + esc(f.to) : 'Route inconnue') + '</b><br><span class="c">' + esc(f.from ? (f.fromName || '') + ' – ' + (f.toName || '') : f.callsign) + '</span></span>' +
     '<span class="a">FL' + (f.altFt != null ? Math.round(f.altFt / 100) : '—') + '<br>' + (f.gsKt != null ? f.gsKt + ' kt' : '') + '</span></button>').join('')
@@ -834,6 +872,7 @@ let mapVB = VIEWS.monde.slice();
 const MX = (lon) => MapLayers.LX(lon); const MY = (lat) => MapLayers.LY(lat);
 const PLANE = 'M0 -5 L1 -1.5 L5 1 L5 2 L1 1 L0.8 3.6 L2 4.6 L2 5.2 L0 4.6 L-2 5.2 L-2 4.6 L-0.8 3.6 L-1 1 L-5 2 L-5 1 L-1 -1.5 Z';
 function renderRealMap(list) {
+
   const svg = $('realMap'); if (!svg) return;
   mapSkeleton(svg);
   const [x, y, w, h] = mapVB;
@@ -848,7 +887,7 @@ function renderRealMap(list) {
   const sat = S.layers.reels.sat;
   const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
   let h2 = '';
-  const sel = S.real.flights.find((f) => f.callsign === S.real.sel);
+  const sel = S.real.mode === 'live' ? S.real.flights.find((f) => f.callsign === S.real.sel) : null;
   if (sel) {
     const d = S.real.det[sel.callsign] || {};
     const fp = sel.fromPos || d.fromPos; const tp = sel.toPos || d.toPos;
@@ -860,6 +899,16 @@ function renderRealMap(list) {
     }
   }
   const sz = 0.33 * k;
+  if (S.real.mode !== 'live') {
+    // programme : une ligne par vol (départ → arrivée), le vol choisi en rouge
+    for (const f of list.slice(0, 250)) {
+      if (!f.fromPos || !f.toPos) continue;
+      const on = f.key === S.real.ssel;
+      h2 += '<line x1="' + MX(f.fromPos[1]) + '" y1="' + MY(f.fromPos[0]) + '" x2="' + MX(f.toPos[1]) + '" y2="' + MY(f.toPos[0]) + '" stroke="' + (on ? '#F0374E' : (sat ? 'rgba(255,255,255,.45)' : 'rgba(10,30,74,.28)')) + '" stroke-width="' + ((on ? 0.45 : 0.18) * k) + '"/>';
+      if (on) for (const [p, c] of [[f.fromPos, f.from], [f.toPos, f.to]]) h2 += '<circle cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" fill="' + halo + '" stroke="#F0374E" stroke-width="' + (0.35 * k) + '"/><text x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.6 * k) + '">' + esc(c) + '</text>';
+    }
+    list = [];
+  }
   for (const f of list) {
     const on = f.callsign === S.real.sel;
     h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"' + (sat && !on ? ' style="fill:#fff"' : '') + '/></g>';
@@ -1146,3 +1195,21 @@ function renderRotation(all, d) {
       '<div class="row" style="margin-top:10px"><button class="btn red" data-protall>Ajouter toute la journée de l’avion à « Ma journée »</button></div>'
     : '<p class="muted">Aucun autre vol connu pour cet avion aujourd’hui.</p>');
 }
+
+function renderSchedDetail() {
+  const f = S.real.sched.find((x) => x.key === S.real.ssel);
+  if (!f) { $('realDetail').innerHTML = '<p class="muted">Choisis un vol dans la liste.</p>'; return; }
+  const kv = (k, v) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
+  $('realDetail').innerHTML = '<div class="muted small">' + esc(f.number) + ' · ' + esc(f.status || '') + '</div><h2>' + esc(f.from) + ' → ' + esc(f.to) + '</h2>' +
+    '<div style="font-weight:600">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div>' +
+    '<div class="kv">' + kv('Départ prévu', hhmm(f.depEst)) + kv('Arrivée prévue', hhmm(f.arrEst)) + kv('Durée', hm(f.blockMin)) + kv('Distance', f.distKm != null ? fmt(f.distKm) + ' km' : '—') +
+    kv('Appareil', esc(f.model || f.type || 'Inconnu')) + kv('Immatriculation', esc(f.reg || '—')) + '</div>' +
+    '<div class="row wrap"><a class="btn red" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Copier vers SimBrief</a>' +
+    (f.reg ? '<button class="btn ghost" data-goplanreg="' + esc(f.reg) + '">Journée de l’avion</button>' : '') + '</div>';
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sreal]');
+  if (b) { S.real.ssel = b.dataset.sreal; renderReal(); return; }
+  const g = e.target.closest('[data-goplanreg]');
+  if (g) { S.plan2.reg = g.dataset.goplanreg; showTab('planning'); loadPlanning(false); }
+});

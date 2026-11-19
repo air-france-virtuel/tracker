@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.4.3-beta",
+    "version": "0.5.0-beta",
     "date": "2026-11-19",
     "added": [
       "Nouveau menu : écrans rangés par rubriques (Aujourd’hui, Voler, Carrière), gros bouton « Démarrer un vol », recherche rapide (Ctrl K), suivi du vol en cours et profil pilote avec progression vers le prochain grade, menu réductible en icônes",

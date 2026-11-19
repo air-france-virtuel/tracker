@@ -768,7 +768,7 @@ async function loadReal(force) {
   S.real.at = r.at;
   const when = r.at ? new Date(r.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
   $('realSub').textContent = r.error && !S.real.flights.length ? r.error
-    : S.real.flights.length + ' vols Air France en l’air' + (r.routes ? ' · route connue pour ' + r.routes.known : '') + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '') + (r.routes && r.routes.error ? ' · routes : ' + r.routes.error : '');
+    : S.real.flights.length + ' vols Air France en l’air' + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '');
   const aps = [...new Set(S.real.flights.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
   const cur = $('realAirport').value || 'all';
   $('realAirport').innerHTML = '<option value="all">Tous</option>' + aps.map((a) => '<option>' + esc(a) + '</option>').join('');
@@ -1058,3 +1058,16 @@ function pushCompact() {
     max: $('maxSay').textContent
   });
 }
+
+// ---------------- actualité Air France ----------------
+async function loadNews(force) {
+  const r = await afv.getNews(force);
+  const items = (r && r.items) || [];
+  const ago = (d) => { if (!d) return ''; const h = Math.round((Date.now() - d) / 3600000); return h < 1 ? 'il y a moins d’une heure' : h < 24 ? 'il y a ' + h + ' h' : new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }); };
+  $('news').innerHTML = items.length ? items.map((n) => '<a class="nw" href="' + esc(n.link) + '" target="_blank" rel="noopener"><span class="t">' + esc(n.title) + '</span>' +
+    (n.summary ? '<span class="muted small">' + esc(n.summary) + '</span>' : '') + '<span class="m">' + esc(n.source) + (n.date ? ' · ' + ago(n.date) : '') + '</span></a>').join('')
+    : '<p class="muted">' + esc((r && r.error) || 'Pas d’actualité pour le moment.') + '</p>';
+  $('newsSrc').textContent = items.length ? 'Source : ' + r.source + '. Clique sur un titre pour lire l’article sur le site d’origine.' : (r && r.detail ? 'Détail : ' + r.detail : '');
+}
+$('btnNews').addEventListener('click', () => loadNews(true));
+loadNews(false);

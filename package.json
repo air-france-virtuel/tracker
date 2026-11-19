@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js",
+    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js",
     "dist": "electron-builder --win dir --x64 --publish never && node build-res/make-installer.js"
   },
   "author": "Air France Virtuel",

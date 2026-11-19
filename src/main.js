@@ -12,7 +12,8 @@ const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
 const career = require('./career');
 const real = require('./realflights');
-{ const { net } = require('electron'); if (net && typeof net.fetch === 'function') real.setFetch((u, o) => net.fetch(u, o)); }
+const newsMod = require('./news');
+{ const { net } = require('electron'); if (net && typeof net.fetch === 'function') { real.setFetch((u, o) => net.fetch(u, o)); newsMod.setFetch((u, o) => net.fetch(u, o)); } }
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
@@ -270,6 +271,8 @@ app.whenReady().then(() => {
       return radarCache.data;
     } catch (e) { return null; }
   });
+
+  ipcMain.handle('news:get', (_e, force) => newsMod.news(!!force));
 
   // ---------- vols réels ----------
   ipcMain.handle('real:live', (_e, force) => real.live(!!force));

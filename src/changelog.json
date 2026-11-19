@@ -3,7 +3,7 @@
     "version": "0.4.2-beta",
     "date": "2026-11-19",
     "added": [
-      "Vols réels : nombre de routes connues affiché, et raison si le service des routes ne répond pas"
+      "Infos du jour : l’actualité d’Air France (salle de presse officielle, ou Google Actualités en secours), avec un lien vers chaque article"
     ],
     "removed": [],
     "fixed": [

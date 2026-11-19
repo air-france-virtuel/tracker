@@ -172,3 +172,8 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .navlog tr.past td{color:#9AA3B5}.navlog tr.cur td{background:#FFF4F5;color:var(--red);font-weight:700}
 .navlog .scroll{max-height:236px;overflow:auto}
 #profile{width:100%;height:auto}
+.newslist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin:8px 0}
+.nw{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-left:3px solid var(--red);border-radius:10px;padding:10px 12px;text-decoration:none;color:inherit;background:#fff}
+.nw:hover{border-color:var(--navy);border-left-color:var(--red)}
+.nw .t{font-weight:700;color:var(--navy);font-size:14px;line-height:1.35}
+.nw .m{font-size:11.5px;color:var(--muted)}

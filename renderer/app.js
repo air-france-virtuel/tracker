@@ -1097,6 +1097,7 @@ function renderPlanning() {
   const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
   $('planMine').innerHTML = '<h3 class="caps">Ma journée</h3>' + (mine.length ? '<div class="mine">' + mine.map((f, i) => '<div class="am"><div class="t">' + (i + 1) + '. ' + esc(f.number || f.callsign) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</div><div class="muted small">' + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <a href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a> · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>').join('') + '</div>'
     : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>');
+  renderRotation(all, d);
   const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
   $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
     list.map((f) => '<tr><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
@@ -1105,13 +1106,43 @@ function renderPlanning() {
       '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + (f.scheduled ? '' : '<div class="muted small">estimé</div>') + '</td>' +
       '<td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
       '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
-      '<td><div class="row"><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +
+      '<td><div class="row">' + (f.reg ? '<button class="btn small ghost" data-prot="' + esc(f.reg) + '" title="Tous les vols de cet avion aujourd’hui">Journée de l’avion</button>' : '') + '<a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +
       '<button class="star' + (d.mine.includes(f.key) ? ' on' : '') + '" data-pmine="' + esc(f.key) + '" aria-pressed="' + d.mine.includes(f.key) + '" aria-label="Ajouter à ma journée">' + (d.mine.includes(f.key) ? '★' : '☆') + '</button></div></td></tr>').join('') + '</tbody></table>'
     : '<div class="empty" style="margin:16px">Aucun vol relevé pour le moment' + (S.plan2.cat !== 'tous' ? ' dans cette catégorie' : '') + '. Clique sur Actualiser.</div>';
 }
 document.addEventListener('click', async (e) => {
   const c = e.target.closest('[data-pcat]'); if (c) { S.plan2.cat = c.dataset.pcat; renderPlanning(); return; }
-  const m = e.target.closest('[data-pmine]'); if (m) { S.plan2.data = await afv.togglePlanning(m.dataset.pmine); renderPlanning(); }
+  const m = e.target.closest('[data-pmine]'); if (m) { S.plan2.data = await afv.togglePlanning(m.dataset.pmine); renderPlanning(); return; }
+  const r = e.target.closest('[data-prot]'); if (r) { S.plan2.reg = r.dataset.prot; renderPlanning(); $('planRot').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (e.target.closest('[data-protclose]')) { S.plan2.reg = null; renderPlanning(); return; }
+  if (e.target.closest('[data-protall]')) {
+    // ajoute toute la journée de l'avion à « Ma journée », dans l'ordre des départs
+    const d = S.plan2.data;
+    const rot = d.flights.filter((f) => f.reg === S.plan2.reg).sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
+    for (const f of rot) if (!S.plan2.data.mine.includes(f.key)) S.plan2.data = await afv.togglePlanning(f.key);
+    renderPlanning();
+  }
 });
 $('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
 document.querySelector('[data-tab=planning]').addEventListener('click', () => loadPlanning(true));
+
+// Journée d'un avion : tous ses vols du jour, dans l'ordre (rotation)
+function renderRotation(all, d) {
+  const box = $('planRot');
+  if (!S.plan2.reg) { box.hidden = true; return; }
+  const rot = all.filter((f) => f.reg === S.plan2.reg).sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
+  box.hidden = false;
+  const first = rot[0] || {};
+  const total = rot.reduce((a, f) => a + (f.blockMin || 0), 0);
+  let warn = '';
+  for (let i = 1; i < rot.length; i++) if (rot[i].from !== rot[i - 1].to) { warn = 'Il manque peut-être un vol entre ' + rot[i - 1].to + ' et ' + rot[i].from + ' (vol hors de Paris, absent du programme).'; break; }
+  box.innerHTML = '<div class="row between"><h3 class="caps">Journée de l’avion ' + esc(S.plan2.reg) + (first.model || first.type ? ' · ' + esc(first.model || first.type) : '') + '</h3><button class="linkbtn" data-protclose>Fermer</button></div>' +
+    (rot.length ? '<p class="muted small">' + rot.length + ' vol' + (rot.length > 1 ? 's' : '') + ' aujourd’hui · ' + hm(total) + ' de vol au total' + (warn ? ' · ' + esc(warn) : '') + '</p>' +
+      '<table class="plan-t"><thead><tr><th>#</th><th>Vol</th><th>Trajet</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
+      rot.map((f, i) => '<tr><td>' + (i + 1) + '</td><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
+        '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
+        '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
+        '<td><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a></td></tr>').join('') + '</tbody></table>' +
+      '<div class="row" style="margin-top:10px"><button class="btn red" data-protall>Ajouter toute la journée de l’avion à « Ma journée »</button></div>'
+    : '<p class="muted">Aucun autre vol connu pour cet avion aujourd’hui.</p>');
+}

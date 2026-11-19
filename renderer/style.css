@@ -258,3 +258,5 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .maxday{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .maxday select{margin-left:auto;min-width:220px;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:#fff;color:var(--ink)}
 .mday{margin:8px 0;padding-left:18px}.mday li{margin:3px 0}
+.updfail{margin-top:10px;border:1px solid #F3C5CD;border-left:4px solid var(--red);background:#FFF6F7;border-radius:10px;padding:10px 14px}.updfail ol{margin:6px 0 10px;padding-left:20px;line-height:1.5}
+#updModalBody ol{padding-left:20px;line-height:1.5}

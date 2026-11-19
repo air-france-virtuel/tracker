@@ -572,11 +572,14 @@ function renderUpdate() {
     uptodate: 'Tu as la dernière version.',
     downloading: 'Téléchargement de la version ' + esc(u.version) + '… ' + (u.percent || 0) + ' %',
     ready: 'La version ' + esc(u.version) + ' est prête. Elle s\u2019installera au prochain redémarrage du tracker.',
-    error: 'Vérification impossible pour le moment. Réessaie plus tard.'
+    error: 'Vérification impossible pour le moment. Réessaie plus tard.',
+    blocked: 'Windows a bloqué l’installation de la version ' + esc(u.version) + '.'
   }[u.state] || '';
   h += '<div style="text-align:right">' + (u.state === 'ready' ? '<button class="btn red" id="btnInstallNow">Redémarrer et installer</button>' : '') + '</div></div>';
   h += '<p class="muted">' + st + '</p>';
   if (u.state === 'error' && u.error) h += '<p class="muted small">Détail : ' + esc(u.error) + '</p>';
+  if (u.failed || u.state === 'blocked') h += '<div class="updfail">' + updFailHtml(u) + '</div>';
+  else if (u.state !== 'dev') h += '<p class="muted small">La mise à jour ne s’installe pas ? <button class="linkbtn" data-manualupd>Télécharger l’installateur à la main</button></p>';
   if (u.state === 'downloading') h += '<div class="progress"><i style="width:' + (u.percent || 0) + '%"></i></div>';
   if ((u.state === 'ready' || u.state === 'downloading') && u.notes) h += '<div class="muted small">Ce qui change dans la version ' + esc(u.version) + ' :</div><div class="notes">' + esc(stripHtml(u.notes)) + '</div>';
   $('updCard').innerHTML = h;
@@ -585,12 +588,29 @@ function renderUpdate() {
   $('updBanner').hidden = u.state !== 'ready';
   $('updBannerText').textContent = 'La version ' + (u.version || '') + ' du tracker est prête.' + (S.flight ? ' Installe-la après ton vol.' : '');
 }
-afv.on('update:status', (u) => { UPD = u; renderUpdate(); updPopup(); });
+afv.on('update:status', (u) => { const was = UPD && UPD.state; UPD = u; renderUpdate(); if (u.state === 'blocked' && was !== 'blocked') updFailPopup(); else updPopup(); });
+// Mise à jour bloquée (Windows Smart App Control, antivirus…) : explication et téléchargement à la main.
+function updFailHtml(u) {
+  const v = (u.failed && u.failed.version) || u.version || '';
+  return '<p><b>La version ' + esc(v) + ' n’a pas pu s’installer.</b> Windows a sûrement bloqué l’installateur, car il n’est pas encore signé numériquement (protection « Smart App Control » ou antivirus). Ce n’est pas un virus.</p>' +
+    '<ol class="small"><li>Clique sur <b>Télécharger l’installateur</b> : il s’ouvre dans ton navigateur.</li><li>Ferme le tracker, puis lance le fichier téléchargé <b>AirFranceVirtuel-Tracker-Setup.exe</b>.</li>' +
+    '<li>Si Windows le bloque encore : <b>Paramètres › Confidentialité et sécurité › Sécurité Windows › Contrôle des applications et du navigateur › Paramètres de Smart App Control</b>. Attention, selon ta version de Windows, le désactiver peut être définitif : c’est ton choix.</li></ol>' +
+    '<div class="row"><button class="btn red" data-manualupd>Télécharger l’installateur</button></div>' + (u.error ? '<p class="muted small">Détail : ' + esc(u.error) + '</p>' : '');
+}
+function updFailPopup() {
+  $('updModalTitle').textContent = 'La mise à jour n’a pas pu s’installer';
+  $('updModalBody').innerHTML = updFailHtml(UPD);
+  $('btnUpdModalInstall').hidden = true;
+  $('btnUpdModalLater').textContent = 'Fermer';
+  $('updModal').hidden = false;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-manualupd]')) afv.manualUpdate(); });
 
 // Pop-up dès qu'une nouvelle version est trouvée (une fois par version).
 S.updSeen = {};
 function updPopup() {
   const u = UPD;
+  if (u && u.failed) return; // l'explication du blocage reste affichée
   if (!u || !u.version || (u.state !== 'downloading' && u.state !== 'ready')) return;
   const key = u.version + ':' + u.state; // réapparaît quand le téléchargement est terminé
   if (!S.updSeen[key]) { S.updSeen[key] = true; $('updModal').hidden = false; }
@@ -604,7 +624,7 @@ function updPopup() {
   $('btnUpdModalInstall').hidden = u.state !== 'ready' || !!S.flight;
   $('btnUpdModalLater').textContent = S.flight ? 'Après mon vol' : 'Plus tard';
 }
-$('btnUpdModalLater').addEventListener('click', () => { $('updModal').hidden = true; });
+$('btnUpdModalLater').addEventListener('click', () => { $('updModal').hidden = true; if (UPD && UPD.failed) afv.updateFailedSeen(); });
 $('btnUpdModalInstall').addEventListener('click', () => afv.installUpdate());
 $('btnCheckUpd').addEventListener('click', async () => { UPD = await afv.checkUpdate(); renderUpdate(); });
 $('btnBannerInstall').addEventListener('click', () => {
@@ -631,7 +651,7 @@ function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store
   renderAircraftSelect(); renderFleet(); renderSounds(); renderFb(); renderSettings(); renderPhases(null); renderAnnHint();
   S.voice = await afv.voiceStatus(); renderVoice(); renderMaxVoiceHint();
   S.infos = await afv.getInfos(); await refreshCareer(); loadMetar();
-  UPD = await afv.getUpdate(); renderUpdate(); updPopup();
+  UPD = await afv.getUpdate(); renderUpdate(); if (UPD.failed) updFailPopup(); else updPopup();
   const cl = await renderChangelog();
   const now = cl.find((v) => v.version === d.version);
   if (d.showNews && now) {

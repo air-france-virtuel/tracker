@@ -1,5 +1,15 @@
 [
   {
+    "version": "0.5.3-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Si Windows bloque l’installation d’une mise à jour (Smart App Control, antivirus), le tracker le détecte au redémarrage et explique quoi faire, avec un bouton « Télécharger l’installateur »",
+      "Mises à jour : lien « Télécharger l’installateur à la main » toujours disponible"
+    ],
+    "removed": [],
+    "fixed": []
+  },
+  {
     "version": "0.5.2-beta",
     "date": "2026-11-19",
     "added": [

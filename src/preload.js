@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('afv', {
   getUpdate: () => ipcRenderer.invoke('update:get'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
+  manualUpdate: () => ipcRenderer.invoke('update:manual'),
+  updateFailedSeen: () => ipcRenderer.invoke('update:failedSeen'),
   getChangelog: () => ipcRenderer.invoke('changelog:get'),
   changelogSeen: () => ipcRenderer.invoke('changelog:seen'),
   voiceStatus: () => ipcRenderer.invoke('voice:status'),

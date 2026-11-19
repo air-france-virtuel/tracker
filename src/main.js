@@ -156,7 +156,16 @@ function stopFlight() {
 }
 
 // ---------- mises à jour automatiques (GitHub : air-france-virtuel/tracker) ----------
-const upd = { state: 'idle', version: null, percent: 0, notes: '', error: '' };
+const upd = { state: 'idle', version: null, percent: 0, notes: '', error: '', failed: null, direct: 'https://github.com/air-france-virtuel/tracker/releases/latest/download/AirFranceVirtuel-Tracker-Setup.exe' };
+let updInstalling = false;
+// Au démarrage : une mise à jour téléchargée lors de la session précédente aurait dû s'installer à la fermeture.
+// Si la version n'a pas changé, l'installation a échoué (souvent bloquée par Windows Smart App Control).
+function checkPendingUpdate() {
+  const p = store.pendingUpdate;
+  if (!p || !p.version) return;
+  if (p.version !== VERSION) upd.failed = { version: p.version };
+  delete store.pendingUpdate; saveStore();
+}
 function updSend() { send('update:status', upd); }
 function setupUpdater() {
   if (!app.isPackaged) { upd.state = 'dev'; return; }
@@ -173,8 +182,9 @@ function setupUpdater() {
   autoUpdater.on('update-available', (i) => { Object.assign(upd, { state: 'downloading', version: i.version, notes: notesOf(i), percent: 0 }); updSend(); });
   autoUpdater.on('update-not-available', () => { upd.state = 'uptodate'; upd.checkedAt = Date.now(); updSend(); });
   autoUpdater.on('download-progress', (p) => { upd.percent = Math.round(p.percent || 0); updSend(); });
-  autoUpdater.on('update-downloaded', (i) => { Object.assign(upd, { state: 'ready', version: i.version, notes: notesOf(i) || upd.notes, percent: 100 }); updSend(); });
+  autoUpdater.on('update-downloaded', (i) => { Object.assign(upd, { state: 'ready', version: i.version, notes: notesOf(i) || upd.notes, percent: 100 }); store.pendingUpdate = { version: i.version, at: Date.now() }; saveStore(); updSend(); });
   autoUpdater.on('error', (e) => {
+    if (updInstalling) { updInstalling = false; upd.state = 'blocked'; upd.failed = { version: upd.version }; upd.error = String((e && e.message) || e).split('\n')[0].slice(0, 300); updSend(); return; }
     upd.state = 'error'; upd.error = String((e && e.message) || e).split('\n')[0].slice(0, 300); updSend();
     clearTimeout(retryTimer); retryTimer = setTimeout(check, 15 * 60 * 1000); // nouvel essai dans 15 minutes
   });
@@ -301,6 +311,7 @@ else app.on('second-instance', () => showMain());
 
 app.whenReady().then(() => {
   loadStore();
+  checkPendingUpdate();
   refreshFleet();
 
   // ---------- carrière ----------
@@ -435,7 +446,15 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('update:get', () => upd);
   ipcMain.handle('update:check', () => { if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {}); return upd; });
-  ipcMain.handle('update:install', () => { if (upd.state === 'ready') { stopFlight(); setImmediate(() => autoUpdater.quitAndInstall(true, true)); } return true; });
+  ipcMain.handle('update:install', () => {
+    if (upd.state === 'ready') {
+      stopFlight(); updInstalling = true;
+      setImmediate(() => { try { autoUpdater.quitAndInstall(true, true); } catch (e) { updInstalling = false; upd.state = 'blocked'; upd.failed = { version: upd.version }; upd.error = String((e && e.message) || e).slice(0, 300); updSend(); } });
+    }
+    return true;
+  });
+  ipcMain.handle('update:manual', () => { shell.openExternal(upd.direct); return true; });
+  ipcMain.handle('update:failedSeen', () => { upd.failed = null; return true; });
   ipcMain.handle('changelog:get', () => CHANGELOG);
   ipcMain.handle('changelog:seen', () => { store.lastSeenVersion = VERSION; saveStore(); return true; });
   ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); discordApply(); trayRefresh(); return store.settings; });

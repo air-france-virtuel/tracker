@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.3.0-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Vols réels : les vols Air France en cours dans le monde, avec départ, arrivée, altitude et vitesse (OpenSky Network et adsb.lol)",
+      "Filtre par aéroport et recherche par numéro de vol ou ville",
+      "Bouton « Copier vers SimBrief » : départ, arrivée, numéro de vol et type d’avion pré-remplis"
+    ],
+    "removed": [],
+    "fixed": [
+      "Mises à jour : nouvel essai automatique 15 minutes après un échec, et détail de l’erreur affiché",
+      "Publication : une nouvelle version n’apparaît qu’une fois tous ses fichiers en ligne"
+    ]
+  },
+  {
     "version": "0.2.0-beta",
     "date": "2026-11-19",
     "added": [

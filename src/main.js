@@ -11,6 +11,7 @@ const { DemoFlight, demoPlan } = require('./demo');
 const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
 const career = require('./career');
+const real = require('./realflights');
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
@@ -171,8 +172,12 @@ function setupUpdater() {
   autoUpdater.on('update-not-available', () => { upd.state = 'uptodate'; upd.checkedAt = Date.now(); updSend(); });
   autoUpdater.on('download-progress', (p) => { upd.percent = Math.round(p.percent || 0); updSend(); });
   autoUpdater.on('update-downloaded', (i) => { Object.assign(upd, { state: 'ready', version: i.version, notes: notesOf(i) || upd.notes, percent: 100 }); updSend(); });
-  autoUpdater.on('error', (e) => { upd.state = 'error'; upd.error = String((e && e.message) || e).split('\n')[0]; updSend(); });
-  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.on('error', (e) => {
+    upd.state = 'error'; upd.error = String((e && e.message) || e).split('\n')[0].slice(0, 300); updSend();
+    clearTimeout(retryTimer); retryTimer = setTimeout(check, 15 * 60 * 1000); // nouvel essai dans 15 minutes
+  });
+  let retryTimer = null;
+  function check() { return autoUpdater.checkForUpdates().catch(() => {}); }
   setTimeout(check, 5000);
   setInterval(check, 2 * 60 * 60 * 1000);
 }
@@ -226,6 +231,10 @@ app.whenReady().then(() => {
   });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
+
+  // ---------- vols réels ----------
+  ipcMain.handle('real:live', (_e, force) => real.live(!!force));
+  ipcMain.handle('real:details', (_e, cs, hex) => real.details(String(cs || ''), String(hex || '')));
 
   // ---------- voix de Max ----------
   const voice = new MaxVoice(path.join(dataDir(), 'voix'));

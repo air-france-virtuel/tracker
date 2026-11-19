@@ -515,6 +515,7 @@ function renderUpdate() {
   }[u.state] || '';
   h += '<div style="text-align:right">' + (u.state === 'ready' ? '<button class="btn red" id="btnInstallNow">Redémarrer et installer</button>' : '') + '</div></div>';
   h += '<p class="muted">' + st + '</p>';
+  if (u.state === 'error' && u.error) h += '<p class="muted small">Détail : ' + esc(u.error) + '</p>';
   if (u.state === 'downloading') h += '<div class="progress"><i style="width:' + (u.percent || 0) + '%"></i></div>';
   if ((u.state === 'ready' || u.state === 'downloading') && u.notes) h += '<div class="muted small">Ce qui change dans la version ' + esc(u.version) + ' :</div><div class="notes">' + esc(stripHtml(u.notes)) + '</div>';
   $('updCard').innerHTML = h;
@@ -676,3 +677,70 @@ async function loadMetar() {
     '<div class="metar" style="margin-top:6px">' + esc(w.raw) + '</div></div>').join('') || '<p class="muted">Aucune observation reçue.</p>';
 }
 $('btnMetar').addEventListener('click', loadMetar);
+
+// ---------------- vols réels (en cours) ----------------
+S.real = { flights: [], sel: null, det: {} };
+let realTimer = null;
+async function loadReal(force) {
+  $('realSub').textContent = 'Chargement des vols Air France en cours…';
+  const r = await afv.realLive(force);
+  S.real.flights = r.flights || [];
+  S.real.at = r.at;
+  const when = r.at ? new Date(r.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+  $('realSub').textContent = r.error && !S.real.flights.length ? r.error
+    : S.real.flights.length + ' vols Air France en l’air' + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '');
+  const aps = [...new Set(S.real.flights.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
+  const cur = $('realAirport').value || 'all';
+  $('realAirport').innerHTML = '<option value="all">Tous</option>' + aps.map((a) => '<option>' + esc(a) + '</option>').join('');
+  $('realAirport').value = aps.includes(cur) ? cur : 'all';
+  renderReal();
+}
+function realShown() {
+  const ap = $('realAirport').value;
+  const q = $('realSearch').value.trim().toUpperCase().replace(/\s+/g, '');
+  return S.real.flights.filter((f) => (ap === 'all' || f.from === ap || f.to === ap) &&
+    (!q || [f.callsign, f.number, f.from, f.to, f.fromName, f.toName, f.fromIata, f.toIata].some((x) => String(x || '').toUpperCase().replace(/\s+/g, '').includes(q))));
+}
+function renderReal() {
+  const list = realShown();
+  $('realList').innerHTML = list.length ? list.slice(0, 200).map((f) => '<button class="rt' + (f.callsign === S.real.sel ? ' on' : '') + '" data-real="' + esc(f.callsign) + '">' +
+    '<span class="n">' + esc(f.number || f.callsign) + '</span><span><b>' + (f.from ? esc(f.from) + ' → ' + esc(f.to) : 'Route inconnue') + '</b><br><span class="c">' + esc(f.from ? (f.fromName || '') + ' – ' + (f.toName || '') : f.callsign) + '</span></span>' +
+    '<span class="a">FL' + (f.altFt != null ? Math.round(f.altFt / 100) : '—') + '<br>' + (f.gsKt != null ? f.gsKt + ' kt' : '') + '</span></button>').join('')
+    : '<div class="empty">' + (S.real.flights.length ? 'Aucun vol ne correspond à ces filtres.' : 'Aucun vol à afficher pour le moment.') + '</div>';
+  renderRealDetail();
+}
+function renderRealDetail() {
+  const f = S.real.flights.find((x) => x.callsign === S.real.sel);
+  if (!f) { $('realDetail').innerHTML = '<p class="muted">Choisis un vol dans la liste.</p>'; return; }
+  const d = S.real.det[f.callsign] || {};
+  const from = f.from || d.from; const to = f.to || d.to;
+  const type = d.type || '';
+  const kv = (k, v) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
+  const sb = from && to ? 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(Object.assign({ orig: from, dest: to, airline: 'AFR', fltnum: (f.number || '').replace(/\D/g, '') }, type ? { type } : {})).toString() : '';
+  $('realDetail').innerHTML = '<div class="muted small">' + esc(f.callsign) + ' · en vol</div><h2>' + (from ? esc(from) + ' → ' + esc(to) : 'Route inconnue') + '</h2>' +
+    '<div style="font-weight:600">' + esc(from ? (f.fromName || d.fromName || '') + ' – ' + (f.toName || d.toName || '') : '') + '</div>' +
+    '<div class="kv">' + kv('Vol', esc(f.number || f.callsign)) + kv('Appareil', d.pending ? '…' : esc(type ? type + (d.reg ? ' · ' + d.reg : '') : 'Inconnu')) +
+    kv('Altitude', f.altFt != null ? 'FL' + Math.round(f.altFt / 100) : '—') + kv('Vitesse sol', f.gsKt != null ? f.gsKt + ' kt' : '—') +
+    kv('Cap', f.track != null ? f.track + '°' : '—') + kv('Vario', f.vsFpm != null ? f.vsFpm + ' ft/min' : '—') + '</div>' +
+    '<p class="muted small"><b>Ce qui sera copié vers SimBrief :</b> départ, arrivée, numéro de vol' + (type ? ' et type d’avion' : '') + '. SimBrief calcule ensuite la route, le carburant et le devis de masse.</p>' +
+    (sb ? '<a class="btn red" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(sb) + '" target="_blank" rel="noopener">Copier vers SimBrief</a>' : '<p class="muted">Route inconnue : impossible de préparer le plan.</p>');
+}
+$('realList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-real]'); if (!b) return;
+  const f = S.real.flights.find((x) => x.callsign === b.dataset.real); if (!f) return;
+  S.real.sel = f.callsign;
+  if (!S.real.det[f.callsign]) {
+    S.real.det[f.callsign] = { pending: true };
+    renderReal();
+    S.real.det[f.callsign] = await afv.realDetails(f.callsign, f.icao24);
+  }
+  renderReal();
+});
+$('realAirport').addEventListener('change', renderReal);
+$('realSearch').addEventListener('input', renderReal);
+$('btnRealRefresh').addEventListener('click', () => loadReal(true));
+document.querySelector('[data-tab=reels]').addEventListener('click', () => {
+  if (!S.real.at || Date.now() - S.real.at > 5 * 60 * 1000) loadReal(false);
+  clearInterval(realTimer);
+  realTimer = setInterval(() => { if ($('tab-reels').classList.contains('on')) loadReal(false); else clearInterval(realTimer); }, 5 * 60 * 1000);
+});

@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('afv', {
   setActiveMission: (id) => ipcRenderer.invoke('career:active', id),
   getInfos: () => ipcRenderer.invoke('infos:get'),
   getMetar: (ids) => ipcRenderer.invoke('metar:get', ids),
+  realLive: (force) => ipcRenderer.invoke('real:live', !!force),
+  realDetails: (cs, hex) => ipcRenderer.invoke('real:details', cs, hex),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
     const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed'];

@@ -16,6 +16,7 @@
     <button class="nav on" data-tab="infos">Infos du jour</button>
     <button class="nav" data-tab="carriere">Ma carrière</button>
     <button class="nav" data-tab="missions">Missions &amp; rôles</button>
+    <button class="nav" data-tab="reels">Vols réels</button>
     <button class="nav" data-tab="vol">Tracker de vol <span class="beta-pill">BÊTA</span></button>
     <button class="nav" data-tab="hangar">Hangar &amp; flotte</button>
     <button class="nav" data-tab="vols">Mes vols</button>
@@ -89,6 +90,28 @@
           <div class="mis-list" id="misList"></div>
           <div class="card mis-detail" id="misDetail"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- ===================== VOLS RÉELS ===================== -->
+    <section class="tab" id="tab-reels">
+      <header class="top">
+        <div><h1>Vols réels</h1><div class="sub" id="realSub">Vols Air France en cours dans le monde</div></div>
+        <button class="btn ghost" id="btnRealRefresh">Actualiser</button>
+      </header>
+      <div class="body">
+        <div class="row wrap">
+          <button class="tag on" aria-pressed="true">En cours</button>
+          <button class="tag" disabled title="Prochaine étape">À venir · bientôt</button>
+          <button class="tag" disabled title="Prochaine étape">Précédents · bientôt</button>
+          <label class="field inline">Aéroport <select id="realAirport"></select></label>
+          <label class="field inline">Rechercher <input id="realSearch" placeholder="AF 1234, Nice, KJFK…"></label>
+        </div>
+        <div class="mis-grid">
+          <div id="realList"></div>
+          <div class="card mis-detail" id="realDetail"><p class="muted">Choisis un vol dans la liste.</p></div>
+        </div>
+        <p class="muted small">Positions : <b>OpenSky Network</b> (usage non commercial). Routes : <b>adsb.lol</b> (données ODbL) et <b>adsbdb.com</b>. Les routes sont estimées à partir de l’indicatif du vol et peuvent être fausses. Actualisation toutes les 5 minutes au plus.</p>
       </div>
     </section>
 

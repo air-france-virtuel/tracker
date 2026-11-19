@@ -36,5 +36,7 @@ jobs:
             echo "La release v$V existe déjà : rien à publier."
             exit 0
           fi
-          gh release create "v$V" --prerelease --title "Version $V" --notes-file notes.md \
+          # Brouillon d'abord : les trackeurs ne voient la version qu'une fois tous les fichiers envoyés.
+          gh release create "v$V" --draft --prerelease --title "Version $V" --notes-file notes.md \
             "dist/AirFranceVirtuel-Tracker-Setup-$V.exe" dist/latest.yml dist/beta.yml
+          gh release edit "v$V" --draft=false

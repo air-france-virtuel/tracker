@@ -1,0 +1,551 @@
+'use strict';
+/* global afv */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const PHASES = ['Boarding', 'Roulage', 'Décollage', 'Montée', 'Croisière', 'Descente', 'Approche', 'Atterrissage', 'Parking'];
+
+const S = { store: null, plan: null, flight: null, phase: null, simOk: false, muted: false, lastT: null, trail: [], stars: 0, tags: {} };
+
+// ---------------- navigation ----------------
+document.querySelectorAll('.nav').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+function showTab(name) {
+  document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
+  if (name === 'vols') renderReports();
+}
+
+// ---------------- voix et annonces ----------------
+let curAudio = null;
+function playFile(file) {
+  return new Promise((resolve) => {
+    const a = new Audio(afv.fileUrl(file));
+    curAudio = a;
+    a.volume = S.store ? S.store.settings.volume : 0.8;
+    a.onended = resolve; a.onerror = resolve;
+    a.play().catch(resolve);
+  });
+}
+const queue = [];
+let playing = false;
+async function runQueue() {
+  if (playing) return;
+  playing = true;
+  while (queue.length) {
+    const item = queue.shift();
+    if (item.kind === 'ann') {
+      if (S.muted || !S.store.settings.announcements) continue;
+      $('annNow').innerHTML = '<b>' + esc(item.title) + '</b><br>' + esc(item.text);
+      const custom = S.store.sounds[item.key];
+      if (custom && custom.file) await playFile(custom.file); // sans fichier : texte affiché, aucun son
+      $('annNow').textContent = 'Dernière annonce : ' + item.title;
+    }
+  }
+  playing = false;
+}
+function maxSays(text) {
+  $('maxSay').textContent = text;
+  maxSpeak(text);
+}
+
+// Voix de Max : l'audio est fabriqué sur le PC (hors ligne) puis joué ici.
+const maxQueue = [];
+let maxBusy = false;
+let maxSrc = null;
+let audioCtx = null;
+S.maxMuted = false;
+function maxSpeak(text, force) {
+  if (!force && (S.maxMuted || !S.store || !S.store.settings.maxVoice || !S.voice || !S.voice.installed)) return Promise.resolve(false);
+  maxQueue.push({ text, force });
+  while (maxQueue.length > 2) maxQueue.shift(); // on garde les messages les plus récents
+  return runMaxQueue();
+}
+async function runMaxQueue() {
+  if (maxBusy) return true;
+  maxBusy = true;
+  try {
+    while (maxQueue.length) {
+      const it = maxQueue.shift();
+      const r = await afv.voiceSpeak(it.text, it.force);
+      if (!r || !r.samples || (!it.force && S.maxMuted)) continue;
+      await playSamples(r);
+    }
+  } finally { maxBusy = false; }
+  return true;
+}
+function playSamples(r) {
+  return new Promise((resolve) => {
+    try {
+      audioCtx = audioCtx || new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const buf = audioCtx.createBuffer(1, r.samples.length, r.sampleRate);
+      buf.copyToChannel(r.samples instanceof Float32Array ? r.samples : Float32Array.from(r.samples), 0);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = r.playbackRate || 1; // voix plus grave
+      const gain = audioCtx.createGain();
+      gain.gain.value = S.store ? (S.store.settings.maxVolume != null ? S.store.settings.maxVolume : 0.9) : 0.9;
+      src.connect(gain).connect(audioCtx.destination);
+      src.onended = () => { if (maxSrc === src) maxSrc = null; resolve(); };
+      maxSrc = src;
+      src.start();
+    } catch (e) { resolve(); }
+  });
+}
+function maxStop() { maxQueue.length = 0; if (maxSrc) { try { maxSrc.stop(); } catch (e) { /* déjà arrêté */ } maxSrc = null; } }
+
+function destName() { return S.plan && S.plan.destination ? (S.plan.destination.name || S.plan.destination.icao) : '[destination]'; }
+function ANNOUNCEMENTS() {
+  const dest = destName();
+  const fl = S.plan && S.plan.cruiseAlt ? Math.round(S.plan.cruiseAlt / 1000) * 1000 : 35000;
+  return [
+    { key: 'boarding_welcome', phase: 0, title: 'Bienvenue à bord', text: 'Mesdames et messieurs, bonjour et bienvenue à bord de ce vol Air France Virtuel à destination de ' + dest + '. Merci de ranger vos bagages et de prendre place.' },
+    { key: 'boarding_safety', phase: 0, title: 'Consignes de sécurité', text: 'Nous allons vous présenter les consignes de sécurité. Merci de bien vouloir suivre la démonstration de l’équipage.' },
+    { key: 'taxi_crew', phase: 1, title: 'Préparation au départ', text: 'Personnel navigant, préparation pour le départ. Mesdames et messieurs, veuillez attacher votre ceinture.' },
+    { key: 'takeoff_crew', phase: 2, title: 'Décollage', text: 'Personnel navigant, à vos places pour le décollage.' },
+    { key: 'cruise_seatbelt', phase: 4, title: 'Fin de la montée', text: 'Le signal lumineux vient de s’éteindre. Vous pouvez détacher votre ceinture, mais nous vous conseillons de la garder attachée lorsque vous êtes assis.' },
+    { key: 'cruise_captain', phase: 4, title: 'Message du commandant', text: 'Ici votre commandant de bord. Nous volons à ' + fl.toLocaleString('fr-FR') + ' pieds. Le vol se déroule normalement. Bon voyage.' },
+    { key: 'descent_start', phase: 5, title: 'Début de la descente', text: 'Mesdames et messieurs, nous avons commencé notre descente vers ' + dest + '. Merci de regagner votre siège et de relever votre tablette.' },
+    { key: 'approach_crew', phase: 6, title: 'Atterrissage', text: 'Personnel navigant, à vos places pour l’atterrissage.' },
+    { key: 'landing_welcome', phase: 7, title: 'Bienvenue à destination', text: 'Mesdames et messieurs, bienvenue à ' + dest + '. Merci de rester assis, ceinture attachée, jusqu’à l’arrêt complet de l’appareil.' },
+    { key: 'parking_deplane', phase: 8, title: 'Débarquement', text: 'Nous sommes arrivés au parking. Merci d’avoir choisi Air France Virtuel. Nous vous souhaitons une excellente journée.' }
+  ];
+}
+function playPhaseAnnouncements(phase) {
+  ANNOUNCEMENTS().filter((a) => a.phase === phase).forEach((a) => queue.push({ kind: 'ann', ...a }));
+  runQueue();
+}
+
+// ---------------- conseils de Max ----------------
+function rwy(side) { return S.plan && S.plan[side] && S.plan[side].rwy ? 'piste ' + S.plan[side].rwy : 'la piste en service'; }
+function windOf(metar) { const m = /\b(\d{3}|VRB)(\d{2,3})(G\d{2,3})?KT\b/.exec(metar || ''); return m ? (m[1] === 'VRB' ? 'vent variable ' : 'vent du ' + m[1] + '° ') + parseInt(m[2], 10) + ' kt' + (m[3] ? ', rafales ' + m[3].slice(1) + ' kt' : '') : ''; }
+function adviceFor(p) {
+  const pl = S.plan;
+  const dep = pl ? pl.origin.icao : 'le départ';
+  const arr = pl ? pl.destination.icao : 'l’arrivée';
+  const fl = pl && pl.cruiseAlt ? 'FL' + Math.round(pl.cruiseAlt / 100) : 'ton niveau de croisière';
+  const steps = pl && pl.steps && pl.steps.length ? ' Paliers prévus : ' + pl.steps.map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + s.ident).join(', ') + '.' : '';
+  const wDep = pl ? windOf(pl.metarDep) : '';
+  const wArr = pl ? windOf(pl.metarArr) : '';
+  switch (p) {
+    case 0: return 'Embarquement à ' + dep + '. Je lance les annonces. Départ prévu ' + rwy('origin') + (wDep ? ', ' + wDep : '') + '. Prépare ton FMS puis lâche le frein de parking quand tu es prêt.';
+    case 1: return 'Roulage vers la ' + rwy('origin') + '. Reste sous 25 kt et vérifie volets et trim avant l’alignement.';
+    case 2: return 'Décollage : poussée réglée, garde l’axe. Train rentré après la montée positive.';
+    case 3: return 'Montée vers ' + fl + '. 250 kt maximum sous 10 000 ft.' + steps;
+    case 4: return 'Croisière à ' + fl + '. Surveille le carburant et prépare l’arrivée à ' + arr + '.' + (pl && pl.tod ? ' Je te préviens 10 minutes avant le TOD.' : '');
+    case 5: return 'Descente vers ' + arr + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '. Repasse le calage local à l’altitude de transition et 250 kt sous 10 000 ft.';
+    case 6: return 'Approche : sors le train et les volets, sois stabilisé à 1 000 ft. Remets les gaz si ce n’est pas bon.';
+    case 7: return 'Atterrissage. Dégage la piste puis roule doucement jusqu’au parking.';
+    case 8: return 'Au parking. Frein de parking, moteurs coupés : ton rapport de vol est enregistré.';
+    default: return 'Prêt quand tu l’es.';
+  }
+}
+function addAlert(title, text, kind) {
+  const d = document.createElement('div');
+  d.className = 'alert' + (kind ? ' ' + kind : '');
+  d.innerHTML = '<b>' + esc(title) + '</b>' + esc(text);
+  $('alerts').prepend(d);
+  while ($('alerts').children.length > 4) $('alerts').lastChild.remove();
+}
+
+// ---------------- affichage du vol ----------------
+function renderPhases(p) {
+  $('phases').innerHTML = PHASES.map((n, i) => '<div class="ph ' + (p == null ? '' : (i < p ? 'done' : (i === p ? 'cur' : ''))) + '"><i></i>' + n + '</div>').join('');
+}
+function fmt(n, d = 0) { return n == null || !Number.isFinite(n) ? '—' : n.toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d }); }
+function renderTelem(t) {
+  if (!t) return;
+  const alt = t.alt >= 18000 ? 'FL' + Math.round(t.alt / 100) : fmt(t.alt) + ' ft';
+  const items = [
+    ['Altitude', alt], ['Vitesse indiquée', fmt(t.ias) + ' kt'], ['Vitesse sol', fmt(t.gs) + ' kt'],
+    ['Taux vertical', (t.vs > 0 ? '+' : '') + fmt(t.vs) + ' ft/min'], ['Cap', fmt(t.hdg) + '°'], ['Carburant', fmt(t.fuelKg / 1000, 1) + ' t']
+  ];
+  $('telem').innerHTML = items.map(([k, v]) => '<div class="tl"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('');
+}
+function renderMap(t) {
+  const pl = S.plan;
+  const svg = $('map');
+  if (!pl) { svg.innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="14">Carte disponible avec un plan SimBrief</text>'; return; }
+  const pts = (pl.route_points && pl.route_points.length ? pl.route_points : [pl.origin, pl.destination]).map((p) => ({ lat: p.lat, lon: p.lon }));
+  const all = pts.concat(S.trail);
+  let minLat = Math.min(...all.map((p) => p.lat)), maxLat = Math.max(...all.map((p) => p.lat));
+  let minLon = Math.min(...all.map((p) => p.lon)), maxLon = Math.max(...all.map((p) => p.lon));
+  const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+  const w = Math.max(0.5, (maxLon - minLon) * k), h = Math.max(0.5, maxLat - minLat);
+  const sc = Math.min(540 / w, 240 / h);
+  const ox = 300 - ((minLon + maxLon) / 2) * k * sc, oy = 150 + ((minLat + maxLat) / 2) * sc;
+  const X = (p) => (p.lon * k * sc + ox).toFixed(1), Y = (p) => (oy - p.lat * sc).toFixed(1);
+  const line = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
+  let h2 = '<path d="' + line(pts) + '" fill="none" stroke="#9AA6BF" stroke-width="2" stroke-dasharray="6 6"/>';
+  if (S.trail.length > 1) h2 += '<path d="' + line(S.trail) + '" fill="none" stroke="#0A1E4A" stroke-width="3"/>';
+  h2 += '<circle cx="' + X(pl.origin) + '" cy="' + Y(pl.origin) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
+  h2 += '<circle cx="' + X(pl.destination) + '" cy="' + Y(pl.destination) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
+  h2 += '<text x="' + X(pl.origin) + '" y="' + (Y(pl.origin) - 12) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A">' + esc(pl.origin.icao) + '</text>';
+  h2 += '<text x="' + X(pl.destination) + '" y="' + (+Y(pl.destination) + 22) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A">' + esc(pl.destination.icao) + '</text>';
+  if (pl.tod) h2 += '<circle cx="' + X(pl.tod) + '" cy="' + Y(pl.tod) + '" r="4" fill="#E0A800"/><text x="' + X(pl.tod) + '" y="' + (Y(pl.tod) - 8) + '" text-anchor="middle" font-size="11" fill="#7A5B00">TOD</text>';
+  if (t) h2 += '<g transform="translate(' + X(t) + ' ' + Y(t) + ') rotate(' + ((t.hdg || 0) - 90).toFixed(0) + ')"><path d="M12 0 L-8 -8 L-4 0 L-8 8 Z" fill="#C8102E"/></g>';
+  svg.innerHTML = h2;
+  $('mapFrom').textContent = pl.origin.icao + (pl.origin.rwy ? ' · piste ' + pl.origin.rwy : '');
+  $('mapTo').textContent = pl.destination.icao + (pl.destination.rwy ? ' · piste ' + pl.destination.rwy : '');
+}
+function renderTod(tod, phase) {
+  const el = $('todText');
+  if (!S.plan || !S.plan.tod) { el.textContent = 'Charge un plan SimBrief pour que Max calcule le TOD.'; return; }
+  if (phase != null && phase >= 5) { el.textContent = 'TOD passé : descente en cours.'; return; }
+  if (!tod) { el.textContent = 'Le calcul commence après le décollage.'; return; }
+  el.textContent = 'TOD dans ' + fmt(tod.distNm) + ' NM' + (tod.minutes != null ? ' (environ ' + fmt(tod.minutes) + ' min)' : '') + '.';
+}
+
+// ---------------- préparation ----------------
+function renderPlan() {
+  const p = S.plan;
+  const box = $('planBox');
+  if (!p) { box.hidden = true; return; }
+  box.hidden = false;
+  const steps = p.steps && p.steps.length ? p.steps.map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + esc(s.ident)).join(', ') : 'aucun';
+  box.innerHTML =
+    '<div><div class="k">Vol</div><b>' + esc(p.callsign || '—') + '</b></div>' +
+    '<div><div class="k">Appareil (SimBrief)</div><b>' + esc(p.aircraft || '—') + '</b></div>' +
+    '<div><div class="k">Départ</div><b>' + esc(p.origin.icao) + '</b> · piste ' + esc(p.origin.rwy || '—') + '</div>' +
+    '<div><div class="k">Arrivée</div><b>' + esc(p.destination.icao) + '</b> · piste ' + esc(p.destination.rwy || '—') + '</div>' +
+    '<div><div class="k">Croisière</div><b>FL' + Math.round((p.cruiseAlt || 0) / 100) + '</b></div>' +
+    '<div><div class="k">Paliers de montée</div>' + steps + '</div>' +
+    (p.metarDep ? '<div class="full"><div class="k">Météo départ</div><div class="metar">' + esc(p.metarDep) + '</div></div>' : '') +
+    (p.metarArr ? '<div class="full"><div class="k">Météo arrivée</div><div class="metar">' + esc(p.metarArr) + '</div></div>' : '') +
+    (p.demo ? '<div class="full muted small">Plan de démonstration.</div>' : '');
+}
+function renderAircraftSelect() {
+  const sel = $('selAircraft');
+  const now = Date.now();
+  const fleet = S.store.fleet;
+  const opts = ['<option value="">Aucun (pas de suivi au hangar)</option>'];
+  fleet.forEach((a) => {
+    const busy = a.repairUntil && a.repairUntil > now;
+    opts.push('<option value="' + esc(a.reg) + '"' + (busy ? ' disabled' : '') + '>' + esc(a.reg) + ' · ' + esc(a.type) + (busy ? ' (au hangar)' : '') + '</option>');
+  });
+  sel.innerHTML = opts.join('');
+  $('fleetHint').textContent = fleet.length ? '' : 'Ta flotte est vide : ajoute tes avions dans « Hangar & flotte ».';
+}
+
+$('btnSimbrief').addEventListener('click', async () => {
+  $('sbMsg').textContent = 'Chargement…';
+  try {
+    S.plan = await afv.loadSimbrief();
+    $('sbMsg').textContent = 'Plan chargé.';
+    renderPlan();
+  } catch (e) {
+    $('sbMsg').textContent = (e.message || String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  }
+});
+
+async function startFlight(mode) {
+  if (mode === 'sim' && !S.simOk) { $('startMsg').textContent = 'Lance d’abord Microsoft Flight Simulator.'; return; }
+  if (mode === 'demo') S.plan = await afv.demoPlan();
+  const aircraft = $('selAircraft').value;
+  await afv.startFlight({ mode, plan: S.plan, aircraft, demoHard: $('demoHard').checked, speed: 20 });
+  S.flight = { mode, aircraft };
+  S.phase = 0; S.trail = []; queue.length = 0;
+  $('alerts').innerHTML = '';
+  $('prep').hidden = true; $('live').hidden = false; $('btnStop').hidden = false;
+  $('flightSub').textContent = (S.plan ? (S.plan.callsign || '') + ' · ' + S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol sans plan SimBrief') + (aircraft ? ' · ' + aircraft : '') + (mode === 'demo' ? ' · démonstration' : '');
+  renderPhases(0); renderMap(null); renderTod(null, 0);
+  afv.voicePreload();
+  renderMaxVoiceHint();
+  $('maxPhase').textContent = 'Phase : Boarding';
+  maxSays(adviceFor(0));
+  playPhaseAnnouncements(0);
+}
+$('btnStart').addEventListener('click', () => startFlight('sim'));
+$('btnDemo').addEventListener('click', () => startFlight('demo'));
+$('btnStop').addEventListener('click', async () => {
+  await afv.stopFlight();
+  if (curAudio) curAudio.pause();
+  maxStop();
+  queue.length = 0;
+  S.flight = null; S.phase = null;
+  $('prep').hidden = false; $('live').hidden = true; $('btnStop').hidden = true;
+  $('flightSub').textContent = 'Prépare ton vol pour commencer';
+  renderPlan(); renderAircraftSelect();
+});
+$('btnMute').addEventListener('click', () => {
+  S.muted = !S.muted;
+  if (S.muted && curAudio) curAudio.pause();
+  $('btnMute').textContent = S.muted ? 'Remettre les annonces' : 'Couper les annonces';
+  $('btnMute').setAttribute('aria-pressed', String(S.muted));
+});
+$('btnMaxMute').addEventListener('click', () => {
+  S.maxMuted = !S.maxMuted;
+  if (S.maxMuted) maxStop();
+  $('btnMaxMute').textContent = S.maxMuted ? 'Rendre la voix à Max' : 'Couper Max';
+  $('btnMaxMute').setAttribute('aria-pressed', String(S.maxMuted));
+});
+function renderMaxVoiceHint() {
+  const s = S.store ? S.store.settings : {};
+  const show = !!s.maxVoice && !(S.voice && S.voice.installed);
+  $('maxVoiceHint').hidden = !show;
+  $('btnMaxMute').hidden = !s.maxVoice || !(S.voice && S.voice.installed);
+}
+
+// ---------------- événements du tracker ----------------
+afv.on('sim:status', (s) => setSim(s.connected, s.simulator));
+function setSim(ok, name) {
+  S.simOk = ok;
+  $('simState').classList.toggle('ok', ok);
+  $('simText').textContent = ok ? 'Simulateur connecté' + (name ? ' (' + name + ')' : '') : 'Simulateur non connecté';
+}
+afv.on('flight:tick', (d) => {
+  if (!S.flight || !d.t) return;
+  const t = d.t;
+  S.lastT = t;
+  const lastTr = S.trail[S.trail.length - 1];
+  if (!lastTr || Math.abs(lastTr.lat - t.lat) + Math.abs(lastTr.lon - t.lon) > 0.02) S.trail.push({ lat: t.lat, lon: t.lon });
+  renderTelem(t);
+  renderMap(t);
+  renderTod(d.tod, d.phase);
+  if (S.plan) $('mapDist').textContent = '';
+});
+afv.on('flight:event', (e) => {
+  if (!S.flight) return;
+  if (e.type === 'phase') {
+    S.phase = e.phase;
+    renderPhases(e.phase);
+    $('maxPhase').textContent = 'Phase : ' + e.name;
+    maxSays(adviceFor(e.phase));
+    if (e.phase === 7) setTimeout(() => playPhaseAnnouncements(7), 12000); else playPhaseAnnouncements(e.phase);
+  } else if (e.type === 'warning') {
+    addAlert('Max', e.text);
+    maxSays(e.text);
+  } else if (e.type === 'tod10') {
+    const txt = 'TOD dans environ ' + fmt(e.minutes) + ' minutes. Prépare le briefing d’arrivée, la météo et la ' + rwy('destination') + '.';
+    addAlert('TOD dans 10 minutes', txt);
+    maxSays(txt);
+  } else if (e.type === 'todNow') {
+    const txt = 'TOD atteint : commence la descente maintenant.';
+    addAlert('TOD atteint', txt, 'red');
+    maxSays(txt);
+  } else if (e.type === 'step') {
+    const txt = 'Palier de montée : monte au FL' + Math.round(e.alt / 100) + ' à ' + e.ident + ', comme prévu sur SimBrief.';
+    addAlert('Palier SimBrief', txt);
+    maxSays(txt);
+  } else if (e.type === 'landing') {
+    const lvl = e.level === 'normal' ? '' : (e.level === 'dur' ? 'red' : 'red');
+    const txt = e.level === 'normal' ? 'Bel atterrissage : ' + e.rate + ' ft/min.' : 'Atterrissage dur : ' + e.rate + ' ft/min.';
+    addAlert('Atterrissage', txt, lvl || 'ok');
+    maxSays(txt);
+  } else if (e.type === 'hangar') {
+    addAlert('Hangar', e.reg + ' part en maintenance pour ' + e.days + ' jours.', 'red');
+  }
+});
+afv.on('flight:report', (r) => { showReport(r); });
+afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });
+
+function showReport(r) {
+  const h = (m) => (m == null ? '—' : Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0'));
+  $('reportBody').innerHTML = '<div class="muted">' + esc(r.callsign || '') + ' ' + esc(r.from) + ' → ' + esc(r.to) + (r.aircraft ? ' · ' + esc(r.aircraft) : '') + '</div><div class="rep">' +
+    [['Temps bloc', h(r.blockMinutes)], ['Temps de vol', h(r.flightMinutes)], ['Distance', fmt(r.distanceNm) + ' NM'], ['Carburant utilisé', r.fuelUsedKg == null ? '—' : fmt(r.fuelUsedKg) + ' kg'], ['Atterrissage', r.landingRate == null ? '—' : r.landingRate + ' ft/min'], ['Altitude max', 'FL' + Math.round(r.maxAlt / 100)]]
+      .map(([k, v]) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('') + '</div><p class="muted small">Rapport enregistré dans « Mes vols ».</p>';
+  $('reportModal').hidden = false;
+}
+$('btnCloseReport').addEventListener('click', () => { $('reportModal').hidden = true; });
+$('btnReportFb').addEventListener('click', () => { $('reportModal').hidden = true; showTab('avis'); });
+
+// ---------------- hangar ----------------
+function renderFleet() {
+  const now = Date.now();
+  const f = S.store.fleet;
+  const busy = f.filter((a) => a.repairUntil && a.repairUntil > now).length;
+  $('fleetCount').textContent = f.length ? (f.length - busy) + ' disponibles sur ' + f.length + ' appareils' : 'Aucun appareil pour le moment';
+  $('r1').textContent = S.store.settings.hard1; $('r2').textContent = S.store.settings.hard2;
+  if (!f.length) { $('fleet').innerHTML = '<div class="empty">Ta flotte est vide. Ajoute les avions que tu veux utiliser : ce sera ta flotte limitée.</div>'; return; }
+  $('fleet').innerHTML = f.map((a, i) => {
+    const m = a.repairUntil && a.repairUntil > now;
+    const days = m ? Math.ceil((a.repairUntil - now) / 86400000) : 0;
+    const health = a.health || 100;
+    return '<div class="plane"><div class="row between"><span class="reg">' + esc(a.reg) + '</span><span class="badge' + (m ? ' red' : '') + '">' + (m ? 'Au hangar' : 'Disponible') + '</span></div>' +
+      '<div>' + esc(a.type) + '</div><div class="bar"><i style="width:' + health + '%"></i></div>' +
+      '<div class="muted small">' + (m ? esc(a.reason || 'Réparation') + ' · retour dans ' + days + ' jour' + (days > 1 ? 's' : '') : 'État ' + health + ' %') + '</div>' +
+      '<div class="row">' + (m ? '<button class="btn small ghost" data-repair="' + i + '">Terminer la réparation</button>' : '') + '<button class="btn small ghost" data-del="' + i + '">Retirer</button></div></div>';
+  }).join('');
+}
+$('fleet').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  const f = S.store.fleet.slice();
+  if (b.dataset.del != null) f.splice(+b.dataset.del, 1);
+  if (b.dataset.repair != null) Object.assign(f[+b.dataset.repair], { repairUntil: null, reason: '', health: 100 });
+  S.store.fleet = await afv.setFleet(f);
+  renderFleet(); renderAircraftSelect();
+});
+$('btnAddPlane').addEventListener('click', async () => {
+  const reg = $('newReg').value.trim().toUpperCase();
+  if (!reg) { $('addMsg').textContent = 'Indique une immatriculation.'; return; }
+  if (S.store.fleet.some((a) => a.reg === reg)) { $('addMsg').textContent = 'Cet avion est déjà dans la flotte.'; return; }
+  S.store.fleet = await afv.setFleet(S.store.fleet.concat([{ reg, type: $('newType').value, health: 100, repairUntil: null }]));
+  $('newReg').value = ''; $('addMsg').textContent = reg + ' ajouté.';
+  renderFleet(); renderAircraftSelect();
+});
+
+// ---------------- mes vols ----------------
+async function renderReports() {
+  const list = await afv.listReports();
+  if (!list.length) { $('reports').innerHTML = '<div class="empty">Aucun vol enregistré pour l’instant.</div>'; return; }
+  $('reports').innerHTML = '<table><thead><tr><th>Date</th><th>Vol</th><th>Trajet</th><th>Appareil</th><th>Temps de vol</th><th>Atterrissage</th></tr></thead><tbody>' +
+    list.map((r) => '<tr><td>' + esc(new Date(r.date).toLocaleString('fr-FR')) + (r.mode === 'demo' ? ' (démo)' : '') + '</td><td>' + esc(r.callsign) + '</td><td>' + esc(r.from) + ' → ' + esc(r.to) + '</td><td>' + esc(r.aircraft) + '</td><td>' + (r.flightMinutes == null ? '—' : Math.floor(r.flightMinutes / 60) + ' h ' + String(r.flightMinutes % 60).padStart(2, '0')) + '</td><td>' + (r.landingRate == null ? '—' : r.landingRate + ' ft/min') + '</td></tr>').join('') + '</tbody></table>';
+}
+$('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
+
+// ---------------- sons ----------------
+function renderSounds() {
+  const list = ANNOUNCEMENTS();
+  $('sounds').innerHTML = list.map((a) => {
+    const c = S.store.sounds[a.key];
+    return '<div class="snd"><div class="t"><b>' + PHASES[a.phase] + ' · ' + esc(a.title) + '</b><div class="muted small">' + (c ? 'Ton fichier : ' + esc(c.name) : 'Aucun son : le texte s\u2019affiche dans le tracker. « ' + esc(a.text) + ' »') + '</div></div>' +
+      (c ? '<button class="btn small ghost" data-play="' + a.key + '">Écouter</button>' : '') +
+      '<button class="btn small red" data-pick="' + a.key + '">' + (c ? 'Remplacer' : 'Importer un fichier') + '</button>' +
+      (c ? '<button class="btn small ghost" data-reset="' + a.key + '">Retirer le son</button>' : '') + '</div>';
+  }).join('') + '<p class="muted small">Formats acceptés : MP3, WAV ou OGG, 10 Mo maximum. Utilise tes propres enregistrements.</p>';
+}
+$('sounds').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  try {
+    if (b.dataset.pick) { const s = await afv.pickSound(b.dataset.pick); if (s) S.store.sounds = s; }
+    if (b.dataset.reset) S.store.sounds = await afv.resetSound(b.dataset.reset);
+    if (b.dataset.play) {
+      const a = ANNOUNCEMENTS().find((x) => x.key === b.dataset.play);
+      const c = S.store.sounds[a.key];
+      if (curAudio) curAudio.pause();
+      if (c) playFile(c.file);
+    }
+  } catch (e) { alertBox(e); }
+  renderSounds();
+  renderAnnHint();
+});
+function alertBox(e) { console.error(e); }
+
+// ---------------- avis ----------------
+const TAGS = ['Annonces sonores', 'Conseils de Max', 'Carte du vol', 'Alerte TOD', 'Détection des phases', 'Hangar et flotte', 'Rapport de vol', 'Autre'];
+function renderFb() {
+  $('stars').innerHTML = [1, 2, 3, 4, 5].map((n) => '<button class="star' + (n <= S.stars ? ' on' : '') + '" data-star="' + n + '" aria-label="' + n + ' sur 5">★</button>').join('');
+  $('tags').innerHTML = TAGS.map((t) => '<button class="tag' + (S.tags[t] ? ' on' : '') + '" data-tag="' + esc(t) + '" aria-pressed="' + !!S.tags[t] + '">' + esc(t) + '</button>').join('');
+  const fb = S.store.feedback || [];
+  $('fbList').innerHTML = fb.length ? fb.map((f) => '<div class="card" style="margin-bottom:8px"><b>' + '★'.repeat(f.stars || 0) + '</b> <span class="muted small">' + esc(new Date(f.date).toLocaleString('fr-FR')) + ' · v' + esc(f.version) + '</span><div class="muted small">' + esc((f.tags || []).join(', ')) + '</div><div>' + esc(f.text) + '</div></div>').join('') : '<div class="muted">Aucun avis pour l’instant.</div>';
+}
+$('stars').addEventListener('click', (e) => { const b = e.target.closest('[data-star]'); if (b) { S.stars = +b.dataset.star; renderFb(); } });
+$('tags').addEventListener('click', (e) => { const b = e.target.closest('[data-tag]'); if (b) { S.tags[b.dataset.tag] = !S.tags[b.dataset.tag]; renderFb(); } });
+function fbText() {
+  const tags = Object.keys(S.tags).filter((k) => S.tags[k]);
+  return 'Avis bêta tracker Air France Virtuel v' + $('ver').textContent + '\nNote : ' + S.stars + '/5\nPoints à améliorer : ' + (tags.join(', ') || '—') + '\n' + $('fbText').value.trim();
+}
+$('btnSendFb').addEventListener('click', async () => {
+  if (!S.stars && !$('fbText').value.trim()) { $('fbMsg').textContent = 'Mets au moins une note ou un commentaire.'; return; }
+  S.store.feedback = await afv.saveFeedback({ stars: S.stars, tags: Object.keys(S.tags).filter((k) => S.tags[k]), text: $('fbText').value.trim() });
+  S.stars = 0; S.tags = {}; $('fbText').value = '';
+  $('fbMsg').textContent = 'Merci ! Ton avis est enregistré.';
+  renderFb();
+});
+$('btnCopyFb').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(fbText()); $('fbMsg').textContent = 'Copié : colle-le sur le Discord de la compagnie.'; } catch (e) { $('fbMsg').textContent = 'Copie impossible.'; }
+});
+
+// ---------------- réglages ----------------
+function renderSettings() {
+  const s = S.store.settings;
+  $('sPilot').value = s.pilot; $('sSimbrief').value = s.simbrief; $('sAnn').checked = s.announcements;
+  $('sVol').value = s.volume; $('sHard1').value = s.hard1; $('sHard2').value = s.hard2;
+  $('sMaxVoice').checked = s.maxVoice !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
+}
+
+// ---------------- voix de Max (réglages) ----------------
+function renderVoice() {
+  const v = S.voice || {};
+  let h;
+  if (v.downloading) h = '<p class="muted">Installation de la voix… ' + (v.percent || 0) + ' %</p><div class="progress"><i style="width:' + (v.percent || 0) + '%"></i></div>';
+  else if (v.installed) h = '<p class="muted"><b style="color:#1B5E32">Voix installée.</b> Max parle à chaque phase et pour ses alertes, sans connexion internet.</p>' +
+    '<div class="row wrap"><button class="btn ghost" id="btnVoiceTest">Écouter Max</button><button class="btn ghost" id="btnVoiceRemove">Supprimer la voix</button></div>';
+  else h = '<p class="muted">Pour que Max parle, installe sa voix une seule fois (' + (v.sizeMb || 326) + ' Mo à télécharger). Elle fonctionne ensuite sans internet.</p>' +
+    (v.error ? '<p class="muted" style="color:#8A1026">' + esc(v.error) + '</p>' : '') +
+    '<button class="btn red" id="btnVoiceDl">Installer la voix de Max</button>';
+  $('voiceCard').innerHTML = h;
+  const dl = $('btnVoiceDl'); if (dl) dl.addEventListener('click', () => { afv.voiceDownload(); S.voice = Object.assign({}, v, { downloading: true, percent: 0, error: '' }); renderVoice(); });
+  const rm = $('btnVoiceRemove'); if (rm) rm.addEventListener('click', async () => { maxStop(); S.voice = await afv.voiceRemove(); renderVoice(); renderMaxVoiceHint(); });
+  const ts = $('btnVoiceTest'); if (ts) ts.addEventListener('click', async () => {
+    ts.disabled = true; ts.textContent = 'Max prépare sa phrase…';
+    await maxSpeak('Salut commandant ! C’est Max, ton copilote. Je te préviendrai pour le TOD, les paliers et l’approche. Bon vol !', true);
+    ts.disabled = false; ts.textContent = 'Écouter Max';
+  });
+}
+afv.on('voice:status', (v) => { S.voice = v; renderVoice(); renderMaxVoiceHint(); });
+$('btnSaveSettings').addEventListener('click', async () => {
+  const h1 = Math.max(200, +$('sHard1').value || 600);
+  const h2 = Math.max(h1 + 50, +$('sHard2').value || 900);
+  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value });
+  $('setMsg').textContent = 'Réglages enregistrés.';
+  if (!S.store.settings.maxVoice) maxStop();
+  renderSettings(); renderFleet(); renderMaxVoiceHint();
+});
+$('btnOpenData').addEventListener('click', () => afv.openFolder('donnees'));
+
+// ---------------- mises à jour ----------------
+let UPD = { state: 'idle' };
+function changeList(v) {
+  const li = (cls, lbl, arr) => (arr || []).map((x) => '<li><span class="tagc ' + cls + '">' + lbl + '</span>' + esc(x) + '</li>').join('');
+  return '<ul>' + li('add', 'Ajouté', v.added) + li('rem', 'Retiré', v.removed) + li('fix', 'Corrigé', v.fixed) + '</ul>';
+}
+function stripHtml(h) { const d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<\/(p|li|h\d)>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<li>/gi, '• '); return d.textContent.replace(/\n{3,}/g, '\n\n').trim(); }
+function renderUpdate() {
+  const u = UPD;
+  const cur = $('ver').textContent;
+  let h = '<div class="row between"><div><div class="muted small">Version installée</div><b style="font-size:18px;color:#0A1E4A">' + esc(cur) + '</b></div>';
+  const st = {
+    dev: 'Mode développement : les mises à jour sont désactivées.',
+    idle: 'En attente de la première vérification…',
+    checking: 'Recherche d\u2019une mise à jour…',
+    uptodate: 'Tu as la dernière version.',
+    downloading: 'Téléchargement de la version ' + esc(u.version) + '… ' + (u.percent || 0) + ' %',
+    ready: 'La version ' + esc(u.version) + ' est prête. Elle s\u2019installera au prochain redémarrage du tracker.',
+    error: 'Vérification impossible pour le moment. Réessaie plus tard.'
+  }[u.state] || '';
+  h += '<div style="text-align:right">' + (u.state === 'ready' ? '<button class="btn red" id="btnInstallNow">Redémarrer et installer</button>' : '') + '</div></div>';
+  h += '<p class="muted">' + st + '</p>';
+  if (u.state === 'downloading') h += '<div class="progress"><i style="width:' + (u.percent || 0) + '%"></i></div>';
+  if ((u.state === 'ready' || u.state === 'downloading') && u.notes) h += '<div class="muted small">Ce qui change dans la version ' + esc(u.version) + ' :</div><div class="notes">' + esc(stripHtml(u.notes)) + '</div>';
+  $('updCard').innerHTML = h;
+  const b = $('btnInstallNow'); if (b) b.addEventListener('click', () => afv.installUpdate());
+  $('updDot').hidden = u.state !== 'ready';
+  $('updBanner').hidden = u.state !== 'ready';
+  $('updBannerText').textContent = 'La version ' + (u.version || '') + ' du tracker est prête.' + (S.flight ? ' Installe-la après ton vol.' : '');
+}
+afv.on('update:status', (u) => { UPD = u; renderUpdate(); });
+$('btnCheckUpd').addEventListener('click', async () => { UPD = await afv.checkUpdate(); renderUpdate(); });
+$('btnBannerInstall').addEventListener('click', () => {
+  if (S.flight && !confirmInstall()) return;
+  afv.installUpdate();
+});
+function confirmInstall() { return window.confirm('Un vol est en cours. Installer maintenant arrête le suivi. Continuer ?'); }
+async function renderChangelog() {
+  const cl = await afv.getChangelog();
+  $('changelog').innerHTML = cl.map((v) => '<div class="chg"><h4>Version ' + esc(v.version) + ' <span class="muted small">· ' + esc(new Date(v.date).toLocaleDateString('fr-FR')) + '</span></h4>' + changeList(v) + '</div>').join('');
+  return cl;
+}
+$('btnNewsOk').addEventListener('click', () => { $('newsModal').hidden = true; afv.changelogSeen(); });
+
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-goto]'); if (b) showTab(b.dataset.goto); });
+function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store.sounds) || {}).length > 0; }
+
+// ---------------- démarrage ----------------
+(async function init() {
+  const d = await afv.init();
+  S.store = d.store;
+  $('ver').textContent = d.version;
+  setSim(d.sim.connected);
+  renderAircraftSelect(); renderFleet(); renderSounds(); renderFb(); renderSettings(); renderPhases(null); renderAnnHint();
+  S.voice = await afv.voiceStatus(); renderVoice(); renderMaxVoiceHint();
+  UPD = await afv.getUpdate(); renderUpdate();
+  const cl = await renderChangelog();
+  const now = cl.find((v) => v.version === d.version);
+  if (d.showNews && now) {
+    $('newsTitle').textContent = 'Nouveautés de la version ' + d.version;
+    $('newsBody').innerHTML = changeList(now);
+    $('newsModal').hidden = false;
+  } else if (d.firstRun) afv.changelogSeen();
+})();

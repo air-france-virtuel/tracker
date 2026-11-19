@@ -1,0 +1,22 @@
+PUBLIER UNE VERSION DU TRACKER (mises à jour automatiques)
+
+Une seule fois :
+1. Sur GitHub, crée l'organisation « air-france-virtuel ».
+2. Dans cette organisation, crée un dépôt PUBLIC nommé « tracker ».
+
+À chaque version :
+1. Dans le dépôt « tracker » : Releases > Draft a new release.
+2. Tag : v + numéro de version (ex. v0.1.0-beta). Titre : Version 0.1.0 bêta.
+3. Description : la liste Ajouté / Retiré / Corrigé (les pilotes la voient dans le tracker).
+4. Joins ces 3 fichiers :
+   - AirFranceVirtuel-Tracker-Setup-<version>.exe
+   - latest.yml
+   - beta.yml
+5. Coche « Set as a pre-release », puis Publish release.
+
+Les trackers déjà installés trouvent la nouvelle version dans les 2 heures (ou au démarrage),
+la téléchargent, puis l'installent au redémarrage.
+Le numéro de version doit toujours augmenter (0.1.0-beta, puis 0.1.1-beta, 0.2.0-beta…).
+
+Lien de téléchargement à donner aux pilotes :
+https://github.com/air-france-virtuel/tracker/releases

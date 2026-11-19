@@ -1,0 +1,74 @@
+{
+  "name": "air-france-virtuel-tracker",
+  "version": "0.1.0-beta",
+  "description": "Tracker de vol (ACARS) Air France Virtuel pour Microsoft Flight Simulator - version bêta",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/run-demo.js",
+    "dist": "electron-builder --win dir --x64 --publish never && node build-res/make-installer.js"
+  },
+  "author": "Air France Virtuel",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "espeak-ng": "^1.0.2",
+    "node-simconnect": "^4.2.1",
+    "onnxruntime-node": "^1.31.1"
+  },
+  "productName": "Air France Virtuel Tracker",
+  "private": true,
+  "devDependencies": {
+    "electron": "^39.8.10",
+    "electron-builder": "^26.18.0",
+    "resedit": "^2.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/air-france-virtuel/tracker.git"
+  },
+  "build": {
+    "appId": "fr.airfrancevirtuel.tracker",
+    "productName": "Air France Virtuel Tracker",
+    "copyright": "Air France Virtuel – projet de fans",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build-res"
+    },
+    "files": [
+      "src/**/*",
+      "renderer/**/*",
+      "package.json",
+      "!node_modules/onnxruntime-node/bin/napi-v6/linux/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
+    ],
+    "afterPack": "./build-res/afterPack.js",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "air-france-virtuel",
+        "repo": "tracker",
+        "releaseType": "prerelease"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-res/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "AirFranceVirtuel-Tracker-Setup-${version}.${ext}"
+    },
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/**",
+      "node_modules/espeak-ng/**",
+      "src/voix-max/**"
+    ]
+  }
+}

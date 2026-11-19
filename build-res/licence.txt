@@ -1,0 +1,25 @@
+AIR FRANCE VIRTUEL - TRACKER DE VOL
+Conditions d'utilisation (version bêta)
+
+1. Projet de fans
+Air France Virtuel est une compagnie aérienne virtuelle créée par des passionnés de simulation de vol. Ce logiciel n'est ni affilié, ni approuvé, ni soutenu par Air France ou par une autre compagnie aérienne réelle.
+
+2. Usage
+Ce logiciel est gratuit et réservé aux pilotes d'Air France Virtuel, pour un usage de loisir avec un simulateur de vol. Il ne doit jamais être utilisé pour la navigation aérienne réelle.
+
+3. Version bêta
+Cette version est en cours de test. Elle peut contenir des erreurs. Tes avis aident à l'améliorer.
+
+4. Mises à jour
+Le tracker vérifie et télécharge automatiquement ses nouvelles versions. Elles s'installent au redémarrage du logiciel.
+
+5. Données
+Tes réglages, ta flotte, tes sons et tes rapports de vol restent sur ton ordinateur. Le tracker se connecte à Internet uniquement pour lire ton plan SimBrief et vérifier les mises à jour.
+
+6. Sons personnels
+Tu es responsable des fichiers audio que tu importes. Utilise tes propres enregistrements.
+
+7. Garantie
+Le logiciel est fourni « tel quel », sans garantie d'aucune sorte.
+
+En cliquant sur « J'accepte », tu acceptes ces conditions.

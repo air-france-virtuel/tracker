@@ -1,0 +1,40 @@
+# Fabrique l'installateur sur GitHub et publie la version (bêta).
+# Se lance quand on pousse un tag « v0.1.0-beta », ou à la main (onglet Actions).
+name: Publier une version du tracker
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installer NSIS
+        run: choco install nsis -y --no-progress
+      - name: Installer les dépendances
+        run: npm ci
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip
+      - name: Tests du moteur de vol
+        run: node test/run-demo.js
+      - name: Fabriquer l'appli et l'installateur
+        run: npm run dist
+      - name: Publier la release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          node build-res/release-notes.js > notes.md
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "La release v$V existe déjà : rien à publier."
+            exit 0
+          fi
+          gh release create "v$V" --prerelease --title "Version $V" --notes-file notes.md \
+            "dist/AirFranceVirtuel-Tracker-Setup-$V.exe" dist/latest.yml dist/beta.yml

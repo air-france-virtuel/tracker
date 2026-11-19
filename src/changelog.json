@@ -1,0 +1,19 @@
+[
+  {
+    "version": "0.1.0-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Suivi automatique des 9 phases du vol avec Microsoft Flight Simulator 2020 et 2024",
+      "Lecture du plan SimBrief : pistes, niveau de croisière, paliers de montée, météo",
+      "Max, le copilote : conseils à chaque phase, alertes TOD, paliers, 250 kt sous 10 000 ft, train, approche",
+      "Max parle à voix haute (voix française hors ligne, à installer une fois dans Réglages), avec un bouton pour le couper",
+      "Annonces à bord avec tes propres sons (MP3, WAV ou OGG)",
+      "Hangar et flotte limitée : atterrissage dur = avion en réparation",
+      "Rapport de vol enregistré au parking, onglet « Mes vols »",
+      "Avis des pilotes sur la bêta",
+      "Mises à jour automatiques et assistant d'installation"
+    ],
+    "removed": [],
+    "fixed": []
+  }
+]

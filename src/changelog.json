@@ -3,6 +3,7 @@
     "version": "0.4.3-beta",
     "date": "2026-11-19",
     "added": [
+      "Briefing de Max dès le chargement du plan SimBrief : vol, masses, route, paliers, carburant, météo décodée au départ, à l’arrivée et au dégagement, vent sur la piste et conseils ; Max le lit à voix haute",
       "Vols réels : onglets « À venir » et « Précédents » avec le programme du jour (heures, avion, immatriculation, statut), sur la liste et la carte",
       "Depuis un vol à venir ou précédent : copie vers SimBrief et accès direct à la journée de l’avion"
     ],

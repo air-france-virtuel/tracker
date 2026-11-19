@@ -188,3 +188,12 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .mine .am{margin:0;min-width:220px}
 .pst{font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px;white-space:nowrap;background:#ECEEF2;color:#4A5568}
 .pst.en-vol{background:#FBE9EC;color:#8A1026}.pst.programme{background:#E4EAF7;color:#0A1E4A}.pst.arrive{background:#E3F3E8;color:#1B5E32}.pst.annule{background:#3A0D16;color:#fff}
+.brief-box{width:760px;max-height:calc(100vh - 60px);overflow:auto}
+.brief{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.brief .sec{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.brief .sec.full{grid-column:1/-1}
+.brief h4{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.brief .li{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px dashed #EEF1F6}
+.brief .li:last-child{border-bottom:none}
+.brief .li span:first-child{color:var(--muted)}.brief .li span:last-child{font-weight:600;color:var(--navy);text-align:right}
+.brief .say{background:#E4EAF7;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.5}

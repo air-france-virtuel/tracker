@@ -57,7 +57,16 @@ function parseOfp(j) {
     metarDep: str((j.weather || {}).orig_metar),
     metarArr: str((j.weather || {}).dest_metar),
     route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon, alt: f.alt, fuelKg: f.fuelKg })),
-    toc, tod, steps
+    toc, tod, steps,
+    // pour le briefing de Max
+    alternate: { icao: str((j.alternate || {}).icao_code), name: str((j.alternate || {}).name), rwy: str((j.alternate || {}).plan_rwy) },
+    pax: num((j.weights || {}).pax_count),
+    zfwKg: Math.round(toKg((j.weights || {}).est_zfw)) || null,
+    towKg: Math.round(toKg((j.weights || {}).est_tow)) || null,
+    costIndex: str(g.costindex),
+    avgWindComp: num(g.avg_wind_comp),
+    schedOut: num((j.times || {}).sched_out) ? num((j.times || {}).sched_out) * 1000 : null,
+    metarAltn: str((j.weather || {}).altn_metar)
   };
 }
 

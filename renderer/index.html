@@ -155,7 +155,7 @@
           <div class="card">
             <h2>1. Plan de vol SimBrief</h2>
             <p class="muted">Le tracker lit ton dernier plan SimBrief : pistes prévues, niveau de croisière, paliers de montée et TOD.</p>
-            <div class="row"><button class="btn red" id="btnSimbrief">Charger mon plan SimBrief</button><span class="muted" id="sbMsg"></span></div>
+            <div class="row wrap"><button class="btn red" id="btnSimbrief">Charger mon plan SimBrief</button><button class="btn ghost" id="btnBriefing" hidden>Briefing de Max</button><span class="muted" id="sbMsg"></span></div>
             <div id="planBox" class="plan" hidden></div>
           </div>
           <div class="card">
@@ -330,6 +330,15 @@
     <h2 id="updModalTitle"></h2>
     <div id="updModalBody"></div>
     <div class="row" style="margin-top:14px"><button class="btn red" id="btnUpdModalInstall" hidden>Redémarrer et installer</button><button class="btn ghost" id="btnUpdModalLater">Plus tard</button></div>
+  </div>
+</div>
+
+<div class="modal" id="briefModal" hidden>
+  <div class="modal-box brief-box" role="dialog" aria-labelledby="briefTitle">
+    <div class="max-head"><svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      <div><div class="max-name" id="briefTitle">Briefing de Max</div><div class="muted small" id="briefSub"></div></div></div>
+    <div id="briefBody" class="brief"></div>
+    <div class="row" style="margin-top:14px"><button class="btn red" id="btnBriefListen">Écouter Max</button><button class="btn ghost" id="btnBriefClose">Fermer</button></div>
   </div>
 </div>
 

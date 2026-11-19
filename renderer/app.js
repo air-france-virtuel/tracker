@@ -291,6 +291,7 @@ $('btnSimbrief').addEventListener('click', async () => {
     $('sbMsg').textContent = 'Plan chargé.';
     renderPlan();
     renderMissionHint();
+    showBriefing(S.plan, true);
   } catch (e) {
     $('sbMsg').textContent = (e.message || String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
   }
@@ -1213,3 +1214,74 @@ document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-goplanreg]');
   if (g) { S.plan2.reg = g.dataset.goplanreg; showTab('planning'); loadPlanning(false); }
 });
+
+// ---------------- briefing de Max (après le chargement du plan SimBrief) ----------------
+// Décode un METAR en français : vent, visibilité, nuages, température, QNH.
+function decodeMetar(m) {
+  const r = { raw: m || '' };
+  if (!m) return r;
+  const w = /\b(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?KT\b/.exec(m);
+  if (w) { r.windTxt = (w[1] === 'VRB' ? 'variable' : 'du ' + w[1] + '°') + ' · ' + (+w[2]) + ' kt' + (w[3] ? ', rafales ' + (+w[3]) + ' kt' : ''); r.windDir = w[1] === 'VRB' ? null : +w[1]; r.windKt = +w[2]; r.gust = w[3] ? +w[3] : null; }
+  if (/\bCAVOK\b/.test(m)) r.visTxt = 'CAVOK (> 10 km)';
+  else { const v = /\s(\d{4})\s/.exec(m); if (v) r.visTxt = (+v[1] >= 9999 ? 'plus de 10 km' : (+v[1] >= 1000 ? (+v[1] / 1000).toLocaleString('fr-FR') + ' km' : +v[1] + ' m')); }
+  const cl = [...m.matchAll(/\b(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?\b/g)].map((c) => ({ FEW: 'quelques nuages', SCT: 'nuages épars', BKN: 'nuages fragmentés', OVC: 'couvert' }[c[1]] + ' à ' + (+c[2] * 100).toLocaleString('fr-FR') + ' ft' + (c[3] ? ' (' + c[3] + ')' : '')));
+  if (cl.length) r.cloudTxt = cl.join(', '); else if (/\b(NSC|SKC|CLR|NCD)\b/.test(m)) r.cloudTxt = 'pas de nuages significatifs';
+  const t = /\b(M?\d{2})\/(M?\d{2})\b/.exec(m); if (t) r.temp = +t[1].replace('M', '-');
+  const q = /\bQ(\d{4})\b/.exec(m); const a = /\bA(\d{4})\b/.exec(m);
+  if (q) r.qnh = 'QNH ' + q[1]; else if (a) r.qnh = 'altimètre ' + a[1].slice(0, 2) + ',' + a[1].slice(2) + ' inHg';
+  const wx = { RA: 'pluie', SN: 'neige', TS: 'orage', FG: 'brouillard', BR: 'brume', DZ: 'bruine', SH: 'averses', GR: 'grêle' };
+  const ph = Object.keys(wx).filter((k) => new RegExp('(^|\\s)[-+]?(VC)?[A-Z]*' + k + '[A-Z]*(\\s|$)').test(m)).map((k) => wx[k]);
+  if (ph.length) r.wxTxt = [...new Set(ph)].join(', ');
+  return r;
+}
+// Composante de vent de travers et de face pour une piste (ex. « 08L » → cap 080°)
+function windOnRunway(met, rwy) {
+  const n = /^(\d{2})/.exec(rwy || '');
+  if (!n || met.windDir == null || met.windKt == null) return '';
+  const diff = (met.windDir - (+n[1] * 10)) * Math.PI / 180;
+  const head = Math.round(met.windKt * Math.cos(diff)), cross = Math.abs(Math.round(met.windKt * Math.sin(diff)));
+  return (head >= 0 ? 'face ' + head : 'arrière ' + (-head)) + ' kt · travers ' + cross + ' kt';
+}
+function showBriefing(pl, auto) {
+  if (!pl) return;
+  const dep = decodeMetar(pl.metarDep), arr = decodeMetar(pl.metarArr), alt = decodeMetar(pl.metarAltn);
+  const li = (k, v) => v || v === 0 ? '<div class="li"><span>' + k + '</span><span>' + esc(v) + '</span></div>' : '';
+  const ete = pl.eteSec ? Math.floor(pl.eteSec / 3600) + ' h ' + String(Math.round(pl.eteSec % 3600 / 60)).padStart(2, '0') : '';
+  const fl = pl.cruiseAlt ? 'FL' + String(Math.round(pl.cruiseAlt / 100)).padStart(3, '0') : '';
+  const t = (kg) => kg ? fmt(kg / 1000, 1) + ' t' : '';
+  const steps = (pl.steps || []).map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + s.ident).join(', ');
+  const wind = pl.avgWindComp ? (pl.avgWindComp > 0 ? 'vent arrière moyen ' + pl.avgWindComp + ' kt' : 'vent de face moyen ' + (-pl.avgWindComp) + ' kt') : '';
+  // conseils de Max selon la météo
+  const tips = [];
+  if (dep.gust || arr.gust) tips.push('Rafales annoncées : garde de la marge de vitesse en approche.');
+  const xw = (met, rwy) => { const w = windOnRunway(met, rwy); const c = /travers (\d+)/.exec(w); return c ? +c[1] : 0; };
+  if (xw(arr, pl.destination.rwy) >= 15) tips.push('Vent de travers sensible à l’arrivée : prépare un atterrissage en crabe.');
+  if ((arr.wxTxt || '').match(/orage|neige|brouillard/) || (dep.wxTxt || '').match(/orage|neige|brouillard/)) tips.push('Phénomènes météo significatifs : vérifie bien le carburant de dégagement.');
+  if (dep.temp != null && dep.temp <= 3) tips.push('Températures basses au départ : pense à l’antigivrage.');
+  if (!tips.length) tips.push('Météo sans difficulté particulière. Je te préviens au TOD et à chaque palier.');
+  $('briefSub').textContent = (pl.callsign || pl.flightNumber || '') + ' · ' + pl.origin.icao + ' → ' + pl.destination.icao + (pl.schedOut ? ' · départ prévu ' + new Date(pl.schedOut).toISOString().slice(11, 16) + 'Z' : '');
+  $('briefBody').innerHTML =
+    '<div class="sec"><h4>Le vol</h4>' + li('Indicatif', pl.callsign) + li('Appareil', [pl.aircraft, pl.registration].filter(Boolean).join(' · ')) + li('Passagers', pl.pax) + li('Masse sans carburant', t(pl.zfwKg)) + li('Masse au décollage', t(pl.towKg)) + li('Cost index', pl.costIndex) + '</div>' +
+    '<div class="sec"><h4>Route et carburant</h4>' + li('Croisière', fl) + li('Paliers', steps) + li('Distance', pl.distanceNm ? fmt(pl.distanceNm) + ' NM' : '') + li('Temps de vol', ete) + li('Vent en route', wind) + li('Carburant au départ', t(pl.fuelPlanKg)) + '</div>' +
+    '<div class="sec"><h4>Départ · ' + esc(pl.origin.icao) + '</h4>' + li('Aéroport', pl.origin.name) + li('Piste', pl.origin.rwy) + li('Vent', dep.windTxt) + li('Sur la piste', windOnRunway(dep, pl.origin.rwy)) + li('Visibilité', dep.visTxt) + li('Nuages', dep.cloudTxt) + li('Temps présent', dep.wxTxt) + li('Température', dep.temp != null ? dep.temp + ' °C' : '') + li('Pression', dep.qnh) + '</div>' +
+    '<div class="sec"><h4>Arrivée · ' + esc(pl.destination.icao) + '</h4>' + li('Aéroport', pl.destination.name) + li('Piste', pl.destination.rwy) + li('Vent', arr.windTxt) + li('Sur la piste', windOnRunway(arr, pl.destination.rwy)) + li('Visibilité', arr.visTxt) + li('Nuages', arr.cloudTxt) + li('Temps présent', arr.wxTxt) + li('Température', arr.temp != null ? arr.temp + ' °C' : '') + li('Pression', arr.qnh) + '</div>' +
+    (pl.alternate && pl.alternate.icao ? '<div class="sec full"><h4>Dégagement · ' + esc(pl.alternate.icao) + '</h4>' + li('Aéroport', pl.alternate.name) + li('Météo', [alt.windTxt, alt.visTxt, alt.cloudTxt].filter(Boolean).join(' · ')) + '</div>' : '') +
+    '<div class="sec full"><h4>Le conseil de Max</h4><div class="say">' + tips.map(esc).join('<br>') + '</div></div>';
+  // texte lu par Max
+  const say = ['Briefing du vol ' + (pl.callsign || '') + ', de ' + (pl.origin.name || pl.origin.icao) + ' vers ' + (pl.destination.name || pl.destination.icao) + '.'];
+  if (pl.origin.rwy) say.push('Départ piste ' + pl.origin.rwy + (dep.windTxt ? ', vent ' + dep.windTxt.replace('du ', 'du ').replace(' · ', ' pour ') : '') + (dep.qnh ? ', ' + dep.qnh : '') + '.');
+  if (fl) say.push('Croisière ' + fl + (ete ? ', ' + ete.replace(' h ', ' heure ').replace(/ 0(\d)$/, ' $1') + ' minutes de vol' : '') + '.');
+  if (steps) say.push('Paliers prévus : ' + steps + '.');
+  if (pl.destination.rwy) say.push('Arrivée piste ' + pl.destination.rwy + (arr.windTxt ? ', vent ' + arr.windTxt.replace(' · ', ' pour ') : '') + (arr.qnh ? ', ' + arr.qnh : '') + '.');
+  if (pl.alternate && pl.alternate.icao) say.push('Dégagement ' + (pl.alternate.name || pl.alternate.icao) + '.');
+  if (pl.fuelPlanKg) say.push('Carburant au départ ' + fmt(pl.fuelPlanKg / 1000, 1) + ' tonnes.');
+  say.push(tips[0] + ' Bon vol commandant !');
+  S.briefSay = say.join(' ').replace(/kt/g, 'nœuds').replace(/°/g, ' degrés');
+  $('briefModal').hidden = false;
+  $('btnBriefing').hidden = false;
+  $('maxSay').textContent = 'Briefing prêt : ' + pl.origin.icao + ' → ' + pl.destination.icao + (fl ? ', ' + fl : '') + '. ' + tips[0];
+  if (auto) { maxQueue.length = 0; maxSpeak(S.briefSay); }
+}
+$('btnBriefClose').addEventListener('click', () => { $('briefModal').hidden = true; });
+$('btnBriefListen').addEventListener('click', () => { if (S.briefSay) { maxStop(); maxSpeak(S.briefSay, true); } });
+$('btnBriefing').addEventListener('click', () => showBriefing(S.plan, false));

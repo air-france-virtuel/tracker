@@ -19,6 +19,7 @@ function demoPlan() {
     distanceNm: Math.round(total), eteSec: 80 * 60, fuelPlanKg: 6800,
     metarDep: 'LFPG 191030Z 07008KT CAVOK 09/03 Q1024 NOSIG',
     metarArr: 'LFMN 191030Z 05006KT CAVOK 15/08 Q1021 NOSIG',
+    alternate: { icao: 'LFML', name: 'Marseille Provence', rwy: '31R' }, pax: 162, zfwKg: 61200, towKg: 67900, costIndex: '30', avgWindComp: -12, metarAltn: 'LFML 191030Z 31012KT 9999 FEW030 14/06 Q1020',
     route_points: [
       { ident: 'LFPG', lat: ORIGIN.lat, lon: ORIGIN.lon, alt: 392, fuelKg: 6650 },
       { ident: 'TOC', lat: toc.lat, lon: toc.lon, alt: CRUISE, fuelKg: 5750 },

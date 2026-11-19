@@ -7,7 +7,9 @@
       "Depuis un vol à venir ou précédent : copie vers SimBrief et accès direct à la journée de l’avion"
     ],
     "removed": [],
-    "fixed": []
+    "fixed": [
+      "Journée de l’avion : un vol sans heure de départ était classé en premier et faisait croire à un vol manquant ; les heures manquantes sont maintenant estimées"
+    ]
   },
   {
     "version": "0.4.2-beta",

@@ -1,5 +1,18 @@
 [
   {
+    "version": "0.4.0-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Carte des vols réels en cours : zoom, déplacement, vues Monde, Europe, Atlantique et Antilles, route du vol choisi",
+      "Nouveau logo AFV dans le tracker, l’icône et l’installateur",
+      "Pop-up dès qu’une nouvelle mise à jour est trouvée, avec ce qui change et un bouton pour l’installer"
+    ],
+    "removed": [
+      "Ancien logo"
+    ],
+    "fixed": []
+  },
+  {
     "version": "0.3.0-beta",
     "date": "2026-11-19",
     "added": [

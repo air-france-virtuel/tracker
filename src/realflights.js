@@ -43,6 +43,8 @@ function parseStates(json) {
   return out;
 }
 
+const pos = (a) => (a && Number.isFinite(+a.lat) && Number.isFinite(+a.lon) ? [+a.lat, +a.lon] : (a && Number.isFinite(+a.latitude) && Number.isFinite(+a.longitude) ? [+a.latitude, +a.longitude] : null));
+
 function parseRouteset(list) {
   const out = new Map();
   for (const r of Array.isArray(list) ? list : []) {
@@ -56,6 +58,7 @@ function parseRouteset(list) {
       from, to,
       fromName: info(from).location || info(from).name || '', toName: info(to).location || info(to).name || '',
       fromIata: info(from).iata || '', toIata: info(to).iata || '',
+      fromPos: pos(info(from)), toPos: pos(info(to)),
       plausible: r.plausible !== false && r.plausible !== 0
     });
   }
@@ -107,7 +110,8 @@ function parseAdsbdbRoute(j) {
   return {
     from: fr.origin.icao_code, to: fr.destination.icao_code,
     fromName: fr.origin.municipality || fr.origin.name || '', toName: fr.destination.municipality || fr.destination.name || '',
-    fromIata: fr.origin.iata_code || '', toIata: fr.destination.iata_code || '', plausible: true
+    fromIata: fr.origin.iata_code || '', toIata: fr.destination.iata_code || '',
+    fromPos: pos(fr.origin), toPos: pos(fr.destination), plausible: true
   };
 }
 

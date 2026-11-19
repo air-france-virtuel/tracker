@@ -524,7 +524,27 @@ function renderUpdate() {
   $('updBanner').hidden = u.state !== 'ready';
   $('updBannerText').textContent = 'La version ' + (u.version || '') + ' du tracker est prête.' + (S.flight ? ' Installe-la après ton vol.' : '');
 }
-afv.on('update:status', (u) => { UPD = u; renderUpdate(); });
+afv.on('update:status', (u) => { UPD = u; renderUpdate(); updPopup(); });
+
+// Pop-up dès qu'une nouvelle version est trouvée (une fois par version).
+S.updSeen = {};
+function updPopup() {
+  const u = UPD;
+  if (!u || !u.version || (u.state !== 'downloading' && u.state !== 'ready')) return;
+  const key = u.version + ':' + u.state; // réapparaît quand le téléchargement est terminé
+  if (!S.updSeen[key]) { S.updSeen[key] = true; $('updModal').hidden = false; }
+  if ($('updModal').hidden) return;
+  $('updModalTitle').textContent = 'La version ' + u.version + ' est disponible !';
+  let h = u.state === 'ready'
+    ? '<p class="muted">Elle est téléchargée et prête à être installée' + (S.flight ? '. Tu es en vol : installe-la après ton atterrissage, ou elle s’installera quand tu fermeras le tracker.' : '. Clique sur « Redémarrer et installer » : le tracker redémarre tout seul en quelques secondes.') + '</p>'
+    : '<p class="muted">Téléchargement en cours… ' + (u.percent || 0) + ' %</p><div class="progress"><i style="width:' + (u.percent || 0) + '%"></i></div>';
+  if (u.notes) h += '<div class="muted small" style="margin-top:10px">Ce qui change :</div><div class="notes">' + esc(stripHtml(u.notes)) + '</div>';
+  $('updModalBody').innerHTML = h;
+  $('btnUpdModalInstall').hidden = u.state !== 'ready' || !!S.flight;
+  $('btnUpdModalLater').textContent = S.flight ? 'Après mon vol' : 'Plus tard';
+}
+$('btnUpdModalLater').addEventListener('click', () => { $('updModal').hidden = true; });
+$('btnUpdModalInstall').addEventListener('click', () => afv.installUpdate());
 $('btnCheckUpd').addEventListener('click', async () => { UPD = await afv.checkUpdate(); renderUpdate(); });
 $('btnBannerInstall').addEventListener('click', () => {
   if (S.flight && !confirmInstall()) return;
@@ -550,7 +570,7 @@ function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store
   renderAircraftSelect(); renderFleet(); renderSounds(); renderFb(); renderSettings(); renderPhases(null); renderAnnHint();
   S.voice = await afv.voiceStatus(); renderVoice(); renderMaxVoiceHint();
   S.infos = await afv.getInfos(); await refreshCareer(); loadMetar();
-  UPD = await afv.getUpdate(); renderUpdate();
+  UPD = await afv.getUpdate(); renderUpdate(); updPopup();
   const cl = await renderChangelog();
   const now = cl.find((v) => v.version === d.version);
   if (d.showNews && now) {
@@ -703,6 +723,7 @@ function realShown() {
 }
 function renderReal() {
   const list = realShown();
+  renderRealMap(list);
   $('realList').innerHTML = list.length ? list.slice(0, 200).map((f) => '<button class="rt' + (f.callsign === S.real.sel ? ' on' : '') + '" data-real="' + esc(f.callsign) + '">' +
     '<span class="n">' + esc(f.number || f.callsign) + '</span><span><b>' + (f.from ? esc(f.from) + ' → ' + esc(f.to) : 'Route inconnue') + '</b><br><span class="c">' + esc(f.from ? (f.fromName || '') + ' – ' + (f.toName || '') : f.callsign) + '</span></span>' +
     '<span class="a">FL' + (f.altFt != null ? Math.round(f.altFt / 100) : '—') + '<br>' + (f.gsKt != null ? f.gsKt + ' kt' : '') + '</span></button>').join('')
@@ -744,3 +765,69 @@ document.querySelector('[data-tab=reels]').addEventListener('click', () => {
   clearInterval(realTimer);
   realTimer = setInterval(() => { if ($('tab-reels').classList.contains('on')) loadReal(false); else clearInterval(realTimer); }, 5 * 60 * 1000);
 });
+
+// ---------------- carte des vols réels ----------------
+const VIEWS = { monde: [0, 0, 360, 150], europe: [165, 15, 50, 32], atlantique: [95, 20, 120, 60], antilles: [100, 60, 30, 20] };
+let mapVB = VIEWS.monde.slice();
+const MX = (lon) => lon + 180; const MY = (lat) => 90 - lat;
+const PLANE = 'M0 -5 L1 -1.5 L5 1 L5 2 L1 1 L0.8 3.6 L2 4.6 L2 5.2 L0 4.6 L-2 5.2 L-2 4.6 L-0.8 3.6 L-1 1 L-5 2 L-5 1 L-1 -1.5 Z';
+function renderRealMap(list) {
+  const svg = $('realMap'); if (!svg) return;
+  const [x, y, w, h] = mapVB;
+  svg.setAttribute('viewBox', x + ' ' + y + ' ' + w + ' ' + h);
+  const k = Math.pow(w / 360, 0.6); // les symboles rétrécissent moins vite que la carte au zoom
+  let g = '';
+  for (let lon = -150; lon <= 180; lon += 30) g += '<line class="grid" x1="' + MX(lon) + '" y1="0" x2="' + MX(lon) + '" y2="150" stroke-width="' + (0.1 * k * 3) + '"/>';
+  for (let lat = 60; lat >= -60; lat -= 30) g += '<line class="grid" x1="0" y1="' + MY(lat) + '" x2="360" y2="' + MY(lat) + '" stroke-width="' + (0.1 * k * 3) + '"/>';
+  let h2 = '<path class="land" d="' + (window.WORLD_PATH || '') + '" stroke-width="' + (0.25 * k) + '"/>' + g;
+  const sel = S.real.flights.find((f) => f.callsign === S.real.sel);
+  if (sel) {
+    const d = S.real.det[sel.callsign] || {};
+    const fp = sel.fromPos || d.fromPos; const tp = sel.toPos || d.toPos;
+    const pts = [fp, [sel.lat, sel.lon], tp].filter(Boolean);
+    if (pts.length > 1) h2 += '<polyline class="rte" stroke-width="' + (0.35 * k) + '" stroke-dasharray="' + (1.6 * k) + ' ' + (1 * k) + '" points="' + pts.map((p) => MX(p[1]) + ',' + MY(p[0])).join(' ') + '"/>';
+    for (const [p, code] of [[fp, sel.from || d.from], [tp, sel.to || d.to]]) if (p) {
+      h2 += '<circle class="ap" cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" stroke-width="' + (0.35 * k) + '"/>' +
+        '<text class="lbl" x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '">' + esc(code || '') + '</text>';
+    }
+  }
+  const sz = 0.33 * k;
+  for (const f of list) {
+    const on = f.callsign === S.real.sel;
+    h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"/></g>';
+  }
+  svg.innerHTML = h2;
+}
+function setView(vb) {
+  mapVB = vb;
+  document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', VIEWS[b.dataset.view] && VIEWS[b.dataset.view].join() === vb.join()));
+  renderRealMap(realShown());
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) setView(VIEWS[b.dataset.view].slice()); });
+(function mapControls() {
+  const svg = $('realMap');
+  const toMap = (ev) => { const r = svg.getBoundingClientRect(); return [mapVB[0] + ((ev.clientX - r.left) / r.width) * mapVB[2], mapVB[1] + ((ev.clientY - r.top) / r.height) * mapVB[3]]; };
+  svg.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const [mx, my] = toMap(ev);
+    const f = ev.deltaY > 0 ? 1.25 : 0.8;
+    const w = Math.min(360, Math.max(8, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
+    setView([mx - (mx - mapVB[0]) * (w / mapVB[2]), my - (my - mapVB[1]) * (h / mapVB[3]), w, h]);
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener('pointerdown', (ev) => { if (ev.target.closest('.pl')) return; drag = { x: ev.clientX, y: ev.clientY, vb: mapVB.slice() }; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    const r = svg.getBoundingClientRect();
+    setView([drag.vb[0] - ((ev.clientX - drag.x) / r.width) * drag.vb[2], drag.vb[1] - ((ev.clientY - drag.y) / r.height) * drag.vb[3], drag.vb[2], drag.vb[3]]);
+  });
+  svg.addEventListener('pointerup', () => { drag = null; });
+  svg.addEventListener('click', async (ev) => {
+    const g = ev.target.closest('.pl'); if (!g) return;
+    const f = S.real.flights.find((x) => x.callsign === g.dataset.real); if (!f) return;
+    S.real.sel = f.callsign;
+    if (!S.real.det[f.callsign]) { S.real.det[f.callsign] = { pending: true }; renderReal(); S.real.det[f.callsign] = await afv.realDetails(f.callsign, f.icao24); }
+    renderReal();
+    const el = document.querySelector('#realList [data-real="' + CSS.escape(f.callsign) + '"]'); if (el) el.scrollIntoView({ block: 'nearest' });
+  });
+})();

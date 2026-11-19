@@ -37,6 +37,9 @@ jobs:
             exit 0
           fi
           # Brouillon d'abord : les trackeurs ne voient la version qu'une fois tous les fichiers envoyés.
-          gh release create "v$V" --draft --prerelease --title "Version $V" --notes-file notes.md \
-            "dist/AirFranceVirtuel-Tracker-Setup-$V.exe" dist/latest.yml dist/beta.yml
-          gh release edit "v$V" --draft=false
+          # Copie au nom fixe : le lien « releases/latest/download/AirFranceVirtuel-Tracker-Setup.exe »
+          # télécharge toujours la dernière version, sans passer par la page GitHub.
+          cp "dist/AirFranceVirtuel-Tracker-Setup-$V.exe" dist/AirFranceVirtuel-Tracker-Setup.exe
+          gh release create "v$V" --draft --title "Version $V" --notes-file notes.md \
+            "dist/AirFranceVirtuel-Tracker-Setup-$V.exe" dist/AirFranceVirtuel-Tracker-Setup.exe dist/latest.yml dist/beta.yml
+          gh release edit "v$V" --draft=false --latest

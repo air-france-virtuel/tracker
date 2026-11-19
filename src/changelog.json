@@ -11,7 +11,9 @@
       "Carte du monde dans le tracker de vol : route, TOD et position de l’avion, avec un mode « Suivre l’avion »",
       "Nouveau logo AFV dans le tracker, l’icône et l’installateur",
       "Pop-up dès qu’une nouvelle mise à jour est trouvée, avec ce qui change et un bouton pour l’installer",
-      "Mode satellite sur les cartes (images NASA) et radar météo des précipitations (RainViewer), sur la carte du vol et celle des vols réels"
+      "Mode satellite sur les cartes (images NASA) et radar météo des précipitations (RainViewer), sur la carte du vol et celle des vols réels",
+      "Nouvel écran d’installation : image, pourcentage, barre rouge et étapes cochées une à une",
+      "Lien de téléchargement direct de la dernière version"
     ],
     "removed": [
       "Ancien logo"

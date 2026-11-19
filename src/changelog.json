@@ -3,11 +3,14 @@
     "version": "0.4.3-beta",
     "date": "2026-11-19",
     "added": [
+      "Nouveau menu : écrans rangés par rubriques (Aujourd’hui, Voler, Carrière), gros bouton « Démarrer un vol », recherche rapide (Ctrl K), suivi du vol en cours et profil pilote avec progression vers le prochain grade, menu réductible en icônes",
       "Briefing de Max dès le chargement du plan SimBrief : vol, masses, route, paliers, carburant, météo décodée au départ, à l’arrivée et au dégagement, vent sur la piste et conseils ; Max le lit à voix haute",
       "Vols réels : onglets « À venir » et « Précédents » avec le programme du jour (heures, avion, immatriculation, statut), sur la liste et la carte",
       "Depuis un vol à venir ou précédent : copie vers SimBrief et accès direct à la journée de l’avion"
     ],
-    "removed": [],
+    "removed": [
+      "Ancienne liste de boutons du menu : Sons, Avis, Mises à jour et Réglages passent en icônes en bas du menu (toujours trouvables avec la recherche)"
+    ],
     "fixed": [
       "Journée de l’avion : un vol sans heure de départ était classé en premier et faisait croire à un vol manquant ; les heures manquantes sont maintenant estimées"
     ]

@@ -7,7 +7,7 @@ const PHASES = ['Boarding', 'Roulage', 'Décollage', 'Montée', 'Croisière', 'D
 const S = { store: null, plan: null, flight: null, phase: null, simOk: false, muted: false, lastT: null, trail: [], stars: 0, tags: {} };
 
 // ---------------- navigation ----------------
-document.querySelectorAll('.nav').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('.nav[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 function showTab(name) {
   document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
@@ -1285,3 +1285,82 @@ function showBriefing(pl, auto) {
 $('btnBriefClose').addEventListener('click', () => { $('briefModal').hidden = true; });
 $('btnBriefListen').addEventListener('click', () => { if (S.briefSay) { maxStop(); maxSpeak(S.briefSay, true); } });
 $('btnBriefing').addEventListener('click', () => showBriefing(S.plan, false));
+
+// ---------------- menu latéral ----------------
+const sideStore = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* rien */ } } };
+function setMini(on) {
+  $('side').classList.toggle('mini', on);
+  $('btnSide').title = on ? 'Agrandir le menu' : 'Réduire le menu';
+  $('btnSide').setAttribute('aria-label', $('btnSide').title);
+  sideStore.set('afv.sideMini', on ? '1' : '0');
+}
+setMini(sideStore.get('afv.sideMini') === '1');
+$('btnSide').addEventListener('click', () => setMini(!$('side').classList.contains('mini')));
+const norm = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const searchable = () => [...document.querySelectorAll('.nscroll .nav')];
+function navFilter() {
+  const q = norm($('navSearch').value.trim());
+  $('side').classList.toggle('searching', !!q);
+  for (const b of document.querySelectorAll('.nscroll .nav')) b.classList.toggle('hide', !!q && !norm(b.title).includes(q));
+  for (const h of document.querySelectorAll('.nscroll .nsec')) {
+    let n = h.nextElementSibling, any = false;
+    while (n && !n.classList.contains('nsec')) { if (!n.classList.contains('hide') && (q || !n.classList.contains('searchonly'))) any = true; n = n.nextElementSibling; }
+    h.hidden = !!q && !any;
+  }
+}
+$('navSearch').addEventListener('input', navFilter);
+$('navSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { $('navSearch').value = ''; navFilter(); $('navSearch').blur(); }
+  if (e.key === 'Enter') {
+    const q = norm($('navSearch').value.trim()); if (!q) return;
+    const b = searchable().find((x) => !x.disabled && norm(x.title).includes(q));
+    if (b) { b.click(); $('navSearch').value = ''; navFilter(); $('navSearch').blur(); }
+  }
+});
+document.querySelector('.nsearch').addEventListener('click', () => { if ($('side').classList.contains('mini')) { setMini(false); $('navSearch').focus(); } });
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if ($('side').classList.contains('mini')) setMini(false); $('navSearch').focus(); $('navSearch').select(); }
+});
+$('btnGoFly').addEventListener('click', () => showTab('vol'));
+$('navBrief').addEventListener('click', () => { if (S.plan) showBriefing(S.plan, false); });
+$('liveCard').addEventListener('click', () => showTab('vol'));
+const sideCache = {};
+const setTxt = (id, v) => { if (sideCache[id] !== v) { sideCache[id] = v; $(id).textContent = v; } };
+function sideRefresh() {
+  const flying = !!S.flight;
+  $('chipFly').hidden = !flying; $('chipBeta').hidden = flying;
+  $('btnGoFly').classList.toggle('live', flying);
+  setTxt('goFlyText', flying ? 'Revenir à mon vol' : 'Démarrer un vol');
+  $('navBrief').disabled = !S.plan;
+  $('navBrief').title = S.plan ? 'Briefing de Max' : 'Briefing de Max (charge d’abord ton plan SimBrief)';
+  const acc = S.career ? S.career.missions.filter((m) => m.accepted).length : 0;
+  $('chipMis').hidden = !acc; setTxt('chipMis', String(acc));
+  // vol en cours
+  $('liveCard').hidden = !flying;
+  if (flying) {
+    const pl = S.plan, t = S.lastT, ph = S.phase;
+    setTxt('lcCs', (pl && (pl.callsign || pl.flightNumber)) || 'Vol libre');
+    setTxt('lcRt', pl ? pl.origin.icao + ' → ' + pl.destination.icao : (S.flight.aircraft || ''));
+    const ne = nextEvent();
+    setTxt('lcNext', ne.value ? (/^T\//.test(ne.label) ? ne.label + ' ' : '') + ne.value : '');
+    const bars = PHASES.map((_, i) => '<i class="' + (ph == null ? '' : i < ph ? 'd' : i === ph ? 'c' : '') + '"></i>').join('');
+    if (sideCache.bars !== bars) { sideCache.bars = bars; $('lcBar').innerHTML = bars; }
+    const alt = t ? (t.alt >= 18000 ? 'FL' + Math.round(t.alt / 100) : fmt(Math.round(t.alt / 10) * 10) + ' ft') : '';
+    setTxt('lcPh', (ph != null ? PHASES[ph] : 'Prêt') + (alt ? ' · ' + alt : ''));
+    setTxt('lcEta', S.ops && S.ops.eta ? 'ETA ' + utc(S.ops.eta) : '');
+  }
+  // pilote
+  const name = (S.store && S.store.settings.pilot) || 'Pilote';
+  setTxt('pName', name);
+  setTxt('pInit', name === 'Pilote' ? 'AF' : name.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase());
+  const c = S.career;
+  if (c) {
+    setTxt('pGrade', c.gradeName + ' · ' + fmtH(c.hours));
+    const prevH = [0, 100, 250, 600, 1200][c.grade] || 0;
+    const pct = c.next ? Math.max(2, Math.min(100, Math.round(((c.hours - prevH) / (c.nextHours - prevH)) * 100))) : 100;
+    $('pRing').style.setProperty('--p', pct + '%');
+    $('pRing').title = c.next ? pct + ' % vers ' + c.next : 'Plus haut grade atteint';
+  }
+}
+setInterval(sideRefresh, 1000);
+sideRefresh();

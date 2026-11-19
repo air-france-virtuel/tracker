@@ -8,26 +8,44 @@
 </head>
 <body>
 <div class="app">
-  <nav class="side" aria-label="Navigation principale">
+  <nav class="side" id="side" aria-label="Navigation principale">
     <div class="brand">
       <svg width="36" height="36" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="afvg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16346F"/><stop offset="1" stop-color="#0A1E4A"/></linearGradient></defs><rect width="100" height="100" rx="24" fill="url(#afvg)"/><g transform="translate(0 2)"><path d="M15 62 L25.5 34 L36 62" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="miter"/><path d="M44.5 62 V34 H60 M44.5 48 H56.5" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="miter"/><path d="M64 34 L74.5 62 L85 34" fill="none" stroke="#F0374E" stroke-width="7" stroke-linejoin="miter"/><path d="M13 75 C 38 69, 62 67, 88 70 L 88 72.4 C 62 70.4, 38 72, 13 77.2 Z" fill="#F0374E"/></g></svg>
-      <span class="brand-name">Air France Virtuel</span>
+      <div class="bt"><span class="brand-name">Air France Virtuel</span><span class="brand-sub">Tracker · v<span id="ver"></span></span></div>
+      <button class="collapse" id="btnSide" title="Réduire le menu" aria-label="Réduire le menu"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/><path d="M20 4v16"/></svg></button>
     </div>
-    <button class="nav on" data-tab="infos">Infos du jour</button>
-    <button class="nav" data-tab="carriere">Ma carrière</button>
-    <button class="nav" data-tab="missions">Missions &amp; rôles</button>
-    <button class="nav" data-tab="reels">Vols réels</button>
-    <button class="nav" data-tab="planning">Planning du jour</button>
-    <button class="nav" data-tab="vol">Tracker de vol <span class="beta-pill">BÊTA</span></button>
-    <button class="nav" data-tab="hangar">Hangar &amp; flotte</button>
-    <button class="nav" data-tab="vols">Mes vols</button>
-    <button class="nav" data-tab="sons">Mes annonces sonores</button>
-    <button class="nav" data-tab="avis">Donner mon avis</button>
-    <div class="grow"></div>
-    <button class="nav" data-tab="reglages">Réglages</button>
-    <button class="nav" data-tab="maj">Mises à jour <span class="beta-pill" id="updDot" hidden>NOUVEAU</span></button>
+    <label class="nsearch"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="navSearch" type="search" placeholder="Rechercher…" aria-label="Rechercher un écran" autocomplete="off"><kbd>Ctrl K</kbd></label>
+    <button class="startfly" id="btnGoFly"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb" id="goFlyText">Démarrer un vol</span></button>
+    <div class="nscroll">
+    <div class="nsec">Aujourd’hui</div>
+    <button class="nav on" data-tab="infos" title="Infos du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg><span class="lb">Infos du jour</span></button>
+    <button class="nav" data-tab="planning" title="Planning du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lb">Planning du jour</span></button>
+    <div class="nsec">Voler</div>
+    <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta">BÊTA</span></button>
+    <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
+    <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
+    <button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
+    <div class="nsec">Carrière</div>
+    <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
+    <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
+    <button class="nav" data-tab="hangar" title="Hangar &amp; flotte"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V10l9-6 9 6v10"/><path d="M7 20v-6h10v6"/></svg><span class="lb">Hangar &amp; flotte</span></button>
+    <div class="nsec searchonly">Autres écrans</div>
+    <button class="nav searchonly" data-tab="sons" title="Mes annonces sonores"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg><span class="lb">Mes annonces sonores</span></button>
+    <button class="nav searchonly" data-tab="avis" title="Donner mon avis"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="lb">Donner mon avis</span></button>
+    <button class="nav searchonly" data-tab="maj" title="Mises à jour"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="lb">Mises à jour</span></button>
+    <button class="nav searchonly" data-tab="reglages" title="Réglages"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span class="lb">Réglages</span></button>
+    </div>
+    <button class="livecard" id="liveCard" hidden title="Ouvrir le tracker">
+      <div class="lc1"><b id="lcCs"></b><span id="lcRt"></span><em id="lcNext"></em></div>
+      <div class="lcbar" id="lcBar"></div>
+      <div class="lc2"><span id="lcPh"></span><span id="lcEta"></span></div>
+    </button>
+    <div class="pilot">
+      <div class="ring" id="pRing"><span id="pInit">AF</span></div>
+      <div class="pt"><b id="pName">Pilote</b><span id="pGrade"></span></div>
+    </div>
+    <div class="tools"><button class="nav ico" data-tab="sons" title="Mes annonces sonores" aria-label="Mes annonces sonores"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></button><button class="nav ico" data-tab="avis" title="Donner mon avis" aria-label="Donner mon avis"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button class="nav ico" data-tab="maj" title="Mises à jour" aria-label="Mises à jour"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="dotn" id="updDot" hidden></span></button><button class="nav ico" data-tab="reglages" title="Réglages" aria-label="Réglages"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></div>
     <div class="sim-state" id="simState"><span class="dot"></span><span id="simText">Simulateur non connecté</span></div>
-    <div class="fine">Version <span id="ver"></span> · bêta</div>
   </nav>
 
   <main class="content">

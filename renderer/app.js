@@ -163,12 +163,17 @@ function renderTelem(t) {
   ];
   $('telem').innerHTML = items.map(([k, v]) => '<div class="tl"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('');
 }
+S.mapMode = 'route';
+S.lastPos = null;
 function renderMap(t) {
   const pl = S.plan;
   const svg = $('map');
-  if (!pl) { svg.innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="14">Carte disponible avec un plan SimBrief</text>'; return; }
-  const pts = (pl.route_points && pl.route_points.length ? pl.route_points : [pl.origin, pl.destination]).map((p) => ({ lat: p.lat, lon: p.lon }));
-  const all = pts.concat(S.trail);
+  if (t && t.lat != null) S.lastPos = t; else t = t || S.lastPos;
+  const pts = pl ? (pl.route_points && pl.route_points.length ? pl.route_points : [pl.origin, pl.destination]).map((p) => ({ lat: p.lat, lon: p.lon })) : [];
+  if (!pl && !t) { svg.innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="14">La carte s’affiche avec un plan SimBrief ou dès que l’avion bouge</text>'; return; }
+  // zone affichée : toute la route, ou autour de l'avion (environ 160 NM)
+  let all = S.mapMode === 'avion' && t ? [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }] : pts.concat(S.trail);
+  if (!all.length && t) all = [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }];
   let minLat = Math.min(...all.map((p) => p.lat)), maxLat = Math.max(...all.map((p) => p.lat));
   let minLon = Math.min(...all.map((p) => p.lon)), maxLon = Math.max(...all.map((p) => p.lon));
   const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
@@ -177,18 +182,31 @@ function renderMap(t) {
   const ox = 300 - ((minLon + maxLon) / 2) * k * sc, oy = 150 + ((minLat + maxLat) / 2) * sc;
   const X = (p) => (p.lon * k * sc + ox).toFixed(1), Y = (p) => (oy - p.lat * sc).toFixed(1);
   const line = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
-  let h2 = '<path d="' + line(pts) + '" fill="none" stroke="#9AA6BF" stroke-width="2" stroke-dasharray="6 6"/>';
+  // fond : océan + terres (Natural Earth) dans la même projection
+  let h2 = '<rect x="-10" y="-10" width="620" height="320" fill="#DCE6F5"/>' +
+    '<path d="' + (window.WORLD_PATH || '') + '" transform="matrix(' + (k * sc) + ' 0 0 ' + sc + ' ' + (ox - 180 * k * sc) + ' ' + (oy - 90 * sc) + ')" fill="#F7F9FC" stroke="#B8C4DA" stroke-width="0.8" vector-effect="non-scaling-stroke"/>';
+  if (pl) {
+    h2 += '<path d="' + line(pts) + '" fill="none" stroke="#7F8CA8" stroke-width="2" stroke-dasharray="6 6"/>';
+  }
   if (S.trail.length > 1) h2 += '<path d="' + line(S.trail) + '" fill="none" stroke="#0A1E4A" stroke-width="3"/>';
-  h2 += '<circle cx="' + X(pl.origin) + '" cy="' + Y(pl.origin) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
-  h2 += '<circle cx="' + X(pl.destination) + '" cy="' + Y(pl.destination) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
-  h2 += '<text x="' + X(pl.origin) + '" y="' + (Y(pl.origin) - 12) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A">' + esc(pl.origin.icao) + '</text>';
-  h2 += '<text x="' + X(pl.destination) + '" y="' + (+Y(pl.destination) + 22) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A">' + esc(pl.destination.icao) + '</text>';
-  if (pl.tod) h2 += '<circle cx="' + X(pl.tod) + '" cy="' + Y(pl.tod) + '" r="4" fill="#E0A800"/><text x="' + X(pl.tod) + '" y="' + (Y(pl.tod) - 8) + '" text-anchor="middle" font-size="11" fill="#7A5B00">TOD</text>';
-  if (t) h2 += '<g transform="translate(' + X(t) + ' ' + Y(t) + ') rotate(' + ((t.hdg || 0) - 90).toFixed(0) + ')"><path d="M12 0 L-8 -8 L-4 0 L-8 8 Z" fill="#C8102E"/></g>';
+  if (pl) {
+    h2 += '<circle cx="' + X(pl.origin) + '" cy="' + Y(pl.origin) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
+    h2 += '<circle cx="' + X(pl.destination) + '" cy="' + Y(pl.destination) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
+    h2 += '<text x="' + X(pl.origin) + '" y="' + (Y(pl.origin) - 12) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A" paint-order="stroke" stroke="#fff" stroke-width="3">' + esc(pl.origin.icao) + '</text>';
+    h2 += '<text x="' + X(pl.destination) + '" y="' + (+Y(pl.destination) + 22) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A" paint-order="stroke" stroke="#fff" stroke-width="3">' + esc(pl.destination.icao) + '</text>';
+    if (pl.tod) h2 += '<circle cx="' + X(pl.tod) + '" cy="' + Y(pl.tod) + '" r="4" fill="#E0A800"/><text x="' + X(pl.tod) + '" y="' + (Y(pl.tod) - 8) + '" text-anchor="middle" font-size="11" fill="#7A5B00" paint-order="stroke" stroke="#fff" stroke-width="3">TOD</text>';
+  }
+  if (t) h2 += '<g transform="translate(' + X(t) + ' ' + Y(t) + ') rotate(' + ((t.hdg || 0) - 90).toFixed(0) + ')"><path d="M12 0 L-8 -8 L-4 0 L-8 8 Z" fill="#C8102E" stroke="#fff" stroke-width="1.5"/></g>';
   svg.innerHTML = h2;
-  $('mapFrom').textContent = pl.origin.icao + (pl.origin.rwy ? ' · piste ' + pl.origin.rwy : '');
-  $('mapTo').textContent = pl.destination.icao + (pl.destination.rwy ? ' · piste ' + pl.destination.rwy : '');
+  $('mapFrom').textContent = pl ? pl.origin.icao + (pl.origin.rwy ? ' · piste ' + pl.origin.rwy : '') : '';
+  $('mapTo').textContent = pl ? pl.destination.icao + (pl.destination.rwy ? ' · piste ' + pl.destination.rwy : '') : '';
 }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mapmode]'); if (!b) return;
+  S.mapMode = b.dataset.mapmode;
+  document.querySelectorAll('[data-mapmode]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+  renderMap(null);
+});
 function renderTod(tod, phase) {
   const el = $('todText');
   if (!S.plan || !S.plan.tod) { el.textContent = 'Charge un plan SimBrief pour que Max calcule le TOD.'; return; }
@@ -252,6 +270,7 @@ async function startFlight(mode) {
   $('prep').hidden = true; $('live').hidden = false; $('btnStop').hidden = false;
   const curM = missionId && S.career ? S.career.missions.find((m) => m.id === missionId) : null;
   $('flightSub').textContent = (curM ? 'Mission : ' + curM.title + ' · ' : '') + (S.plan ? (S.plan.callsign || '') + ' · ' + S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol sans plan SimBrief') + (aircraft ? ' · ' + aircraft : '') + (mode === 'demo' ? ' · démonstration' : '');
+  S.lastPos = null;
   renderPhases(0); renderMap(null); renderTod(null, 0);
   afv.voicePreload();
   renderMaxVoiceHint();

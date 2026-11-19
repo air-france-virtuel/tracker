@@ -4,6 +4,7 @@
     "date": "2026-11-19",
     "added": [
       "Carte des vols réels en cours : zoom, déplacement, vues Monde, Europe, Atlantique et Antilles, route du vol choisi",
+      "Carte du monde dans le tracker de vol : route, TOD et position de l’avion, avec un mode « Suivre l’avion »",
       "Nouveau logo AFV dans le tracker, l’icône et l’installateur",
       "Pop-up dès qu’une nouvelle mise à jour est trouvée, avec ce qui change et un bouton pour l’installer"
     ],

@@ -6,7 +6,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const KEY = process.env.AERODATABOX_KEY || '';
+// la clé peut contenir des espaces, guillemets ou un retour à la ligne si elle a été collée : on les retire
+const RAW_KEY = process.env.AERODATABOX_KEY || '';
+const KEY = (RAW_KEY.match(/[A-Za-z0-9]{40,}/) || [RAW_KEY.trim()])[0];
 const HOST = 'aerodatabox.p.rapidapi.com';
 const HUBS = ['LFPG', 'LFPO'];
 const AIRPORTS_CSV = 'https://davidmegginson.github.io/ourairports-data/airports.csv'; // OurAirports, domaine public
@@ -89,6 +91,8 @@ function parisDate(now) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'E
 async function main() {
   const out = process.argv[2] || 'out';
   if (!KEY) { console.error('Secret AERODATABOX_KEY manquant.'); process.exit(1); }
+  // diagnostic sans révéler la clé : longueur et caractères
+  console.log('Clé : ' + KEY.length + ' caractères' + (RAW_KEY.length !== KEY.length ? ' (nettoyée, ' + RAW_KEY.length + ' avant)' : '') + (/^[A-Za-z0-9]+$/.test(KEY) ? ', format correct' : ', caractères inattendus'));
   const day = parisDate(new Date());
   const flights = new Map();
   for (const hub of HUBS) {

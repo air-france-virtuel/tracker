@@ -91,6 +91,7 @@ class Chat extends EventEmitter {
         this.setState('ready');
       } catch (e) {
         this.setState('error', friendly(e));
+        clearTimeout(this.retry); this.retry = setTimeout(() => { if (this.state === 'error') this.start(); }, 60000); // nouvel essai dans 1 min
       } finally { this.starting = null; }
       return this.status();
     })();
@@ -185,6 +186,7 @@ class Chat extends EventEmitter {
   visible() { return this.messages.filter((m) => !m.deleted).slice(-HISTORY); }
 
   stop() {
+    clearTimeout(this.retry);
     if (this.channel) { try { this.sb.removeChannel(this.channel); } catch (e) { /* rien */ } }
     this.channel = null; this.online = [];
     if (this.state !== 'off') this.state = 'idle';

@@ -1,6 +1,6 @@
 {
   "clientId": "1573087821953245324",
-  "largeImage": "afv",
+  "largeImage": "afv-discord-1024",
   "smallImage": "",
   "buttons": [
     { "label": "Télécharger le tracker", "url": "https://github.com/air-france-virtuel/tracker/releases/latest/download/AirFranceVirtuel-Tracker-Setup.exe" }

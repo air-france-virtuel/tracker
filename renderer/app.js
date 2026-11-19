@@ -1152,7 +1152,7 @@ function renderPlanning() {
     list.map((f) => '<tr><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
       '<td>' + (f.type || f.model ? '<b>' + esc(f.model || f.type) + '</b>' + (f.reg || (f.model && f.type) ? '<div class="muted small">' + esc([f.model ? f.type : '', f.reg].filter(Boolean).join(' · ')) + '</div>' : '') : '<span class="muted">…</span>') + '</td>' +
       '<td><span class="cat ' + esc(f.cat) + '">' + esc(CAT[f.cat] || f.cat) + '</span>' + (f.distKm != null ? '<div class="muted small">' + fmt(f.distKm) + ' km</div>' : '') + '</td>' +
-      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + (f.scheduled ? '' : '<div class="muted small">estimé</div>') + '</td>' +
+      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + (f.scheduled && !f.depEstimated ? '' : '<div class="muted small">estimé</div>') + '</td>' +
       '<td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
       '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
       '<td><div class="row">' + (f.reg ? '<button class="btn small ghost" data-prot="' + esc(f.reg) + '" title="Tous les vols de cet avion aujourd’hui">Journée de l’avion</button>' : '') + '<a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +

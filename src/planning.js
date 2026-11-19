@@ -89,10 +89,10 @@ class Planning {
         seen.add(dg + '|' + f.from + '|' + f.to);
         let status = 'Programmé';
         if (/cancel/i.test(f.status)) status = 'Annulé';
-        else if ([...live].some((c) => c.replace(/^0+/, '') === dg)) status = 'En vol';
+        else if (f.callsignOnly ? live.has(f.number.replace(/^AFR/, '')) : [...live].some((c) => c.replace(/^0+/, '') === dg)) status = 'En vol';
         else if (f.arrUtc && f.arrUtc < t) status = 'Arrivé';
         else if (f.depUtc && f.depUtc < t) status = 'En cours';
-        out.push(Object.assign({}, f, { key, callsign: 'AFR' + dg, depEst: f.depUtc, arrEst: f.arrUtc, scheduled: true, status, lastSeen: f.depUtc || 0 }));
+        out.push(Object.assign({}, f, { key, callsign: f.callsignOnly ? f.number : 'AFR' + dg, depEst: f.depUtc, arrEst: f.arrUtc, scheduled: true, status, lastSeen: f.depUtc || 0 }));
       }
     }
     for (const f of base.flights) {

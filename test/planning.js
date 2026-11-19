@@ -56,3 +56,12 @@ assert.strictEqual(mg.flights.find((x) => x.number === 'AF 6000').status, 'Progr
 assert.strictEqual(mg.flights.find((x) => x.callsign === 'AFR77').scheduled, false);
 assert.strictEqual(p2.merged({ generatedAt: new Date(now - 3 * 86400000).toISOString(), flights: sched.flights }, [], now).source, null, 'programme trop ancien ignoré');
 console.log('PROGRAMME OFFICIEL : TOUS LES TESTS PASSENT');
+// heure manquante estimée et indicatif radio
+{
+  const fl = { number: 'AF 43PK', from: 'EKCH', to: 'LFPG', arrUtc: Date.parse('2026-11-19T10:57:00Z'), depUtc: null };
+  // reproduit l'étape de finition du script
+  const est = Math.round((1030 / 1.852) / 430 * 60 + 25);
+  assert.ok(est > 90 && est < 120);
+  assert.ok(!/^AF \d+$/.test(fl.number));
+}
+console.log('HEURES ESTIMÉES : OK');

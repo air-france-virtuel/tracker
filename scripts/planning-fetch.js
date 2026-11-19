@@ -115,6 +115,14 @@ async function main() {
       fromPos: a ? [a[0], a[1]] : null, toPos: b ? [b[0], b[1]] : null,
       distKm, cat: category(distKm), blockMin: f.depUtc && f.arrUtc ? Math.round((f.arrUtc - f.depUtc) / 60000) : null
     });
+  }).map((f) => {
+    // heure manquante : on l'estime avec la distance (≈ 430 kt + 25 min de roulage), et on le signale
+    const est = f.distKm != null ? Math.round((f.distKm / 1.852) / 430 * 60 + 25) : null;
+    if (!f.depUtc && f.arrUtc && est) { f.depUtc = f.arrUtc - est * 60000; f.depEstimated = true; f.blockMin = est; }
+    if (!f.arrUtc && f.depUtc && est) { f.arrUtc = f.depUtc + est * 60000; f.arrEstimated = true; f.blockMin = est; }
+    // « AF 43PK » : c'est un indicatif radio (AFR43PK), pas un numéro de vol commercial
+    if (!/^AF \d+$/.test(f.number)) { f.callsignOnly = true; f.number = 'AFR' + f.number.replace(/^AF\s?/, ''); }
+    return f;
   }).sort((x, y) => (x.depUtc || 0) - (y.depUtc || 0));
   const doc = { day, generatedAt: new Date().toISOString(), source: 'AeroDataBox', hubs: HUBS, count: list.length, flights: list };
   fs.mkdirSync(path.join(out, 'planning'), { recursive: true });

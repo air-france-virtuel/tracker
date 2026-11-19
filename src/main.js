@@ -188,7 +188,7 @@ function setupUpdater() {
 // ---------- icône près de l'horloge de Windows (zone de notification) ----------
 let tray = null;
 let quitting = false;
-let trayState = { flying: false, callsign: '', route: '', phase: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
+let trayState = { flying: false, callsign: '', route: '', phase: '', remaining: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
 app.on('before-quit', () => { quitting = true; });
 function showMain(tab, action) {
   if (!win || win.isDestroyed()) createWindow();
@@ -204,7 +204,7 @@ function trayMenu() {
   const login = process.platform === 'win32' ? app.getLoginItemSettings().openAtLogin : false;
   return Menu.buildFromTemplate([
     { label: 'Air France Virtuel – Tracker ' + VERSION, enabled: false },
-    { label: t.flying ? '✈  ' + [t.callsign, t.route, t.phase].filter(Boolean).join(' · ') : 'Aucun vol en cours', enabled: false },
+    { label: t.flying ? '✈  ' + [t.callsign, t.route, t.phase, t.remaining].filter(Boolean).join(' · ') : 'Aucun vol en cours', enabled: false },
     { label: sim.connected ? '●  Simulateur connecté' : '○  Simulateur non connecté', enabled: false },
     { type: 'separator' },
     { label: 'Ouvrir le tracker', click: () => showMain() },
@@ -238,7 +238,7 @@ function trayMenu() {
 function trayRefresh() {
   if (!tray) return;
   const t = trayState;
-  const tip = 'Air France Virtuel – Tracker\n' + (t.flying ? [t.callsign, t.route, t.phase].filter(Boolean).join(' · ') : (sim.connected ? 'Simulateur connecté' : 'Simulateur non connecté'));
+  const tip = 'Air France Virtuel – Tracker\n' + (t.flying ? [t.callsign, t.route, t.phase, t.remaining].filter(Boolean).join(' · ') : (sim.connected ? 'Simulateur connecté' : 'Simulateur non connecté'));
   tray.setToolTip(tip.slice(0, 127));
   tray.setContextMenu(trayMenu());
 }

@@ -17,12 +17,12 @@ const server = net.createServer((c) => {
 server.listen(pipePath(0), async () => {
   const p = new DiscordPresence();
   p.configure('123456789012345678', true);
-  p.set(buildActivity({ flying: true, callsign: 'AFR123', route: 'LFPG → LFMN', phase: 'Croisière', alt: 'FL350', aircraft: 'A320', startedAt: 1700000000000 }, { largeImage: 'afv', buttons: [{ label: 'Télécharger le tracker', url: 'https://example.com/x' }, { label: 'mauvais', url: 'http://x' }] }));
+  p.set(buildActivity({ flying: true, callsign: 'AFR123', route: 'LFPG → LFMN', phase: 'Croisière', alt: 'FL350', remaining: 'reste 1 h 12', aircraft: 'A320', startedAt: 1700000000000 }, { largeImage: 'afv', buttons: [{ label: 'Télécharger le tracker', url: 'https://example.com/x' }, { label: 'mauvais', url: 'http://x' }] }));
   await new Promise((r) => setTimeout(r, 400));
   assert.strictEqual(got[0].op, 0); assert.strictEqual(got[0].d.client_id, '123456789012345678');
   const act = got.find((g) => g.op === 1 && g.d.cmd === 'SET_ACTIVITY').d.args.activity;
   assert.strictEqual(act.details, 'Vol AFR123 · LFPG → LFMN');
-  assert.strictEqual(act.state, 'Croisière · FL350');
+  assert.strictEqual(act.state, 'Croisière · FL350 · reste 1 h 12');
   assert.strictEqual(act.timestamps.start, 1700000000000);
   assert.strictEqual(act.buttons.length, 1);
   // au sol

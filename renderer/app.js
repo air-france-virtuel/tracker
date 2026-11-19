@@ -1386,6 +1386,7 @@ function trayPush() {
     aircraft: S.flight ? ((S.flight.aircraft) || (pl && pl.aircraft) || '') : '',
     // temps de vol : depuis le décollage, sinon depuis le départ du parking, sinon depuis le début du suivi
     startedAt: S.flight ? ((S.oooi && (S.oooi.off || S.oooi.out)) || S.flightStartedAt || 0) : 0,
+    remaining: S.flight && S.ops && S.ops.eta && S.phase != null && S.phase < 8 ? (() => { const m = Math.max(0, Math.round((S.ops.eta - Date.now()) / 60000)); return 'reste ' + (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min'); })() : '',
     grade: c ? c.gradeName : '',
     plan: !!S.plan, compact: !!S.compactOn
   };

@@ -112,8 +112,10 @@ function buildActivity(st, cfg) {
   cfg = cfg || {};
   const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Air France Virtuel · Tracker' }, instance: false };
   if (st && st.flying) {
-    a.details = cut([st.callsign, st.route].filter(Boolean).join(' · ') || 'Vol libre', 128);
-    a.state = cut([st.phase, st.alt, st.aircraft].filter(Boolean).join(' · ') || 'En vol', 128);
+    // « Vol AFR123 · LFPG → LFMN » puis « Croisière · FL350 » ; Discord ajoute le temps de vol (chrono)
+    a.details = cut('Vol ' + ([st.callsign, st.route].filter(Boolean).join(' · ') || 'libre'), 128);
+    a.state = cut([st.phase, st.alt].filter(Boolean).join(' · ') || 'En vol', 128);
+    a.assets.large_text = 'Vol pour Air France Virtuel';
     if (st.startedAt) a.timestamps = { start: Math.floor(st.startedAt) };
     if (cfg.smallImage) { a.assets.small_image = cfg.smallImage; a.assets.small_text = cut(st.phase || 'En vol', 128); }
   } else {

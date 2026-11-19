@@ -21,8 +21,8 @@ server.listen(pipePath(0), async () => {
   await new Promise((r) => setTimeout(r, 400));
   assert.strictEqual(got[0].op, 0); assert.strictEqual(got[0].d.client_id, '123456789012345678');
   const act = got.find((g) => g.op === 1 && g.d.cmd === 'SET_ACTIVITY').d.args.activity;
-  assert.strictEqual(act.details, 'AFR123 · LFPG → LFMN');
-  assert.strictEqual(act.state, 'Croisière · FL350 · A320');
+  assert.strictEqual(act.details, 'Vol AFR123 · LFPG → LFMN');
+  assert.strictEqual(act.state, 'Croisière · FL350');
   assert.strictEqual(act.timestamps.start, 1700000000000);
   assert.strictEqual(act.buttons.length, 1);
   // au sol

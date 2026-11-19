@@ -1384,7 +1384,8 @@ function trayPush() {
     phase: S.flight && S.phase != null ? PHASES[S.phase] : '',
     alt: S.flight && t && !t.onGround ? (t.alt >= 18000 ? 'FL' + Math.round(t.alt / 1000) * 10 : Math.round(t.alt / 500) * 500 + ' ft') : '',
     aircraft: S.flight ? ((S.flight.aircraft) || (pl && pl.aircraft) || '') : '',
-    startedAt: S.flightStartedAt || 0,
+    // temps de vol : depuis le décollage, sinon depuis le départ du parking, sinon depuis le début du suivi
+    startedAt: S.flight ? ((S.oooi && (S.oooi.off || S.oooi.out)) || S.flightStartedAt || 0) : 0,
     grade: c ? c.gradeName : '',
     plan: !!S.plan, compact: !!S.compactOn
   };

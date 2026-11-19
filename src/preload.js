@@ -37,11 +37,13 @@ contextBridge.exposeInMainWorld('afv', {
   compactPush: (d) => ipcRenderer.send('compact:push', d),
   getRadar: () => ipcRenderer.invoke('radar:get'),
   getNews: (force) => ipcRenderer.invoke('news:get', !!force),
+  getPlanning: (refresh) => ipcRenderer.invoke('planning:get', !!refresh),
+  togglePlanning: (key) => ipcRenderer.invoke('planning:toggle', key),
   realLive: (force) => ipcRenderer.invoke('real:live', !!force),
   realDetails: (cs, hex) => ipcRenderer.invoke('real:details', cs, hex),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

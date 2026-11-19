@@ -275,7 +275,31 @@ app.whenReady().then(() => {
   ipcMain.handle('news:get', (_e, force) => newsMod.news(!!force));
 
   // ---------- vols réels ----------
-  ipcMain.handle('real:live', (_e, force) => real.live(!!force));
+  const { Planning } = require('./planning');
+  const planning = new Planning(path.join(dataDir(), 'planning'));
+  const typesFile = path.join(dataDir(), 'planning', 'avions.json');
+  try { real.typeCacheLoad(JSON.parse(fs.readFileSync(typesFile, 'utf8'))); } catch (e) { /* premier lancement */ }
+  let lastRecorded = 0;
+  // À chaque relevé des vols en direct : on complète le type d'avion et on note les vols dans le planning du jour.
+  async function liveAndRecord(force) {
+    const r = await real.live(force);
+    if (r && r.at && r.at !== lastRecorded && r.flights && r.flights.length) {
+      lastRecorded = r.at;
+      planning.record(r.flights, r.at); // tout de suite, sans les types d'avion
+      // les types d'avion arrivent en arrière-plan (jusqu'à 120 nouveaux avions par relevé)
+      recording = real.types(r.flights.filter((f) => f.from), 120).then((withTypes) => {
+        planning.record(withTypes, r.at);
+        fs.mkdirSync(path.dirname(typesFile), { recursive: true });
+        fs.writeFileSync(typesFile, JSON.stringify(real.typeCacheDump()));
+        send('planning:changed', planning.get());
+      }).catch((e) => console.error('planning :', e));
+    }
+    return r;
+  }
+  let recording = null;
+  ipcMain.handle('real:live', (_e, force) => liveAndRecord(!!force));
+  ipcMain.handle('planning:get', async (_e, refresh) => { if (refresh) await liveAndRecord(false); return planning.get(); });
+  ipcMain.handle('planning:toggle', (_e, key) => planning.toggle(String(key || '')));
   ipcMain.handle('real:details', (_e, cs, hex) => real.details(String(cs || ''), String(hex || '')));
 
   // ---------- voix de Max ----------

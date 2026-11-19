@@ -17,6 +17,7 @@
     <button class="nav" data-tab="carriere">Ma carrière</button>
     <button class="nav" data-tab="missions">Missions &amp; rôles</button>
     <button class="nav" data-tab="reels">Vols réels</button>
+    <button class="nav" data-tab="planning">Planning du jour</button>
     <button class="nav" data-tab="vol">Tracker de vol <span class="beta-pill">BÊTA</span></button>
     <button class="nav" data-tab="hangar">Hangar &amp; flotte</button>
     <button class="nav" data-tab="vols">Mes vols</button>
@@ -124,6 +125,20 @@
           <div class="card mis-detail" id="realDetail"><p class="muted">Choisis un vol dans la liste.</p></div>
         </div>
         <p class="muted small">Positions : <b>OpenSky Network</b> (usage non commercial). Routes : <b>adsb.lol</b> (données ODbL) et <b>adsbdb.com</b>. Les routes sont estimées à partir de l’indicatif du vol et peuvent être fausses. Actualisation toutes les 5 minutes au plus.</p>
+      </div>
+    </section>
+
+    <!-- ===================== PLANNING DU JOUR ===================== -->
+    <section class="tab" id="tab-planning">
+      <header class="top">
+        <div><h1>Planning du jour</h1><div class="sub" id="planSub">Les vrais vols Air France d’aujourd’hui, avec l’avion utilisé</div></div>
+        <button class="btn ghost" id="btnPlanRefresh">Actualiser</button>
+      </header>
+      <div class="body">
+        <div class="row wrap" id="planCats"></div>
+        <div class="card" id="planMine"></div>
+        <div class="card" style="padding:0;overflow:hidden"><div id="planTable"></div></div>
+        <p class="muted small">La liste se remplit avec les vols Air France vus en l’air aujourd’hui (heure UTC) pendant que le tracker est ouvert : plus tu l’ouvres tôt, plus le planning est complet. Les heures de décollage et les durées sont estimées. Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km. Avions : adsbdb.com.</p>
       </div>
     </section>
 

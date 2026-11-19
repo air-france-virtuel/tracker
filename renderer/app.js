@@ -1071,3 +1071,44 @@ async function loadNews(force) {
 }
 $('btnNews').addEventListener('click', () => loadNews(true));
 loadNews(false);
+
+// ---------------- planning du jour ----------------
+S.plan2 = { cat: 'tous', data: null };
+const CAT = { court: 'Court-courrier', moyen: 'Moyen-courrier', long: 'Long-courrier', 'court-moyen': 'Court / moyen', inconnu: 'Non classé' };
+const hm = (min) => min == null ? '—' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
+function planSimbrief(f) {
+  return 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(Object.assign({ orig: f.from, dest: f.to, airline: 'AFR', fltnum: (f.number || '').replace(/\D/g, '') }, f.type ? { type: f.type } : {})).toString();
+}
+async function loadPlanning(refresh) {
+  if (refresh) $('planSub').textContent = 'Relevé des vols Air France en cours…';
+  S.plan2.data = await afv.getPlanning(refresh);
+  renderPlanning();
+}
+afv.on('planning:changed', (d) => { S.plan2.data = d; if ($('tab-planning').classList.contains('on')) renderPlanning(); });
+function renderPlanning() {
+  const d = S.plan2.data; if (!d) return;
+  const all = d.flights.slice().sort((a, b) => (a.depEst || a.lastSeen) - (b.depEst || b.lastSeen));
+  const count = (c) => all.filter((f) => f.cat === c).length;
+  $('planSub').textContent = all.length + ' vols Air France relevés aujourd’hui (' + new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ')';
+  const cats = [['tous', 'Tous', all.length], ['court', 'Court-courrier', count('court')], ['moyen', 'Moyen-courrier', count('moyen')], ['long', 'Long-courrier', count('long')]];
+  $('planCats').innerHTML = cats.map(([k, l, n]) => '<button class="tag' + (S.plan2.cat === k ? ' on' : '') + '" data-pcat="' + k + '" aria-pressed="' + (S.plan2.cat === k) + '">' + l + ' · ' + n + '</button>').join('');
+  const byKey = Object.fromEntries(all.map((f) => [f.key, f]));
+  const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
+  $('planMine').innerHTML = '<h3 class="caps">Ma journée</h3>' + (mine.length ? '<div class="mine">' + mine.map((f, i) => '<div class="am"><div class="t">' + (i + 1) + '. ' + esc(f.number || f.callsign) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</div><div class="muted small">' + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <a href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a> · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>').join('') + '</div>'
+    : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>');
+  const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
+  $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Distance</th><th>Durée est.</th><th>Décollage est.</th><th></th></tr></thead><tbody>' +
+    list.map((f) => '<tr><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
+      '<td>' + (f.type ? '<b>' + esc(f.type) + '</b>' + (f.reg ? '<div class="muted small">' + esc(f.reg) + '</div>' : '') : '<span class="muted">…</span>') + '</td>' +
+      '<td><span class="cat ' + esc(f.cat) + '">' + esc(CAT[f.cat] || f.cat) + '</span></td><td>' + (f.distKm != null ? fmt(f.distKm) + ' km' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
+      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td>' +
+      '<td><div class="row"><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +
+      '<button class="star' + (d.mine.includes(f.key) ? ' on' : '') + '" data-pmine="' + esc(f.key) + '" aria-pressed="' + d.mine.includes(f.key) + '" aria-label="Ajouter à ma journée">' + (d.mine.includes(f.key) ? '★' : '☆') + '</button></div></td></tr>').join('') + '</tbody></table>'
+    : '<div class="empty" style="margin:16px">Aucun vol relevé pour le moment' + (S.plan2.cat !== 'tous' ? ' dans cette catégorie' : '') + '. Clique sur Actualiser.</div>';
+}
+document.addEventListener('click', async (e) => {
+  const c = e.target.closest('[data-pcat]'); if (c) { S.plan2.cat = c.dataset.pcat; renderPlanning(); return; }
+  const m = e.target.closest('[data-pmine]'); if (m) { S.plan2.data = await afv.togglePlanning(m.dataset.pmine); renderPlanning(); }
+});
+$('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
+document.querySelector('[data-tab=planning]').addEventListener('click', () => loadPlanning(true));

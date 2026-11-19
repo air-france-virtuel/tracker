@@ -3,6 +3,7 @@
     "version": "0.4.2-beta",
     "date": "2026-11-19",
     "added": [
+      "Planning du jour : les vrais vols Air France de la journée avec l’avion utilisé, classés en court, moyen et long-courrier, durée estimée, bouton SimBrief et « Ma journée » pour préparer ses vols",
       "Infos du jour : l’actualité d’Air France (salle de presse officielle, ou Google Actualités en secours), avec un lien vers chaque article"
     ],
     "removed": [],

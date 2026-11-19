@@ -163,4 +163,25 @@ async function details(callsign, icao24) {
   return res;
 }
 
-module.exports = { setFetch, live, details, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };
+// Types d'avion pour plusieurs vols (adsbdb, 6 à la fois, « max » au plus) ; le cache peut être sauvegardé.
+async function types(flights, max) {
+  const todo = flights.filter((f) => f.icao24 && !typeCache.has(f.icao24)).slice(0, max || 120);
+  let k = 0;
+  const worker = async () => {
+    while (k < todo.length) {
+      const f = todo[k++];
+      try {
+        const r = await get(ADSBDB + 'aircraft/' + encodeURIComponent(f.icao24), 10000);
+        if (r.status === 429) { k = todo.length; break; }
+        const a = r.ok ? ((await r.json()).response || {}).aircraft : null;
+        typeCache.set(f.icao24, a ? { type: a.icao_type || '', reg: a.registration || '', model: [a.manufacturer, a.type].filter(Boolean).join(' ') } : null);
+      } catch (e) { /* type inconnu */ }
+    }
+  };
+  await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
+  return flights.map((f) => Object.assign({}, f, typeCache.get(f.icao24) || {}));
+}
+const typeCacheDump = () => Object.fromEntries([...typeCache].filter(([, v]) => v));
+const typeCacheLoad = (o) => { for (const [k, v] of Object.entries(o || {})) typeCache.set(k, v); };
+
+module.exports = { setFetch, live, details, types, typeCacheDump, typeCacheLoad, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };

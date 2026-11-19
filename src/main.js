@@ -156,7 +156,7 @@ function stopFlight() {
 }
 
 // ---------- mises à jour automatiques (GitHub : air-france-virtuel/tracker) ----------
-const upd = { state: 'idle', version: null, percent: 0, notes: '', error: '', failed: null, direct: 'https://github.com/air-france-virtuel/tracker/releases/latest/download/AirFranceVirtuel-Tracker-Setup.exe' };
+const upd = { state: 'idle', version: null, percent: 0, notes: '', error: '', failed: null, direct: 'https://github.com/air-france-virtuel/tracker/releases/latest/download/LesAilesFrancaises-Tracker-Setup.exe' };
 let updInstalling = false;
 // Au démarrage : une mise à jour téléchargée lors de la session précédente aurait dû s'installer à la fermeture.
 // Si la version n'a pas changé, l'installation a échoué (souvent bloquée par Windows Smart App Control).
@@ -214,7 +214,7 @@ function trayMenu() {
   const t = trayState;
   const login = process.platform === 'win32' ? app.getLoginItemSettings().openAtLogin : false;
   return Menu.buildFromTemplate([
-    { label: 'Air France Virtuel – Tracker ' + VERSION, enabled: false },
+    { label: 'Les Ailes Françaises – Tracker ' + VERSION, enabled: false },
     { label: t.flying ? '✈  ' + [t.callsign, t.route, t.phase, t.remaining].filter(Boolean).join(' · ') : 'Aucun vol en cours', enabled: false },
     { label: sim.connected ? '●  Simulateur connecté' : '○  Simulateur non connecté', enabled: false },
     { type: 'separator' },
@@ -249,7 +249,7 @@ function trayMenu() {
 function trayRefresh() {
   if (!tray) return;
   const t = trayState;
-  const tip = 'Air France Virtuel – Tracker\n' + (t.flying ? [t.callsign, t.route, t.phase, t.remaining].filter(Boolean).join(' · ') : (sim.connected ? 'Simulateur connecté' : 'Simulateur non connecté'));
+  const tip = 'Les Ailes Françaises – Tracker\n' + (t.flying ? [t.callsign, t.route, t.phase, t.remaining].filter(Boolean).join(' · ') : (sim.connected ? 'Simulateur connecté' : 'Simulateur non connecté'));
   tray.setToolTip(tip.slice(0, 127));
   tray.setContextMenu(trayMenu());
 }
@@ -266,7 +266,7 @@ function createTray() {
 }
 
 
-// ---------- Discord : « Joue à Air France Virtuel » ----------
+// ---------- Discord : « Joue à Les Ailes Françaises » ----------
 const discordMod = require('./discord');
 const discord = new discordMod.DiscordPresence({ log: (m) => console.log(m) });
 const discordCfg = () => (careerData && careerData.get('discord.json').data) || {};
@@ -285,7 +285,7 @@ function createWindow(hidden) {
   win = new BrowserWindow({
     show: !hidden,
     width: 1360, height: 860, minWidth: 1100, minHeight: 720,
-    title: 'Air France Virtuel – Tracker ' + VERSION,
+    title: 'Les Ailes Françaises – Tracker ' + VERSION,
     icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
     backgroundColor: '#F2F4F8',
     autoHideMenuBar: true,
@@ -299,7 +299,7 @@ function createWindow(hidden) {
     win.hide();
     if (!store.trayHintShown && process.platform === 'win32') {
       store.trayHintShown = true; saveStore();
-      try { tray.displayBalloon({ iconType: 'info', title: 'Le tracker reste ouvert', content: 'Il continue près de l’horloge. Clic droit sur l’icône AFV pour les raccourcis ou pour quitter.' }); } catch (err) { /* rien */ }
+      try { tray.displayBalloon({ iconType: 'info', title: 'Le tracker reste ouvert', content: 'Il continue près de l’horloge. Clic droit sur l’icône des Ailes Françaises pour les raccourcis ou pour quitter.' }); } catch (err) { /* rien */ }
     }
   });
   // fermer la fenêtre principale ferme aussi le panneau compact
@@ -378,7 +378,7 @@ app.whenReady().then(() => {
     if (compact && !compact.isDestroyed()) { compact.show(); compact.focus(); return true; }
     compact = new BrowserWindow({
       width: 400, height: 840, minWidth: 340, minHeight: 560, alwaysOnTop: true,
-      title: 'AFV Tracker – panneau compact', icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
+      title: 'Les Ailes Françaises – panneau compact', icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
       backgroundColor: '#0A1E4A', autoHideMenuBar: true,
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
     });

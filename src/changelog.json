@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.6.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Nouveau nom : la compagnie s’appelle maintenant « Les Ailes Françaises » (LAF)",
+      "Nouveau logo : l’insigne de pilote aux ailes blanches et à l’écusson bleu-blanc-rouge, partout (menu, icône, près de l’horloge, installateur, Discord)",
+      "Mention claire : projet de loisir non officiel, sans lien avec Air France",
+      "Nouveaux raccourcis « Les Ailes Françaises - Tracker » sur le bureau et dans le menu Démarrer"
+    ],
+    "removed": [
+      "Ancien nom « Air France Virtuel » et ancien logo AFV",
+      "Anciens raccourcis du bureau et du menu Démarrer (remplacés automatiquement)"
+    ],
+    "fixed": []
+  },
+  {
     "version": "0.5.4-beta",
     "date": "2026-11-20",
     "added": [

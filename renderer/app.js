@@ -100,7 +100,7 @@ function ANNOUNCEMENTS() {
   const dest = destName();
   const fl = S.plan && S.plan.cruiseAlt ? Math.round(S.plan.cruiseAlt / 1000) * 1000 : 35000;
   return [
-    { key: 'boarding_welcome', phase: 0, title: 'Bienvenue à bord', text: 'Mesdames et messieurs, bonjour et bienvenue à bord de ce vol Air France Virtuel à destination de ' + dest + '. Merci de ranger vos bagages et de prendre place.' },
+    { key: 'boarding_welcome', phase: 0, title: 'Bienvenue à bord', text: 'Mesdames et messieurs, bonjour et bienvenue à bord de ce vol Les Ailes Françaises à destination de ' + dest + '. Merci de ranger vos bagages et de prendre place.' },
     { key: 'boarding_safety', phase: 0, title: 'Consignes de sécurité', text: 'Nous allons vous présenter les consignes de sécurité. Merci de bien vouloir suivre la démonstration de l’équipage.' },
     { key: 'taxi_crew', phase: 1, title: 'Préparation au départ', text: 'Personnel navigant, préparation pour le départ. Mesdames et messieurs, veuillez attacher votre ceinture.' },
     { key: 'takeoff_crew', phase: 2, title: 'Décollage', text: 'Personnel navigant, à vos places pour le décollage.' },
@@ -109,7 +109,7 @@ function ANNOUNCEMENTS() {
     { key: 'descent_start', phase: 5, title: 'Début de la descente', text: 'Mesdames et messieurs, nous avons commencé notre descente vers ' + dest + '. Merci de regagner votre siège et de relever votre tablette.' },
     { key: 'approach_crew', phase: 6, title: 'Atterrissage', text: 'Personnel navigant, à vos places pour l’atterrissage.' },
     { key: 'landing_welcome', phase: 7, title: 'Bienvenue à destination', text: 'Mesdames et messieurs, bienvenue à ' + dest + '. Merci de rester assis, ceinture attachée, jusqu’à l’arrêt complet de l’appareil.' },
-    { key: 'parking_deplane', phase: 8, title: 'Débarquement', text: 'Nous sommes arrivés au parking. Merci d’avoir choisi Air France Virtuel. Nous vous souhaitons une excellente journée.' }
+    { key: 'parking_deplane', phase: 8, title: 'Débarquement', text: 'Nous sommes arrivés au parking. Merci d’avoir choisi Les Ailes Françaises. Nous vous souhaitons une excellente journée.' }
   ];
 }
 function playPhaseAnnouncements(phase) {
@@ -503,7 +503,7 @@ $('stars').addEventListener('click', (e) => { const b = e.target.closest('[data-
 $('tags').addEventListener('click', (e) => { const b = e.target.closest('[data-tag]'); if (b) { S.tags[b.dataset.tag] = !S.tags[b.dataset.tag]; renderFb(); } });
 function fbText() {
   const tags = Object.keys(S.tags).filter((k) => S.tags[k]);
-  return 'Avis bêta tracker Air France Virtuel v' + $('ver').textContent + '\nNote : ' + S.stars + '/5\nPoints à améliorer : ' + (tags.join(', ') || '—') + '\n' + $('fbText').value.trim();
+  return 'Avis bêta tracker Les Ailes Françaises v' + $('ver').textContent + '\nNote : ' + S.stars + '/5\nPoints à améliorer : ' + (tags.join(', ') || '—') + '\n' + $('fbText').value.trim();
 }
 $('btnSendFb').addEventListener('click', async () => {
   if (!S.stars && !$('fbText').value.trim()) { $('fbMsg').textContent = 'Mets au moins une note ou un commentaire.'; return; }
@@ -593,7 +593,7 @@ afv.on('update:status', (u) => { const was = UPD && UPD.state; UPD = u; renderUp
 function updFailHtml(u) {
   const v = (u.failed && u.failed.version) || u.version || '';
   return '<p><b>La version ' + esc(v) + ' n’a pas pu s’installer.</b> Windows a sûrement bloqué l’installateur, car il n’est pas encore signé numériquement (protection « Smart App Control » ou antivirus). Ce n’est pas un virus.</p>' +
-    '<ol class="small"><li>Clique sur <b>Télécharger l’installateur</b> : il s’ouvre dans ton navigateur.</li><li>Ferme le tracker, puis lance le fichier téléchargé <b>AirFranceVirtuel-Tracker-Setup.exe</b>.</li>' +
+    '<ol class="small"><li>Clique sur <b>Télécharger l’installateur</b> : il s’ouvre dans ton navigateur.</li><li>Ferme le tracker, puis lance le fichier téléchargé <b>LesAilesFrancaises-Tracker-Setup.exe</b>.</li>' +
     '<li>Si Windows le bloque encore : <b>Paramètres › Confidentialité et sécurité › Sécurité Windows › Contrôle des applications et du navigateur › Paramètres de Smart App Control</b>. Attention, selon ta version de Windows, le désactiver peut être définitif : c’est ton choix.</li></ol>' +
     '<div class="row"><button class="btn red" data-manualupd>Télécharger l’installateur</button></div>' + (u.error ? '<p class="muted small">Détail : ' + esc(u.error) + '</p>' : '');
 }
@@ -1116,7 +1116,7 @@ function pushCompact() {
   if (!S.compactOn) return;
   const o = S.ops, t = o && o.t, R = S.route;
   afv.compactPush({
-    callsign: (S.plan && (S.plan.callsign || S.plan.flightNumber)) || (S.flight ? 'Vol libre' : 'AFV'),
+    callsign: (S.plan && (S.plan.callsign || S.plan.flightNumber)) || (S.flight ? 'Vol libre' : 'LAF'),
     from: S.plan ? S.plan.origin.icao : '', to: S.plan ? S.plan.destination.icao : '',
     phase: S.phase, phaseName: S.phase != null ? PHASES[S.phase] : '',
     progress: R && o && o.remaining != null ? Math.round((1 - o.remaining / R.total) * 100) : 0,

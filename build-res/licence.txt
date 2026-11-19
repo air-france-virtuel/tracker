@@ -1,11 +1,11 @@
-AIR FRANCE VIRTUEL - TRACKER DE VOL
+LES AILES FRANÇAISES - TRACKER DE VOL
 Conditions d'utilisation (version bêta)
 
-1. Projet de fans
-Air France Virtuel est une compagnie aérienne virtuelle créée par des passionnés de simulation de vol. Ce logiciel n'est ni affilié, ni approuvé, ni soutenu par Air France ou par une autre compagnie aérienne réelle.
+1. Projet de loisir non officiel
+Les Ailes Françaises est une compagnie aérienne virtuelle créée par des passionnés de simulation de vol. Ce logiciel n'est ni affilié, ni approuvé, ni soutenu par Air France, par Air France Virtual ou par une autre compagnie aérienne réelle. Les noms de compagnies réelles affichés (vols réels, actualité) servent uniquement à informer.
 
 2. Usage
-Ce logiciel est gratuit et réservé aux pilotes d'Air France Virtuel, pour un usage de loisir avec un simulateur de vol. Il ne doit jamais être utilisé pour la navigation aérienne réelle.
+Ce logiciel est gratuit, pour un usage de loisir avec un simulateur de vol. Il ne doit jamais être utilisé pour la navigation aérienne réelle.
 
 3. Version bêta
 Cette version est en cours de test. Elle peut contenir des erreurs. Tes avis aident à l'améliorer.
@@ -14,12 +14,17 @@ Cette version est en cours de test. Elle peut contenir des erreurs. Tes avis aid
 Le tracker vérifie et télécharge automatiquement ses nouvelles versions. Elles s'installent au redémarrage du logiciel.
 
 5. Données
-Tes réglages, ta flotte, tes sons et tes rapports de vol restent sur ton ordinateur. Le tracker se connecte à Internet uniquement pour lire ton plan SimBrief et vérifier les mises à jour.
+Tes réglages, ta flotte, tes sons, ta carrière et tes rapports de vol restent sur ton ordinateur. Le tracker se connecte à Internet pour lire ton plan SimBrief, les vols réels, l'actualité et la météo, et pour vérifier les mises à jour.
+Si tu utilises le Chat entre pilotes, ton nom de pilote, ton grade, ton vol en cours et tes messages sont envoyés au serveur du chat (Supabase, en Europe) et visibles par les autres pilotes. Les messages de plus de 60 jours peuvent être effacés. Tu peux couper le chat dans les Réglages.
+Si Discord est ouvert, ton vol en cours peut s'afficher sur ton profil Discord (désactivable dans les Réglages).
 
-6. Sons personnels
+6. Chat entre pilotes
+Reste courtois. La direction peut supprimer des messages et exclure un pilote du chat.
+
+7. Sons personnels
 Tu es responsable des fichiers audio que tu importes. Utilise tes propres enregistrements.
 
-7. Garantie
+8. Garantie
 Le logiciel est fourni « tel quel », sans garantie d'aucune sorte.
 
 En cliquant sur « J'accepte », tu acceptes ces conditions.

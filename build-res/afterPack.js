@@ -3,6 +3,11 @@ const path = require('path');
 const fs = require('fs');
 exports.default = async function afterPack(ctx) {
   if (ctx.electronPlatformName !== 'win32') return;
+  // Fichier lu par les mises à jour automatiques : electron-builder ne l'écrit pas pour une cible « dir ».
+  const pub = (ctx.packager.config.publish || [])[0] || {};
+  fs.writeFileSync(path.join(ctx.appOutDir, 'resources', 'app-update.yml'),
+    'owner: ' + pub.owner + '\nrepo: ' + pub.repo + '\nprovider: github\nupdaterCacheDirName: air-france-virtuel-tracker-updater\n');
+  console.log('  • app-update.yml écrit (mises à jour automatiques)');
   const ResEdit = await import('resedit');
   const pe = await import('pe-library');
   const { productFilename } = ctx.packager.appInfo;

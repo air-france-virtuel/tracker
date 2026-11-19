@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.4.1-beta",
+    "date": "2026-11-19",
+    "added": [],
+    "removed": [],
+    "fixed": [
+      "Mises à jour automatiques : le fichier de configuration manquait dans l’installation, la vérification échouait toujours"
+    ]
+  },
+  {
     "version": "0.4.0-beta",
     "date": "2026-11-19",
     "added": [

@@ -24,7 +24,9 @@ const VARS = [
   ['BRAKE PARKING POSITION', 'bool'],
   ['GEAR HANDLE POSITION', 'bool'],
   ['PLANE TOUCHDOWN NORMAL VELOCITY', 'feet per second'],
-  ['SIM RATE', 'number']
+  ['SIM RATE', 'number'],
+  ['AMBIENT WIND DIRECTION', 'degrees'],
+  ['AMBIENT WIND VELOCITY', 'knots']
 ];
 
 class SimLink extends EventEmitter {
@@ -80,7 +82,7 @@ class SimLink extends EventEmitter {
         this.emit('data', {
           lat: v[0], lon: v[1], alt: v[2], agl: v[3], ias: v[4], gs: v[5], vs: v[6], hdg: v[7],
           onGround: v[8] > 0.5, fuelKg: v[9] * 0.4536, engOn: v[10] > 0.5 || v[11] > 0.5,
-          parkBrake: v[12] > 0.5, gearDown: v[13] > 0.5, tdVel: v[14], simRate: v[15], title,
+          parkBrake: v[12] > 0.5, gearDown: v[13] > 0.5, tdVel: v[14], simRate: v[15], windDir: v[16], windKt: v[17], title,
           time: Date.now() / 1000
         });
       });

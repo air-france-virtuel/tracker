@@ -157,3 +157,18 @@ th{background:#F7F8FB;color:var(--muted);font-weight:600}
 #realMap .ap{fill:#fff;stroke:var(--red)}
 #realMap .lbl{font-weight:700;fill:var(--navy)}
 .brand svg{border-radius:9px;box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
+/* ----- tracker « centre des opérations » ----- */
+.strip{background:#fff;border:1px solid var(--line);border-radius:12px;display:grid;grid-template-columns:1.7fr repeat(6,1fr);gap:8px;padding:12px 16px;align-items:center}
+.strip .k{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.strip .v{font-size:19px;font-weight:700;color:var(--navy);white-space:nowrap}
+.strip .s{font-size:11.5px;font-weight:600;color:#1B5E32}.strip .s.warn{color:#8A1026}.strip .s.mut{color:var(--muted)}
+.strip .cs{font-size:21px;font-weight:800;color:var(--navy)}
+.stat{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--red);border:1.5px solid var(--red);border-radius:4px;padding:1px 6px;vertical-align:middle;margin-left:6px}
+.ops-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px}
+h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kp .tl{background:#F7F8FB;border:none;padding:8px 10px}.kp .tl .v{font-size:17px}
+.navlog table{border:none;border-radius:0;font-size:12.5px}.navlog td,.navlog th{padding:6px 6px}
+.navlog tr.past td{color:#9AA3B5}.navlog tr.cur td{background:#FFF4F5;color:var(--red);font-weight:700}
+.navlog .scroll{max-height:236px;overflow:auto}
+#profile{width:100%;height:auto}

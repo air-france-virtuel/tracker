@@ -12,13 +12,19 @@ function demoPlan() {
   const brg = bearingDeg(ORIGIN.lat, ORIGIN.lon, DEST.lat, DEST.lon);
   const toc = destinationPoint(ORIGIN.lat, ORIGIN.lon, brg, 95);
   const tod = destinationPoint(ORIGIN.lat, ORIGIN.lon, brg, total - 112);
+  const mid = destinationPoint(ORIGIN.lat, ORIGIN.lon, brg, (95 + total - 112) / 2);
   return {
     callsign: 'AFV123', flightNumber: 'AFV123', aircraft: 'A320', registration: '',
     origin: ORIGIN, destination: DEST, cruiseAlt: CRUISE, stepString: '', route: 'Vol de démonstration',
     distanceNm: Math.round(total), eteSec: 80 * 60, fuelPlanKg: 6800,
     metarDep: 'LFPG 191030Z 07008KT CAVOK 09/03 Q1024 NOSIG',
     metarArr: 'LFMN 191030Z 05006KT CAVOK 15/08 Q1021 NOSIG',
-    route_points: [{ ident: 'LFPG', lat: ORIGIN.lat, lon: ORIGIN.lon }, { ident: 'TOC', lat: toc.lat, lon: toc.lon }, { ident: 'TOD', lat: tod.lat, lon: tod.lon }, { ident: 'LFMN', lat: DEST.lat, lon: DEST.lon }],
+    route_points: [
+      { ident: 'LFPG', lat: ORIGIN.lat, lon: ORIGIN.lon, alt: 392, fuelKg: 6650 },
+      { ident: 'TOC', lat: toc.lat, lon: toc.lon, alt: CRUISE, fuelKg: 5750 },
+      { ident: 'DEMO1', lat: mid.lat, lon: mid.lon, alt: CRUISE, fuelKg: 5000 },
+      { ident: 'TOD', lat: tod.lat, lon: tod.lon, alt: CRUISE, fuelKg: 4350 },
+      { ident: 'LFMN', lat: DEST.lat, lon: DEST.lon, alt: 12, fuelKg: 3950 }],
     toc: { ident: 'TOC', lat: toc.lat, lon: toc.lon, alt: CRUISE },
     tod: { ident: 'TOD', lat: tod.lat, lon: tod.lon, alt: CRUISE },
     steps: [],
@@ -126,7 +132,7 @@ class DemoFlight {
     const agl = this.onGround ? 0 : this.alt - elev;
     return {
       lat: this.lat, lon: this.lon, alt: this.alt, agl, ias: this.alt > 25000 ? this.gs * 0.62 : this.gs * 0.92, gs: this.gs,
-      vs: this.vs, hdg: brg, onGround: this.onGround, fuelKg: this.fuel, engOn: eng, parkBrake: brake, gearDown: gear,
+      vs: this.vs, hdg: brg, onGround: this.onGround, fuelKg: this.fuel, engOn: eng, parkBrake: brake, gearDown: gear, windDir: 310, windKt: this.alt > 10000 ? 22 : 8,
       tdVel: this.stage === 'rollout' && this.stageT <= 1 && this.vsAtTouch ? -this.vsAtTouch / 60 : 0,
       title: 'Démonstration A320', time: this.t
     };

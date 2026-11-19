@@ -24,7 +24,8 @@ function parseOfp(j) {
     lat: num(f.pos_lat),
     lon: num(f.pos_long),
     alt: num(f.altitude_feet),
-    stage: str(f.stage)
+    stage: str(f.stage),
+    fuelKg: f.fuel_plan_onboard != null ? Math.round(toKg(f.fuel_plan_onboard)) : null
   })).filter((f) => f.lat || f.lon);
 
   // Paliers de montée : en croisière, chaque point où l'altitude prévue augmente.
@@ -55,7 +56,7 @@ function parseOfp(j) {
     fuelPlanKg: Math.round(toKg((j.fuel || {}).plan_ramp)),
     metarDep: str((j.weather || {}).orig_metar),
     metarArr: str((j.weather || {}).dest_metar),
-    route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon })),
+    route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon, alt: f.alt, fuelKg: f.fuelKg })),
     toc, tod, steps
   };
 }

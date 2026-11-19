@@ -159,7 +159,8 @@ function renderTelem(t) {
   const alt = t.alt >= 18000 ? 'FL' + Math.round(t.alt / 100) : fmt(t.alt) + ' ft';
   const items = [
     ['Altitude', alt], ['Vitesse indiquée', fmt(t.ias) + ' kt'], ['Vitesse sol', fmt(t.gs) + ' kt'],
-    ['Taux vertical', (t.vs > 0 ? '+' : '') + fmt(t.vs) + ' ft/min'], ['Cap', fmt(t.hdg) + '°'], ['Carburant', fmt(t.fuelKg / 1000, 1) + ' t']
+    ['Vario', (t.vs > 0 ? '+' : '') + fmt(t.vs) + ' ft/min'], ['Cap', fmt(t.hdg) + '°'],
+    ['Vent', t.windKt != null && Number.isFinite(t.windKt) ? String(Math.round(t.windDir)).padStart(3, '0') + '° / ' + fmt(t.windKt) + ' kt' : '—']
   ];
   $('telem').innerHTML = items.map(([k, v]) => '<div class="tl"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('');
 }
@@ -266,6 +267,7 @@ async function startFlight(mode) {
   await afv.startFlight({ mode, plan: S.plan, aircraft, demoHard: $('demoHard').checked, speed: 20, missionId });
   S.flight = { mode, aircraft };
   S.phase = 0; S.trail = []; queue.length = 0;
+  opsReset();
   $('alerts').innerHTML = '';
   $('prep').hidden = true; $('live').hidden = false; $('btnStop').hidden = false;
   const curM = missionId && S.career ? S.career.missions.find((m) => m.id === missionId) : null;
@@ -325,10 +327,12 @@ afv.on('flight:tick', (d) => {
   renderTelem(t);
   renderMap(t);
   renderTod(d.tod, d.phase);
-  if (S.plan) $('mapDist').textContent = '';
+  S.lastTod = d.tod;
+  opsTick(t, d);
 });
 afv.on('flight:event', (e) => {
   if (!S.flight) return;
+  opsEvent(e);
   if (e.type === 'phase') {
     S.phase = e.phase;
     renderPhases(e.phase);
@@ -850,3 +854,158 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-vi
     const el = document.querySelector('#realList [data-real="' + CSS.escape(f.callsign) + '"]'); if (el) el.scrollIntoView({ block: 'nearest' });
   });
 })();
+
+// ---------------- tracker « centre des opérations » ----------------
+const R_NM = 3440.065;
+function hav(a, b) {
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R_NM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+const utc = (ms) => ms ? new Date(ms).toISOString().slice(11, 16) + 'Z' : '—';
+// Route du plan : points avec distance cumulée, altitude et carburant prévus.
+function buildRoute(pl) {
+  if (!pl) return null;
+  let pts = (pl.route_points || []).map((p) => Object.assign({}, p));
+  if (!pts.length || pts[0].ident !== pl.origin.icao) pts.unshift({ ident: pl.origin.icao, lat: pl.origin.lat, lon: pl.origin.lon, alt: pl.origin.elev || 0 });
+  if (pts[pts.length - 1].ident !== pl.destination.icao) pts.push({ ident: pl.destination.icao, lat: pl.destination.lat, lon: pl.destination.lon, alt: pl.destination.elev || 0 });
+  let cum = 0;
+  pts.forEach((p, i) => { if (i) cum += hav(pts[i - 1], p); p.cum = cum; if (p.alt == null) p.alt = i === 0 || i === pts.length - 1 ? 0 : pl.cruiseAlt; });
+  return { pts, total: cum };
+}
+// Position projetée sur la route : distance parcourue et prochain point.
+function alongRoute(R, t) {
+  let best = { d: Infinity, along: 0, next: 1 };
+  for (let i = 0; i < R.pts.length - 1; i++) {
+    const a = R.pts[i], b = R.pts[i + 1];
+    const k = Math.cos(t.lat * Math.PI / 180);
+    const ax = a.lon * k, ay = a.lat, bx = b.lon * k, by = b.lat, px = t.lon * k, py = t.lat;
+    const L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1e-9;
+    const f = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L2));
+    const d = Math.hypot(px - (ax + f * (bx - ax)), py - (ay + f * (by - ay)));
+    if (d < best.d) best = { d, along: a.cum + f * (b.cum - a.cum), next: f >= 0.999 ? i + 2 : i + 1 };
+  }
+  best.next = Math.min(best.next, R.pts.length - 1);
+  return best;
+}
+function plannedFuel(R, along) {
+  const p = R.pts.filter((x) => x.fuelKg != null);
+  if (p.length < 2) return null;
+  for (let i = 0; i < p.length - 1; i++) if (along <= p[i + 1].cum) { const f = (along - p[i].cum) / ((p[i + 1].cum - p[i].cum) || 1); return p[i].fuelKg + f * (p[i + 1].fuelKg - p[i].fuelKg); }
+  return p[p.length - 1].fuelKg;
+}
+function opsReset() {
+  S.route = buildRoute(S.plan);
+  S.oooi = {}; S.prof = []; S.ops = null; S.opsT = 0;
+  renderStrip(null); renderNavlog(); renderProfile();
+}
+function opsEvent(e) {
+  const now = Date.now();
+  if (e.type === 'phase') {
+    if (e.phase === 1 && !S.oooi.out) S.oooi.out = now;
+    if (e.phase === 3 && !S.oooi.off) S.oooi.off = now;
+    if (e.phase === 8 && !S.oooi.in) S.oooi.in = now;
+  } else if (e.type === 'landing' && !S.oooi.on) S.oooi.on = now;
+}
+function opsTick(t, d) {
+  const R = S.route;
+  const o = { t, remaining: null, along: 0, next: null, eta: null, fuelPlan: null };
+  if (R) {
+    const a = alongRoute(R, t);
+    o.along = a.along; o.remaining = Math.max(0, R.total - a.along); o.next = R.pts[a.next];
+    o.fuelPlan = plannedFuel(R, a.along);
+    const last = S.prof[S.prof.length - 1];
+    if (!last || Math.abs(last.d - a.along) > R.total / 300 || Math.abs(last.alt - t.alt) > 400) S.prof.push({ d: a.along, alt: t.alt });
+  }
+  if (o.remaining != null) {
+    if (!t.onGround && t.gs > 60) o.eta = Date.now() + (o.remaining / t.gs) * 3600000;
+    else if (S.plan && S.plan.eteSec) o.eta = Date.now() + S.plan.eteSec * 1000;
+  }
+  S.ops = o;
+  renderStrip(o);
+  const now = Date.now();
+  if (now - S.opsT > 1000) { S.opsT = now; renderNavlog(); renderProfile(); pushCompact(); }
+}
+function windOf(metar) { const m = /\b(\d{3}|VRB)(\d{2,3})(G\d{2,3})?KT\b/.exec(metar || ''); return m ? (m[1] === 'VRB' ? 'Vent variable' : m[1] + '°') + ' / ' + (+m[2]) + ' kt' : ''; }
+function renderStrip(o) {
+  const pl = S.plan, R = S.route, t = o && o.t;
+  const ph = S.phase != null ? PHASES[S.phase] : '';
+  const cell = (k, v, sub, cls) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s ' + (cls || '') + '">' + (sub || '&nbsp;') + '</div></div>';
+  const cs = (pl && (pl.callsign || pl.flightNumber)) || 'Vol libre';
+  let h = '<div><div class="cs">' + esc(cs) + (ph ? '<span class="stat">' + esc(ph.toUpperCase()) + '</span>' : '') + '</div><div class="muted small">' +
+    (pl ? esc(pl.origin.icao) + ' → ' + esc(pl.destination.icao) + ' · ' : '') + esc(S.flight && S.flight.aircraft ? S.flight.aircraft : (pl && pl.aircraft) || '') + '</div></div>';
+  h += cell('Out · parking', utc(S.oooi && S.oooi.out), S.oooi && S.oooi.out ? 'départ du parking' : 'en attente', 'mut');
+  h += cell('Off · décollage', utc(S.oooi && S.oooi.off), pl && pl.origin.rwy ? 'piste ' + esc(pl.origin.rwy) : '', 'mut');
+  let etaSub = 'arrivée estimée', etaCls = 'mut';
+  if (o && o.eta && S.oooi && S.oooi.off && pl && pl.eteSec) {
+    const diff = Math.round((o.eta - (S.oooi.off + pl.eteSec * 1000)) / 60000);
+    etaSub = diff === 0 ? 'à l’heure du plan' : Math.abs(diff) + ' min ' + (diff < 0 ? 'd’avance' : 'de retard'); etaCls = diff > 5 ? 'warn' : '';
+  }
+  h += cell('ETA · arrivée', o && o.eta ? utc(o.eta) : '—', etaSub, etaCls);
+  h += cell('Distance restante', o && o.remaining != null ? fmt(o.remaining) + ' NM' : '—', R && o && o.remaining != null ? Math.round((1 - o.remaining / R.total) * 100) + ' % parcouru' : '', 'mut');
+  let fSub = '', fCls = 'mut';
+  if (t && o.fuelPlan != null) { const df = (t.fuelKg - o.fuelPlan) / 1000; fSub = (df >= 0 ? '+' : '−') + fmt(Math.abs(df), 1) + ' t / plan'; fCls = df < -0.3 ? 'warn' : ''; }
+  h += cell('Carburant', t ? fmt(t.fuelKg / 1000, 1) + ' t' : '—', fSub, fCls);
+  h += cell('Arrivée prévue', pl && pl.destination.rwy ? 'Piste ' + esc(pl.destination.rwy) : (pl ? esc(pl.destination.icao) : '—'), pl ? esc(windOf(pl.metarArr)) : '', 'mut');
+  $('strip').innerHTML = h;
+}
+function renderNavlog() {
+  const R = S.route, el = $('navlog');
+  if (!R) { el.innerHTML = '<p class="muted">Charge un plan SimBrief pour voir le navlog.</p>'; return; }
+  const o = S.ops, along = o ? o.along : 0, gs = o && o.t && o.t.gs > 60 ? o.t.gs : null;
+  const nextIdx = o && o.next ? R.pts.indexOf(o.next) : 1;
+  const lvl = (a) => a >= 10000 ? 'FL' + String(Math.round(a / 100)).padStart(3, '0') : fmt(a) + ' ft';
+  el.innerHTML = '<div class="scroll"><table><thead><tr><th>Point</th><th>Niveau</th><th>Dist.</th><th>ETA</th><th>Carb. prévu</th></tr></thead><tbody>' +
+    R.pts.map((p, i) => {
+      const cls = i < nextIdx ? 'past' : i === nextIdx ? 'cur' : '';
+      const dist = p.cum - along;
+      const eta = gs && dist > 0 ? utc(Date.now() + dist / gs * 3600000) : '—';
+      return '<tr class="' + cls + '"><td>' + esc(p.ident) + '</td><td>' + lvl(p.alt || 0) + '</td><td>' + (dist > 0 ? fmt(dist) : '—') + '</td><td>' + eta + '</td><td>' + (p.fuelKg != null ? fmt(p.fuelKg / 1000, 1) + ' t' : '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  const cur = el.querySelector('tr.cur'); if (cur) { const sc = el.querySelector('.scroll'); sc.scrollTop = Math.max(0, cur.offsetTop - 60); }
+}
+function renderProfile() {
+  const svg = $('profile'), R = S.route;
+  if (!R) { svg.innerHTML = '<text x="320" y="85" text-anchor="middle" fill="#5B667D" font-size="13">Profil disponible avec un plan SimBrief</text>'; return; }
+  const W = 640, H = 160, maxAlt = Math.max(10000, ...R.pts.map((p) => p.alt || 0), ...S.prof.map((p) => p.alt)) * 1.08;
+  const x = (d) => 46 + d / R.total * (W - 66), y = (a) => H - 24 - Math.max(0, a) / maxAlt * (H - 40);
+  let h = '';
+  for (let fl = 100; fl * 100 < maxAlt; fl += 100) h += '<line x1="46" x2="' + (W - 20) + '" y1="' + y(fl * 100) + '" y2="' + y(fl * 100) + '" stroke="#EEF1F6"/><text x="4" y="' + (y(fl * 100) + 4) + '" font-size="10" fill="#8A94A8">FL' + fl + '</text>';
+  h += '<line x1="46" x2="' + (W - 20) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="#DDE2EC"/>';
+  h += '<path d="' + R.pts.map((p, i) => (i ? 'L' : 'M') + x(p.cum).toFixed(1) + ' ' + y(p.alt || 0).toFixed(1)).join(' ') + '" fill="none" stroke="#9AA6BF" stroke-width="2" stroke-dasharray="6 5"/>';
+  for (const id of ['TOC', 'TOD']) { const p = R.pts.find((q) => q.ident === id); if (p) h += '<line x1="' + x(p.cum) + '" x2="' + x(p.cum) + '" y1="' + (y(p.alt) - 4) + '" y2="' + y(0) + '" stroke="' + (id === 'TOD' ? '#E0A800' : '#9AA6BF') + '" stroke-dasharray="3 3"/><text x="' + (x(p.cum) + 3) + '" y="' + (y(p.alt) - 7) + '" font-size="10" font-weight="700" fill="' + (id === 'TOD' ? '#7A5B00' : '#0A1E4A') + '">' + (id === 'TOD' ? 'T/D' : 'T/C') + '</text>'; }
+  if (S.prof.length > 1) h += '<path d="' + S.prof.map((p, i) => (i ? 'L' : 'M') + x(p.d).toFixed(1) + ' ' + y(p.alt).toFixed(1)).join(' ') + '" fill="none" stroke="#0A1E4A" stroke-width="3"/>';
+  if (S.ops && S.ops.t) h += '<circle cx="' + x(S.ops.along) + '" cy="' + y(S.ops.t.alt) + '" r="6" fill="#C8102E" stroke="#fff" stroke-width="2"/>';
+  h += '<text x="' + x(0) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#0A1E4A">' + esc(R.pts[0].ident) + '</text><text x="' + x(R.total) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#0A1E4A">' + esc(R.pts[R.pts.length - 1].ident) + '</text>';
+  svg.innerHTML = h;
+}
+
+// ---------------- panneau compact (second écran) ----------------
+S.compactOn = false;
+$('btnCompact').addEventListener('click', () => { if (S.compactOn) afv.compactClose(); else afv.compactOpen().then(() => setTimeout(pushCompact, 600)); });
+afv.on('compact:state', (on) => { S.compactOn = on; $('btnCompact').textContent = on ? 'Fermer le panneau compact' : 'Panneau compact'; if (on) setTimeout(pushCompact, 600); });
+function nextEvent() {
+  const o = S.ops, ph = S.phase, R = S.route;
+  if (ph == null) return { label: 'PRÊT', value: '', sub: 'Démarre le suivi dans le tracker' };
+  if (ph <= 2) return { label: 'DÉPART', value: S.plan && S.plan.origin.rwy ? 'RWY ' + S.plan.origin.rwy : '', sub: S.plan ? S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol libre' };
+  if (ph === 3 && R && o) { const toc = R.pts.find((p) => p.ident === 'TOC'); if (toc && toc.cum > o.along) return { label: 'T/C', value: fmt(toc.cum - o.along) + ' NM', sub: 'fin de montée · ' + (S.plan.cruiseAlt ? 'FL' + Math.round(S.plan.cruiseAlt / 100) : '') }; }
+  if (ph <= 4 && S.lastTod && S.lastTod.distNm != null) return { label: 'T/D', value: S.lastTod.minutes != null ? fmt(S.lastTod.minutes) + ' min' : fmt(S.lastTod.distNm) + ' NM', sub: fmt(S.lastTod.distNm) + ' NM · début de descente' };
+  if (ph <= 6 && o && o.remaining != null) return { label: 'ARRIVÉE', value: o.t && o.t.gs > 60 ? fmt(o.remaining / o.t.gs * 60) + ' min' : fmt(o.remaining) + ' NM', sub: S.plan ? S.plan.destination.icao + (S.plan.destination.rwy ? ' · piste ' + S.plan.destination.rwy : '') : '' };
+  return { label: ph >= 8 ? 'ARRIVÉ' : 'ROULAGE', value: '', sub: ph >= 8 ? 'Bon vol terminé !' : 'vers le parking' };
+}
+function pushCompact() {
+  if (!S.compactOn) return;
+  const o = S.ops, t = o && o.t, R = S.route;
+  afv.compactPush({
+    callsign: (S.plan && (S.plan.callsign || S.plan.flightNumber)) || (S.flight ? 'Vol libre' : 'AFV'),
+    from: S.plan ? S.plan.origin.icao : '', to: S.plan ? S.plan.destination.icao : '',
+    phase: S.phase, phaseName: S.phase != null ? PHASES[S.phase] : '',
+    progress: R && o && o.remaining != null ? Math.round((1 - o.remaining / R.total) * 100) : 0,
+    next: nextEvent(),
+    params: t ? [['ALT', t.alt >= 18000 ? 'FL' + Math.round(t.alt / 100) : fmt(t.alt)], ['IAS', fmt(t.ias)], ['GS', fmt(t.gs)], ['V/S', (t.vs > 0 ? '+' : '') + fmt(t.vs)], ['HDG', fmt(t.hdg) + '°'], ['FUEL', fmt(t.fuelKg / 1000, 1) + ' t']] : [],
+    route: R ? R.pts.map((p) => [p.lat, p.lon, p.ident]) : [],
+    pos: t ? [t.lat, t.lon, t.hdg] : null,
+    trail: S.trail.slice(-400).map((p) => [p.lat, p.lon]),
+    max: $('maxSay').textContent
+  });
+}

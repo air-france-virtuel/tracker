@@ -193,6 +193,8 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
   });
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  // fermer la fenêtre principale ferme aussi le panneau compact
+  win.on('closed', () => { win = null; for (const w of BrowserWindow.getAllWindows()) w.close(); });
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
 }
 
@@ -231,6 +233,26 @@ app.whenReady().then(() => {
   });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
+
+  // ---------- panneau compact (second écran) ----------
+  let compact = null;
+  ipcMain.handle('compact:open', () => {
+    if (compact && !compact.isDestroyed()) { compact.show(); compact.focus(); return true; }
+    compact = new BrowserWindow({
+      width: 400, height: 840, minWidth: 340, minHeight: 560, alwaysOnTop: true,
+      title: 'AFV Tracker – panneau compact', icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
+      backgroundColor: '#0A1E4A', autoHideMenuBar: true,
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
+    });
+    compact.loadFile(path.join(__dirname, '..', 'renderer', 'compact.html'));
+    compact.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    compact.on('closed', () => { compact = null; send('compact:state', false); });
+    send('compact:state', true);
+    return true;
+  });
+  ipcMain.handle('compact:close', () => { if (compact && !compact.isDestroyed()) compact.close(); return true; });
+  ipcMain.handle('compact:pin', (_e, on) => { if (compact && !compact.isDestroyed()) compact.setAlwaysOnTop(!!on); return !!on; });
+  ipcMain.on('compact:push', (_e, d) => { if (compact && !compact.isDestroyed()) compact.webContents.send('compact:data', d); });
 
   // ---------- vols réels ----------
   ipcMain.handle('real:live', (_e, force) => real.live(!!force));

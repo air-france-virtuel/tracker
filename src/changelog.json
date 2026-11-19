@@ -3,6 +3,10 @@
     "version": "0.4.0-beta",
     "date": "2026-11-19",
     "added": [
+      "Nouveau tracker « centre des opérations » : bandeau avec heures OUT / OFF, ETA, distance restante, carburant comparé au plan SimBrief et piste d’arrivée",
+      "Profil vertical du vol (prévu et réel, T/C et T/D) et navlog SimBrief avec le prochain point, l’ETA et le carburant prévu",
+      "Vent en direct dans les paramètres",
+      "Panneau compact en option : petite fenêtre épinglable pour un deuxième écran, avec le prochain événement, les paramètres, une mini-carte, la check-list de la phase et Max",
       "Carte des vols réels en cours : zoom, déplacement, vues Monde, Europe, Atlantique et Antilles, route du vol choisi",
       "Carte du monde dans le tracker de vol : route, TOD et position de l’avion, avec un mode « Suivre l’avion »",
       "Nouveau logo AFV dans le tracker, l’icône et l’installateur",

@@ -14,10 +14,10 @@ const adsbdbAc = { response: { aircraft: { icao_type: 'A320', registration: 'F-H
 let calls = [];
 global.fetch = async (url, o) => {
   calls.push(url);
-  const ok = (j) => ({ ok: true, status: 200, json: async () => j });
+  const ok = (j) => ({ ok: true, status: 200, json: async () => j, text: async () => JSON.stringify(j) });
   if (url.startsWith('https://opensky-network.org')) return ok(states);
-  if (url.startsWith('https://api.adsb.lol')) { assert.strictEqual(JSON.parse(o.body).planes.length, 2); return ok(routeset); }
-  if (url.includes('/callsign/')) return ok(adsbdbRoute);
+  if (url.startsWith('https://api.adsb.lol')) { assert.strictEqual(JSON.parse(o.body).planes.length, 2); assert.ok(o.headers['User-Agent']); return ok(JSON.stringify(routeset)); }
+  if (url.includes('/callsign/AFR12AB')) return ok(adsbdbRoute);
   if (url.includes('/aircraft/')) return ok(adsbdbAc);
   return { ok: false, status: 404 };
 };
@@ -29,10 +29,11 @@ const real = require('../src/realflights');
   assert.strictEqual(r.flights.length, 2, 'seuls les Air France en vol');
   const f = r.flights.find((x) => x.callsign === 'AFR1234');
   assert.deepStrictEqual([f.from, f.to, f.fromName, f.toName, f.number, f.altFt, f.gsKt], ['LFPG', 'LFMN', 'Paris', 'Nice', 'AF 1234', 35000, 447]);
-  assert.strictEqual(r.flights.find((x) => x.callsign === 'AFR12AB').from, '');
+  assert.strictEqual(r.flights.find((x) => x.callsign === 'AFR12AB').from, 'LFPG', 'secours adsbdb');
+  assert.deepStrictEqual(r.routes, { known: 2, total: 2, error: '' });
   const n = calls.length; await real.live(false); assert.strictEqual(calls.length, n, 'cache de 5 minutes');
   const d = await real.details('AFR12AB', '3944ef');
-  assert.deepStrictEqual([d.from, d.to, d.type, d.reg], ['LFPG', 'EDDB', 'A320', 'F-HEPA']);
+  assert.deepStrictEqual([d.type, d.reg], ['A320', 'F-HEPA']);
   global.fetch = async () => ({ ok: false, status: 429 });
   const e = await real.live(true);
   assert.ok(e.error.includes('Limite') && e.flights.length === 2, 'garde les derniers vols si erreur');

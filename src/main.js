@@ -12,6 +12,7 @@ const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
 const career = require('./career');
 const real = require('./realflights');
+{ const { net } = require('electron'); if (net && typeof net.fetch === 'function') real.setFetch((u, o) => net.fetch(u, o)); }
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;

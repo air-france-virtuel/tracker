@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.4.2-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Vols réels : nombre de routes connues affiché, et raison si le service des routes ne répond pas"
+    ],
+    "removed": [],
+    "fixed": [
+      "Vols réels : les routes (départ → arrivée) restaient « inconnues » ; nouvelle façon de les demander et deuxième source de secours (adsbdb.com)"
+    ]
+  },
+  {
     "version": "0.4.1-beta",
     "date": "2026-11-19",
     "added": [],

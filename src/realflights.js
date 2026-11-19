@@ -18,6 +18,13 @@ const routeCache = new Map(); // callsign → route
 const typeCache = new Map(); // icao24 → { type, reg, model }
 
 const timeout = (ms) => AbortSignal.timeout(ms);
+const UA = 'AFV-Tracker (+https://github.com/air-france-virtuel/tracker)';
+// Dans l'appli, on passe par le réseau de Chromium (net.fetch d'Electron), plus proche d'un navigateur.
+let http = (url, o) => fetch(url, o);
+function setFetch(fn) { if (typeof fn === 'function') http = fn; }
+const get = (url, ms) => http(url, { signal: timeout(ms), headers: { 'User-Agent': UA, Accept: 'application/json' } });
+const adsbdbTried = new Set();
+let routeError = '';
 
 // AFR1234 → AF 1234 ; les indicatifs avec lettres (AFR12AB) n'ont pas de numéro public.
 function flightNumber(cs) {
@@ -70,16 +77,34 @@ async function fetchRoutes(flights) {
   for (let i = 0; i < todo.length; i += 100) {
     const chunk = todo.slice(i, i + 100);
     try {
-      const r = await fetch(ROUTESET, {
+      const r = await http(ROUTESET, {
         method: 'POST', signal: timeout(15000),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': UA },
         body: JSON.stringify({ planes: chunk.map((f) => ({ callsign: f.callsign, lat: f.lat, lng: f.lon })) })
       });
-      if (!r.ok) break;
-      const found = parseRouteset(await r.json());
+      if (!r.ok) { routeError = 'adsb.lol HTTP ' + r.status; break; }
+      let j = JSON.parse(await r.text());
+      if (typeof j === 'string') j = JSON.parse(j); // la réponse peut être du JSON dans une chaîne
+      const found = parseRouteset(j);
+      routeError = '';
       for (const f of chunk) routeCache.set(f.callsign, found.get(f.callsign) || null);
-    } catch (e) { break; }
+    } catch (e) { routeError = 'adsb.lol : ' + ((e && e.name === 'TimeoutError') ? 'pas de réponse' : String((e && e.message) || e)).slice(0, 80); break; }
   }
+  // Secours : adsbdb.com, vol par vol, pour les routes encore inconnues (6 à la fois, 80 au plus par actualisation).
+  const rest = flights.filter((f) => !routeCache.get(f.callsign) && !adsbdbTried.has(f.callsign)).slice(0, 80);
+  let k = 0;
+  const worker = async () => {
+    while (k < rest.length) {
+      const f = rest[k++];
+      adsbdbTried.add(f.callsign);
+      try {
+        const r = await get(ADSBDB + 'callsign/' + encodeURIComponent(f.callsign), 10000);
+        if (r.ok) { const rt = parseAdsbdbRoute(await r.json()); if (rt) routeCache.set(f.callsign, rt); }
+        else if (r.status === 429) { k = rest.length; }
+      } catch (e) { /* route inconnue */ }
+    }
+  };
+  await Promise.all([1, 2, 3, 4, 5, 6].map(worker));
 }
 
 async function live(force) {
@@ -87,14 +112,15 @@ async function live(force) {
   if (pending) return pending;
   pending = (async () => {
     try {
-      const r = await fetch(OPENSKY, { signal: timeout(20000) });
+      const r = await get(OPENSKY, 20000);
       if (r.status === 429) throw new Error('Limite gratuite d’OpenSky atteinte pour aujourd’hui. Réessaie plus tard.');
       if (!r.ok) throw new Error('OpenSky ne répond pas (' + r.status + ').');
       const flights = parseStates(await r.json());
       await fetchRoutes(flights);
       for (const f of flights) Object.assign(f, routeCache.get(f.callsign) || { from: '', to: '' });
       flights.sort((a, b) => (a.from || 'ZZZZ').localeCompare(b.from || 'ZZZZ') || a.callsign.localeCompare(b.callsign));
-      cache = { at: Date.now(), flights, error: '' };
+      const known = flights.filter((f) => f.from).length;
+      cache = { at: Date.now(), flights, error: '', routes: { known, total: flights.length, error: routeError } };
     } catch (e) {
       const msg = e && e.name === 'TimeoutError' ? 'Le service des vols réels ne répond pas.' : String((e && e.message) || e);
       cache = Object.assign({}, cache || { flights: [] }, { at: (cache && cache.at) || 0, error: msg });
@@ -120,14 +146,14 @@ async function details(callsign, icao24) {
   const res = {};
   if (!routeCache.get(callsign)) {
     try {
-      const r = await fetch(ADSBDB + 'callsign/' + encodeURIComponent(callsign), { signal: timeout(10000) });
+      const r = await get(ADSBDB + 'callsign/' + encodeURIComponent(callsign), 10000);
       if (r.ok) { const rt = parseAdsbdbRoute(await r.json()); if (rt) { routeCache.set(callsign, rt); Object.assign(res, rt); } }
     } catch (e) { /* route inconnue */ }
   }
   if (icao24) {
     if (!typeCache.has(icao24)) {
       try {
-        const r = await fetch(ADSBDB + 'aircraft/' + encodeURIComponent(icao24), { signal: timeout(10000) });
+        const r = await get(ADSBDB + 'aircraft/' + encodeURIComponent(icao24), 10000);
         const a = r.ok ? ((await r.json()).response || {}).aircraft : null;
         typeCache.set(icao24, a ? { type: a.icao_type || '', reg: a.registration || '', model: [a.manufacturer, a.type].filter(Boolean).join(' ') } : null);
       } catch (e) { /* type inconnu */ }
@@ -137,4 +163,4 @@ async function details(callsign, icao24) {
   return res;
 }
 
-module.exports = { live, details, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };
+module.exports = { setFetch, live, details, parseStates, parseRouteset, parseAdsbdbRoute, flightNumber };

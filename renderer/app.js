@@ -768,7 +768,7 @@ async function loadReal(force) {
   S.real.at = r.at;
   const when = r.at ? new Date(r.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
   $('realSub').textContent = r.error && !S.real.flights.length ? r.error
-    : S.real.flights.length + ' vols Air France en l’air' + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '');
+    : S.real.flights.length + ' vols Air France en l’air' + (r.routes ? ' · route connue pour ' + r.routes.known : '') + (when ? ' · mis à jour à ' + when : '') + (r.error ? ' · ' + r.error : '') + (r.routes && r.routes.error ? ' · routes : ' + r.routes.error : '');
   const aps = [...new Set(S.real.flights.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
   const cur = $('realAirport').value || 'all';
   $('realAirport').innerHTML = '<option value="all">Tous</option>' + aps.map((a) => '<option>' + esc(a) + '</option>').join('');

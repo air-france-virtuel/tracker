@@ -26,14 +26,14 @@ ShowUninstDetails nevershow
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 
-!define MUI_ICON "${RES}/icon.ico"
-!define MUI_UNICON "${RES}/icon.ico"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "${RES}/sidebar.bmp"
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${RES}/sidebar.bmp"
+!define MUI_ICON "${RES}\icon.ico"
+!define MUI_UNICON "${RES}\icon.ico"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${RES}\sidebar.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${RES}\sidebar.bmp"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_RIGHT
-!define MUI_HEADERIMAGE_BITMAP "${RES}/header.bmp"
-!define MUI_HEADERIMAGE_UNBITMAP "${RES}/header.bmp"
+!define MUI_HEADERIMAGE_BITMAP "${RES}\header.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP "${RES}\header.bmp"
 !define MUI_ABORTWARNING
 !define MUI_ABORTWARNING_TEXT "Veux-tu vraiment annuler l'installation du tracker Air France Virtuel ?"
 
@@ -41,7 +41,7 @@ ShowUninstDetails nevershow
 !define MUI_WELCOMEPAGE_TEXT "Cet assistant va installer le tracker de vol Air France Virtuel ${VERSION} (bêta) sur ton ordinateur.$\r$\n$\r$\nLe tracker suit tes vols dans Microsoft Flight Simulator 2020 et 2024 : phases du vol, Max ton copilote, annonces à bord, hangar et rapport de vol.$\r$\n$\r$\nLes prochaines versions s'installeront automatiquement.$\r$\n$\r$\nClique sur Suivant pour continuer."
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_LICENSEPAGE_TEXT_TOP "Lis les conditions d'utilisation du tracker."
-!insertmacro MUI_PAGE_LICENSE "${RES}/licence.txt"
+!insertmacro MUI_PAGE_LICENSE "${RES}\licence.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_TITLE "Le tracker est installé"
@@ -74,7 +74,7 @@ Section "Tracker" SecMain
   SetOutPath "$INSTDIR"
   RMDir /r "$INSTDIR\resources"
   RMDir /r "$INSTDIR\locales"
-  File /r "${SRC}/*"
+  File /r "${SRC}\*"
   WriteUninstaller "$INSTDIR\${UNINST}"
 
   CreateDirectory "$SMPROGRAMS\Air France Virtuel"

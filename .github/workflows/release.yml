@@ -18,14 +18,21 @@ jobs:
       - name: Installer NSIS
         shell: pwsh
         run: |
-          # NSIS est souvent déjà présent sur la machine GitHub ; sinon on l'installe (3 essais si le site répond mal).
+          # NSIS déjà présent sur la machine GitHub ? Sinon, le paquet d'electron-builder hébergé sur GitHub
+          # (le même que pour les essais locaux), sans dépendre du site Chocolatey.
           if ((Test-Path 'C:\Program Files (x86)\NSIS\makensis.exe') -or (Test-Path 'C:\Program Files\NSIS\makensis.exe')) { Write-Host 'NSIS déjà installé'; exit 0 }
+          $url = 'https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z'
           for ($i = 1; $i -le 3; $i++) {
-            choco install nsis -y --no-progress
-            if ($LASTEXITCODE -eq 0) { exit 0 }
-            Write-Host "Essai $i raté, nouvel essai dans 30 s"; Start-Sleep -Seconds 30
+            curl.exe -fsSL --retry 3 -o "$env:RUNNER_TEMP\nsis.7z" $url
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 20
           }
-          exit 1
+          7z x "$env:RUNNER_TEMP\nsis.7z" "-o$env:RUNNER_TEMP\nsis" -y | Out-Null
+          $exe = "$env:RUNNER_TEMP\nsis\Bin\makensis.exe"
+          if (-not (Test-Path $exe)) { $exe = "$env:RUNNER_TEMP\nsis\makensis.exe" }
+          if (-not (Test-Path $exe)) { Write-Error 'makensis introuvable'; exit 1 }
+          "MAKENSIS=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          & $exe -VERSION
       - name: Installer les dépendances
         run: npm ci
         env:

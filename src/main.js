@@ -24,7 +24,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -198,6 +198,7 @@ function setupUpdater() {
 // ---------- icône près de l'horloge de Windows (zone de notification) ----------
 let tray = null;
 let quitting = false;
+let chatUpdate = () => {};
 let trayState = { flying: false, callsign: '', route: '', phase: '', remaining: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
 app.on('before-quit', () => { quitting = true; });
 function showMain(tab, action) {
@@ -344,6 +345,30 @@ app.whenReady().then(() => {
     } catch (e) { return null; }
   });
   careerData.refresh('discord.json').then(() => discordApply());
+
+  // ---------- chat des pilotes (Supabase) ----------
+  const { Chat } = require('./chat');
+  const chat = new Chat(dataDir());
+  const chatProfile = () => {
+    let grade = ''; try { grade = careerState().gradeName || ''; } catch (e) { /* rien */ }
+    chat.setProfile({ pseudo: store.settings.pilot || '', grade, flight: trayState.flying ? [trayState.callsign, trayState.route].filter(Boolean).join(' · ') : '' });
+  };
+  chatUpdate = () => { chatProfile(); if (chat.state === 'nopseudo' && (store.settings.pilot || '').trim().length >= 2) chat.start(); };
+  chat.on('status', (st) => send('chat:status', st));
+  chat.on('history', (list) => send('chat:history', list));
+  chat.on('message', (m) => send('chat:message', m));
+  chat.on('removed', (id) => send('chat:removed', id));
+  const chatCfg = () => Object.assign({ rules: '' }, careerData.get('chat.json').data || {});
+  const chatInit = () => { chat.configure(chatCfg()); chatProfile(); if (store.settings.chat !== false) chat.start(); };
+  chatInit();
+  careerData.refresh('chat.json').then(chatInit);
+  ipcMain.handle('chat:get', () => ({ status: chat.status(), messages: chat.visible(), rules: chatCfg().rules || '' }));
+  ipcMain.handle('chat:start', () => { chatProfile(); return chat.start(); });
+  ipcMain.handle('chat:send', (_e, t) => chat.send(String(t || '')));
+  ipcMain.handle('chat:report', (_e, id, why) => chat.report(+id, String(why || '')));
+  ipcMain.handle('chat:hide', (_e, id) => chat.hide(+id));
+  ipcMain.handle('chat:ban', (_e, uid) => chat.ban(String(uid || '')));
+  ipcMain.handle('chat:reports', () => chat.reports());
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
 
@@ -457,7 +482,7 @@ app.whenReady().then(() => {
   ipcMain.handle('update:failedSeen', () => { upd.failed = null; return true; });
   ipcMain.handle('changelog:get', () => CHANGELOG);
   ipcMain.handle('changelog:seen', () => { store.lastSeenVersion = VERSION; saveStore(); return true; });
-  ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); discordApply(); trayRefresh(); return store.settings; });
+  ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); discordApply(); trayRefresh(); chatUpdate(); return store.settings; });
   ipcMain.handle('fleet:set', (_e, fleet) => { store.fleet = Array.isArray(fleet) ? fleet : []; saveStore(); return store.fleet; });
   ipcMain.handle('simbrief:load', async () => fetchOfp(store.settings.simbrief));
   ipcMain.handle('demo:plan', () => demoPlan());
@@ -525,7 +550,7 @@ app.whenReady().then(() => {
   sim.on('data', (t) => { if (flight && flight.mode === 'demo') return; if (flight) flight.title = t.title; handleTelemetry(t); });
   sim.start();
 
-  ipcMain.on('tray:status', (_e, st) => { trayState = Object.assign({}, trayState, st || {}); trayRefresh(); discordUpdate(); });
+  ipcMain.on('tray:status', (_e, st) => { trayState = Object.assign({}, trayState, st || {}); trayRefresh(); discordUpdate(); chatUpdate(); });
   sim.on('status', () => trayRefresh());
   const hidden = process.argv.includes('--cache');
   createWindow(hidden);

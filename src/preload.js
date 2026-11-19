@@ -43,10 +43,17 @@ contextBridge.exposeInMainWorld('afv', {
   togglePlanning: (key) => ipcRenderer.invoke('planning:toggle', key),
   realLive: (force) => ipcRenderer.invoke('real:live', !!force),
   realDetails: (cs, hex) => ipcRenderer.invoke('real:details', cs, hex),
+  chatGet: () => ipcRenderer.invoke('chat:get'),
+  chatStart: () => ipcRenderer.invoke('chat:start'),
+  chatSend: (t) => ipcRenderer.invoke('chat:send', t),
+  chatReport: (id, why) => ipcRenderer.invoke('chat:report', id, why),
+  chatHide: (id) => ipcRenderer.invoke('chat:hide', id),
+  chatBan: (uid) => ipcRenderer.invoke('chat:ban', uid),
+  chatReports: () => ipcRenderer.invoke('chat:reports'),
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

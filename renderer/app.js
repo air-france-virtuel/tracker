@@ -521,7 +521,7 @@ function renderSettings() {
   const s = S.store.settings;
   $('sPilot').value = s.pilot; $('sSimbrief').value = s.simbrief; $('sAnn').checked = s.announcements;
   $('sVol').value = s.volume; $('sHard1').value = s.hard1; $('sHard2').value = s.hard2;
-  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
+  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sChat').checked = s.chat !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
 }
 
 // ---------------- voix de Max (réglages) ----------------
@@ -547,7 +547,7 @@ afv.on('voice:status', (v) => { S.voice = v; renderVoice(); renderMaxVoiceHint()
 $('btnSaveSettings').addEventListener('click', async () => {
   const h1 = Math.max(200, +$('sHard1').value || 600);
   const h2 = Math.max(h1 + 50, +$('sHard2').value || 900);
-  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, closeToTray: $('sTray').checked });
+  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, chat: $('sChat').checked, closeToTray: $('sTray').checked });
   $('setMsg').textContent = 'Réglages enregistrés.';
   if (!S.store.settings.maxVoice) maxStop();
   renderSettings(); renderFleet(); renderMaxVoiceHint();
@@ -1516,3 +1516,115 @@ function trayPush() {
   if (k !== trayLast) { trayLast = k; afv.trayStatus(st); }
 }
 setInterval(trayPush, 2000);
+
+// ---------------- chat des pilotes ----------------
+const CH = { status: null, msgs: [], unread: 0, rules: '', lastAt: 0 };
+const initials = (n) => String(n || '?').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+const chatOpen = () => $('tab-chat').classList.contains('on');
+function chatTime(d) { return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+function chatDay(d) {
+  const x = new Date(d), t = new Date();
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  if (same(x, t)) return 'Aujourd’hui';
+  const y = new Date(t); y.setDate(t.getDate() - 1);
+  return same(x, y) ? 'Hier' : x.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function chatMsgHtml(m, prev) {
+  const me = CH.status && CH.status.me;
+  const mine = me && m.user_id === me.id;
+  const cont = prev && prev.user_id === m.user_id && new Date(m.created_at) - new Date(prev.created_at) < 5 * 60000 && chatDay(prev.created_at) === chatDay(m.created_at);
+  let acts = '';
+  if (!mine) acts += '<button data-crep="' + m.id + '" title="Signaler ce message à la direction">Signaler</button>';
+  if (me && me.admin) { acts += '<button data-chide="' + m.id + '">Supprimer</button>'; if (!mine && !m.admin) acts += '<button data-cban="' + esc(m.user_id) + '" data-cbn="' + esc(m.pseudo) + '">Exclure</button>'; }
+  return '<div class="cm' + (mine ? ' me' : '') + (cont ? ' cont' : '') + '" data-cid="' + m.id + '"><div class="cav' + (m.admin ? ' adm' : '') + '" aria-hidden="true">' + esc(initials(m.pseudo)) + '</div><div class="cbody">' +
+    (cont ? '' : '<div class="chead"><b>' + esc(m.pseudo) + '</b>' + (m.admin ? '<span class="badge-dir">DIRECTION</span>' : '') + (m.grade ? '<span class="g">' + esc(m.grade) + '</span>' : '') + (m.flight ? '<span class="ftag">✈ ' + esc(m.flight) + '</span>' : '') + '<span class="t">' + chatTime(m.created_at) + '</span></div>') +
+    '<div class="ctext">' + esc(m.body) + '</div></div>' + (acts ? '<div class="cact">' + acts + '</div>' : '') + '</div>';
+}
+function renderChatList(keepScroll) {
+  const box = $('chatList');
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  let h = '', prev = null, day = '';
+  for (const m of CH.msgs) {
+    const d = chatDay(m.created_at);
+    if (d !== day) { h += '<div class="cday">' + esc(d) + '</div>'; day = d; prev = null; }
+    h += chatMsgHtml(m, prev); prev = m;
+  }
+  box.innerHTML = h || (CH.status && CH.status.state === 'ready' ? '<p class="muted" style="text-align:center;margin-top:40px">Aucun message pour le moment. Lance la conversation !</p>' : '');
+  if (!keepScroll || atBottom) box.scrollTop = box.scrollHeight;
+}
+function renderChatStatus() {
+  const st = CH.status || { state: 'off' };
+  const me = st.me;
+  const box = $('chatState');
+  let h = '';
+  if (!st.configured) h = 'Le chat des pilotes arrive bientôt : la direction est en train de l’ouvrir.';
+  else if (st.state === 'nopseudo') h = '<b>Choisis ton nom de pilote</b> : c’est lui qui s’affichera dans le chat.<div class="row"><input id="chatPseudo" maxlength="32" placeholder="Ex. : Cdt Martin" style="height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px"><button class="btn small red" id="chatPseudoOk">Rejoindre le chat</button></div>';
+  else if (st.state === 'connecting') h = 'Connexion au chat…';
+  else if (st.state === 'error') h = esc(st.error) + '<div class="row"><button class="btn small ghost" id="chatRetry">Réessayer</button></div>';
+  else if (st.state === 'idle' && S.store && S.store.settings.chat === false) h = 'Le chat est désactivé dans tes Réglages.';
+  else if (st.state === 'idle') h = '<div class="row"><button class="btn small red" id="chatRetry">Se connecter au chat</button></div>';
+  if (me && me.banned) h = 'La direction t’a exclu du chat : tu peux lire les messages mais plus en écrire.';
+  box.innerHTML = h; box.hidden = !h;
+  const can = st.state === 'ready' && !(me && me.banned);
+  $('chatInput').disabled = !can; $('chatBtn').disabled = !can;
+  const on = st.online || [];
+  $('chatOnlineN').textContent = st.state === 'ready' ? '· ' + on.length : '';
+  $('chatSub').textContent = 'Tous les pilotes qui ont le tracker' + (st.state === 'ready' ? ' · ' + on.length + ' en ligne' + (on.filter((x) => x.flight).length ? ' dont ' + on.filter((x) => x.flight).length + ' en vol' : '') : '');
+  $('chatOnline').innerHTML = on.length ? on.map((p) => '<div class="co"><div class="cav' + (p.admin ? ' adm' : '') + '" aria-hidden="true">' + esc(initials(p.pseudo)) + '</div><div><div class="n">' + esc(p.pseudo) + (me && p.id === me.id ? ' (toi)' : '') + '</div><div class="s">' + esc(p.flight ? '✈ ' + p.flight : (p.grade || 'Au sol')) + '</div></div><span class="dot" aria-label="en ligne"></span></div>').join('') : '<p class="muted small">' + (st.state === 'ready' ? 'Personne pour le moment.' : '—') + '</p>';
+  $('chatAdmin').hidden = !(me && me.admin);
+}
+function chatBadge() { $('chipChat').hidden = !CH.unread; $('chipChat').textContent = CH.unread > 9 ? '9+' : String(CH.unread); }
+async function chatLoad() {
+  const d = await afv.chatGet();
+  CH.status = d.status; CH.msgs = d.messages; CH.rules = d.rules;
+  $('chatRules').textContent = d.rules || ''; $('chatRules').hidden = !d.rules;
+  renderChatStatus(); renderChatList();
+}
+afv.on('chat:status', (st) => { const was = CH.status && CH.status.me && CH.status.me.admin; CH.status = st; renderChatStatus(); if (st.me && st.me.admin !== was) renderChatList(true); });
+afv.on('chat:history', (list) => { CH.msgs = list; renderChatList(); });
+afv.on('chat:message', (m) => {
+  if (CH.msgs.some((x) => x.id === m.id)) return;
+  CH.msgs.push(m); if (CH.msgs.length > 300) CH.msgs.shift();
+  renderChatList(true);
+  const me = CH.status && CH.status.me;
+  if (!(me && m.user_id === me.id) && !(chatOpen() && document.hasFocus())) { CH.unread++; chatBadge(); }
+});
+afv.on('chat:removed', (id) => { CH.msgs = CH.msgs.filter((m) => m.id !== id); renderChatList(true); });
+document.querySelector('[data-tab=chat]').addEventListener('click', () => { CH.unread = 0; chatBadge(); if (CH.status && CH.status.state !== 'ready') afv.chatStart(); setTimeout(() => { $('chatList').scrollTop = $('chatList').scrollHeight; $('chatInput').focus(); }, 50); });
+window.addEventListener('focus', () => { if (chatOpen()) { CH.unread = 0; chatBadge(); } });
+$('chatInput').addEventListener('input', () => { $('chatCount').textContent = $('chatInput').value.length + ' / 500'; });
+$('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chatForm').requestSubmit(); } });
+$('chatForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const t = $('chatInput').value.trim(); if (!t) return;
+  $('chatBtn').disabled = true; $('chatErr').textContent = '';
+  const r = await afv.chatSend(t);
+  $('chatBtn').disabled = false;
+  if (r.ok) { $('chatInput').value = ''; $('chatCount').textContent = '0 / 500'; $('chatList').scrollTop = $('chatList').scrollHeight; }
+  else $('chatErr').textContent = r.error;
+  $('chatInput').focus();
+});
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('#chatRetry')) { afv.chatStart(); return; }
+  if (e.target.closest('#chatPseudoOk')) {
+    const v = ($('chatPseudo').value || '').trim();
+    if (v.length < 2) { $('chatErr').textContent = 'Ton nom de pilote doit faire au moins 2 caractères.'; return; }
+    S.store.settings = await afv.setSettings({ pilot: v }); renderSettings(); afv.chatStart(); return;
+  }
+  const rp = e.target.closest('[data-crep]');
+  if (rp) { const r = await afv.chatReport(rp.dataset.crep, ''); $('chatErr').textContent = r.ok ? 'Merci, la direction a été prévenue.' : r.error; return; }
+  const hd = e.target.closest('[data-chide]');
+  if (hd) { const r = await afv.chatHide(hd.dataset.chide); if (!r.ok) $('chatErr').textContent = r.error; else loadChatReports(); return; }
+  const bn = e.target.closest('[data-cban]');
+  if (bn) {
+    if (!window.confirm('Exclure ' + bn.dataset.cbn + ' du chat ? Ses messages des dernières 24 h seront aussi supprimés.')) return;
+    const r = await afv.chatBan(bn.dataset.cban); $('chatErr').textContent = r.ok ? bn.dataset.cbn + ' est exclu du chat.' : r.error; if (r.ok) loadChatReports(); return;
+  }
+});
+async function loadChatReports() {
+  const list = await afv.chatReports();
+  $('chatReports').innerHTML = list.length ? list.map((r) => { const m = r.messages || {}; return '<div class="crep"><b>' + esc(m.pseudo || '?') + '</b> : « ' + esc(String(m.body || '').slice(0, 140)) + ' »' + (m.deleted ? ' <span class="muted">(supprimé)</span>' : '') +
+    (!m.deleted && m.id ? '<div class="row"><button class="btn small ghost" data-chide="' + m.id + '">Supprimer</button>' + (m.user_id ? '<button class="btn small ghost" data-cban="' + esc(m.user_id) + '" data-cbn="' + esc(m.pseudo || '') + '">Exclure</button>' : '') + '</div>' : '') + '</div>'; }).join('') : 'Aucun signalement.';
+}
+$('chatReportsBtn').addEventListener('click', loadChatReports);
+chatLoad();

@@ -5,12 +5,13 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js",
+    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js && node test/chat.js",
     "dist": "electron-builder --win dir --x64 --publish never && node build-res/make-installer.js"
   },
   "author": "Air France Virtuel",
   "license": "UNLICENSED",
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "electron-updater": "^6.8.11",
     "espeak-ng": "^1.0.2",
     "node-simconnect": "^4.2.1",

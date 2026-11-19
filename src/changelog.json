@@ -3,10 +3,10 @@
     "version": "0.5.4-beta",
     "date": "2026-11-20",
     "added": [
-      "Chat des pilotes : discute en direct avec tous les pilotes qui ont le tracker (menu › Aujourd’hui › Chat des pilotes)",
+      "Chat entre pilotes : discute en direct avec tous les pilotes qui ont le tracker (tout en bas du menu)",
       "Chat : liste des pilotes en ligne (ceux en vol en premier, avec leur vol), ton grade et ton vol affichés à côté de ton nom, compteur de messages non lus",
       "Chat : bouton « Signaler » sur chaque message ; la direction peut supprimer un message ou exclure un pilote",
-      "Réglages : case « Activer le chat des pilotes »"
+      "Réglages : case « Activer le chat entre pilotes »"
     ],
     "removed": [],
     "fixed": []

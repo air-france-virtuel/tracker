@@ -1557,7 +1557,7 @@ function renderChatStatus() {
   const me = st.me;
   const box = $('chatState');
   let h = '';
-  if (!st.configured) h = 'Le chat des pilotes arrive bientôt : la direction est en train de l’ouvrir.';
+  if (!st.configured) h = 'Le chat entre pilotes arrive bientôt : la direction est en train de l’ouvrir.';
   else if (st.state === 'nopseudo') h = '<b>Choisis ton nom de pilote</b> : c’est lui qui s’affichera dans le chat.<div class="row"><input id="chatPseudo" maxlength="32" placeholder="Ex. : Cdt Martin" style="height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px"><button class="btn small red" id="chatPseudoOk">Rejoindre le chat</button></div>';
   else if (st.state === 'connecting') h = 'Connexion au chat…';
   else if (st.state === 'error') h = esc(st.error) + '<div class="row"><button class="btn small ghost" id="chatRetry">Réessayer</button></div>';

@@ -20,7 +20,6 @@
     <div class="nsec">Aujourd’hui</div>
     <button class="nav on" data-tab="infos" title="Infos du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg><span class="lb">Infos du jour</span></button>
     <button class="nav" data-tab="planning" title="Planning du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lb">Planning du jour</span></button>
-    <button class="nav" data-tab="chat" title="Chat des pilotes"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h12v8H8l-5 4z"/><path d="M15 9h6v8l-4-3h-6v-1"/></svg><span class="lb">Chat des pilotes</span><span class="chip red" id="chipChat" hidden></span></button>
     <div class="nsec">Voler</div>
     <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta">BÊTA</span></button>
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
@@ -30,6 +29,8 @@
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
     <button class="nav" data-tab="hangar" title="Hangar &amp; flotte"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V10l9-6 9 6v10"/><path d="M7 20v-6h10v6"/></svg><span class="lb">Hangar &amp; flotte</span></button>
+    <div class="nsec">Communauté</div>
+    <button class="nav" data-tab="chat" title="Chat entre pilotes"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h12v8H8l-5 4z"/><path d="M15 9h6v8l-4-3h-6v-1"/></svg><span class="lb">Chat entre pilotes</span><span class="chip red" id="chipChat" hidden></span></button>
     <div class="nsec searchonly">Autres écrans</div>
     <button class="nav searchonly" data-tab="sons" title="Mes annonces sonores"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg><span class="lb">Mes annonces sonores</span></button>
     <button class="nav searchonly" data-tab="avis" title="Donner mon avis"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="lb">Donner mon avis</span></button>
@@ -149,7 +150,7 @@
 
     <!-- ===================== CHAT DES PILOTES ===================== -->
     <section class="tab" id="tab-chat">
-      <header class="top"><div><h1>Chat des pilotes</h1><div class="sub" id="chatSub">Tous les pilotes qui ont le tracker</div></div></header>
+      <header class="top"><div><h1>Chat entre pilotes</h1><div class="sub" id="chatSub">Tous les pilotes qui ont le tracker</div></div></header>
       <div class="body">
         <div class="chat-grid">
           <div class="card chat-main">
@@ -335,7 +336,7 @@
           <label class="field">Volume des annonces <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
           <label class="check"><input type="checkbox" id="sMaxVoice"> Max parle à voix haute</label>
           <label class="field">Volume de Max <input type="range" id="sMaxVol" min="0" max="1" step="0.05"></label>
-          <label class="check"><input type="checkbox" id="sChat"> Activer le chat des pilotes</label>
+          <label class="check"><input type="checkbox" id="sChat"> Activer le chat entre pilotes</label>
           <label class="check"><input type="checkbox" id="sDiscord"> Afficher mon vol sur Discord (« Joue à Air France Virtuel »)</label>
           <label class="check"><input type="checkbox" id="sTray"> Quand je ferme la fenêtre, garder le tracker près de l’horloge de Windows</label>
           <label class="field">Atterrissage dur à partir de (ft/min) <input type="number" id="sHard1" min="200" max="2000" step="50"></label>

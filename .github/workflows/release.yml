@@ -22,7 +22,7 @@ jobs:
         env:
           ONNXRUNTIME_NODE_INSTALL: skip
       - name: Tests du moteur de vol
-        run: node test/run-demo.js
+        run: npm test
       - name: Fabriquer l'appli et l'installateur
         run: npm run dist
       - name: Publier la release

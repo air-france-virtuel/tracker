@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.2.0-beta",
+    "date": "2026-11-19",
+    "added": [
+      "Mode carrière : 5 grades, de Cadet à Commandant Senior · Instructeur, avec heures de vol, points et progression",
+      "Missions & rôles : passagers, cargo, charter / VIP, humanitaire et formation, avec le rôle à tenir et un briefing",
+      "Missions du jour proposées par Max, dont un vol du jour à points doublés",
+      "Qualifications A350 et B777 à obtenir par des vols de formation",
+      "Choix de la mission dans le tracker : elle est validée automatiquement au parking si le trajet correspond",
+      "Bouton « Préparer dans SimBrief » sur chaque mission",
+      "Infos du jour : message de la direction, événements, alertes et météo réelle (METAR) des aéroports"
+    ],
+    "removed": [],
+    "fixed": [
+      "Installateur : chemins de fichiers compatibles avec la fabrication sous Windows"
+    ]
+  },
+  {
     "version": "0.1.0-beta",
     "date": "2026-11-19",
     "added": [

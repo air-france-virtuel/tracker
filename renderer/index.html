@@ -13,7 +13,10 @@
       <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="6" fill="#fff"/><path d="M7 24 L17 8 L27 24" fill="none" stroke="#0A1E4A" stroke-width="3" stroke-linejoin="round"/><path d="M11 24 L23 24" stroke="#C8102E" stroke-width="3"/></svg>
       <span class="brand-name">Air France Virtuel</span>
     </div>
-    <button class="nav on" data-tab="vol">Tracker de vol <span class="beta-pill">BÊTA</span></button>
+    <button class="nav on" data-tab="infos">Infos du jour</button>
+    <button class="nav" data-tab="carriere">Ma carrière</button>
+    <button class="nav" data-tab="missions">Missions &amp; rôles</button>
+    <button class="nav" data-tab="vol">Tracker de vol <span class="beta-pill">BÊTA</span></button>
     <button class="nav" data-tab="hangar">Hangar &amp; flotte</button>
     <button class="nav" data-tab="vols">Mes vols</button>
     <button class="nav" data-tab="sons">Mes annonces sonores</button>
@@ -27,8 +30,70 @@
 
   <main class="content">
     <div class="upd-banner" id="updBanner" hidden><span id="updBannerText"></span><button class="btn small" id="btnBannerInstall">Redémarrer et installer</button></div>
+    <!-- ===================== INFOS DU JOUR ===================== -->
+    <section class="tab on" id="tab-infos">
+      <header class="top"><div><h1>Infos du jour</h1><div class="sub" id="infosDate"></div></div></header>
+      <div class="body">
+        <div class="cards2">
+          <div class="card">
+            <div class="muted small">Message de la direction</div>
+            <h2 id="infoTitle"></h2>
+            <p class="muted" id="infoText"></p>
+            <p class="muted small" id="infoAuthor"></p>
+          </div>
+          <div class="card" id="dayFlight"></div>
+        </div>
+        <div class="cards2">
+          <div class="card"><h2>Bonus et événements</h2><div id="infoEvents"></div></div>
+          <div class="card"><h2>Alertes</h2><div id="infoAlerts"></div></div>
+        </div>
+        <div class="card">
+          <div class="row between"><h2>Météo aux aéroports</h2><button class="btn small ghost" id="btnMetar">Actualiser</button></div>
+          <div id="metar" class="wx"></div>
+          <p class="muted small">Observations METAR réelles (aviationweather.gov), à vérifier avant chaque vol.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CARRIÈRE ===================== -->
+    <section class="tab" id="tab-carriere">
+      <header class="top"><div><h1>Ma carrière</h1><div class="sub" id="carSub"></div></div></header>
+      <div class="body">
+        <div class="card hero">
+          <div><div class="muted small">Grade actuel</div><div class="grade" id="carGrade"></div><div class="muted" id="carNext"></div></div>
+          <div class="bar big"><i id="carBar"></i></div>
+        </div>
+        <div class="telem" id="carStats"></div>
+        <div class="cards2">
+          <div class="card"><h2>Échelle de carrière</h2><ol class="ladder" id="carLadder"></ol></div>
+          <div class="col">
+            <div class="card"><div class="row between"><h2>Missions en cours</h2><button class="linkbtn" data-goto="missions">Voir toutes les missions</button></div><div id="carActive"></div></div>
+            <div class="card"><h2>Qualifications appareils</h2><div class="row wrap" id="carQuals"></div><p class="muted small">Une qualification se débloque en validant ses vols de formation.</p></div>
+          </div>
+        </div>
+        <p class="muted small">Ta carrière est enregistrée sur ce PC. Les vols de démonstration ne comptent pas.</p>
+      </div>
+    </section>
+
+    <!-- ===================== MISSIONS ===================== -->
+    <section class="tab" id="tab-missions">
+      <header class="top"><div><h1>Missions &amp; rôles</h1><div class="sub" id="misSub"></div></div></header>
+      <div class="body">
+        <div class="card maxday">
+          <div class="max-head"><svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+            <div><div class="max-name">Les missions du jour de Max</div><div class="muted small">La première rapporte deux fois plus de points aujourd’hui.</div></div></div>
+          <div class="daily" id="misDaily"></div>
+        </div>
+        <div class="row wrap" id="misFilters"></div>
+        <div class="mis-grid">
+          <div class="mis-list" id="misList"></div>
+          <div class="card mis-detail" id="misDetail"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== TRACKER ===================== -->
-    <section class="tab on" id="tab-vol">
+    <section class="tab" id="tab-vol">
       <header class="top">
         <div><h1>Tracker de vol <span class="beta">BÊTA</span></h1><div class="sub" id="flightSub">Prépare ton vol pour commencer</div></div>
         <div class="top-actions"><button class="btn ghost" id="btnStop" hidden>Arrêter le suivi</button></div>
@@ -43,7 +108,11 @@
             <div id="planBox" class="plan" hidden></div>
           </div>
           <div class="card">
-            <h2>2. Appareil et départ</h2>
+            <h2>2. Mission, appareil et départ</h2>
+            <label class="field">Mission du vol
+              <select id="selMission"></select>
+            </label>
+            <p class="muted small" id="missionHint"></p>
             <label class="field">Appareil de la flotte
               <select id="selAircraft"></select>
             </label>

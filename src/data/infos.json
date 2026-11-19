@@ -1,0 +1,13 @@
+{
+  "message": {
+    "title": "Le mode carrière est arrivé",
+    "text": "Accepte une mission, prépare-la dans SimBrief et vole-la avec le tracker : tes heures, tes points et ton grade avancent à chaque vol validé. Bons vols à tous !",
+    "author": "La direction d’Air France Virtuel"
+  },
+  "events": [
+    { "title": "Vol du jour", "note": "La première mission proposée par Max chaque jour rapporte deux fois plus de points." }
+  ],
+  "alerts": [
+    { "kind": "Info", "text": "Le tracker est en bêta : signale tout souci dans « Donner mon avis »." }
+  ]
+}

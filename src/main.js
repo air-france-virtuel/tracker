@@ -10,6 +10,7 @@ const { fetchOfp } = require('./simbrief');
 const { DemoFlight, demoPlan } = require('./demo');
 const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
+const career = require('./career');
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
@@ -23,13 +24,14 @@ const defaults = {
   settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9 },
   fleet: [],
   sounds: {},
-  feedback: []
+  feedback: [],
+  career: { accepted: [], active: null }
 };
 let store = JSON.parse(JSON.stringify(defaults));
 function loadStore() {
   try {
     const raw = JSON.parse(fs.readFileSync(storeFile(), 'utf8'));
-    store = Object.assign({}, defaults, raw, { settings: Object.assign({}, defaults.settings, raw.settings || {}) });
+    store = Object.assign({}, defaults, raw, { settings: Object.assign({}, defaults.settings, raw.settings || {}), career: Object.assign({ accepted: [], active: null }, raw.career || {}) });
   } catch (e) { /* premier lancement */ }
 }
 function saveStore() {
@@ -46,6 +48,18 @@ function listReports() {
       .filter(Boolean);
   } catch (e) { return []; }
 }
+
+// Tous les rapports (pour la carrière), du plus récent au plus ancien.
+function allReports() {
+  try {
+    return fs.readdirSync(reportsDir()).filter((f) => f.endsWith('.json')).sort().reverse()
+      .map((f) => { try { return JSON.parse(fs.readFileSync(path.join(reportsDir(), f), 'utf8')); } catch (e) { return null; } })
+      .filter(Boolean);
+  } catch (e) { return []; }
+}
+let careerData = null;
+const missionsList = () => (careerData && careerData.get('missions.json').data) || [];
+const careerState = (now) => career.compute(allReports(), store.career, missionsList(), now || Date.now());
 
 // Remet en service les avions dont la réparation est terminée.
 function refreshFleet() {
@@ -110,12 +124,27 @@ function finishFlight() {
     from: p ? p.origin.icao : '',
     to: p ? p.destination.icao : '',
     aircraft: flight.aircraft || (p ? p.aircraft : ''),
-    simAircraft: flight.title || ''
+    simAircraft: flight.title || '',
+    planAircraft: p ? p.aircraft : ''
   }, flight.engine.report(), { events: flight.log.filter((x) => x.type !== 'phase' || true).slice(-200) });
+  if (flight.missionId) {
+    const st = careerState(Date.now());
+    const m = st.missions.find((x) => x.id === flight.missionId);
+    rep.mission = career.judge(m, rep, m ? m.bonus : 1, store.settings.hard2);
+    if (rep.mission && rep.mission.validated) {
+      const left = m.gives && (m.validated + 1) < (m.repeat || 1);
+      if (!left) {
+        store.career.accepted = store.career.accepted.filter((id) => id !== m.id);
+        if (store.career.active === m.id) store.career.active = null;
+      }
+      saveStore();
+    }
+  }
   fs.mkdirSync(reportsDir(), { recursive: true });
   const name = rep.date.slice(0, 19).replace(/[:T]/g, '-') + '_' + (rep.from || 'XXXX') + '-' + (rep.to || 'XXXX') + '.json';
   fs.writeFileSync(path.join(reportsDir(), name), JSON.stringify(rep, null, 2));
   send('flight:report', rep);
+  if (rep.mission) send('career:changed', careerState());
 }
 
 function stopFlight() {
@@ -166,6 +195,38 @@ app.whenReady().then(() => {
   loadStore();
   refreshFleet();
 
+  // ---------- carrière ----------
+  careerData = new career.CareerData(path.join(dataDir(), 'carriere'));
+  ipcMain.handle('career:get', () => careerState());
+  ipcMain.handle('career:accept', (_e, id) => {
+    const m = careerState().missions.find((x) => x.id === id);
+    if (!m || m.locked) return careerState();
+    if (!store.career.accepted.includes(id)) store.career.accepted.push(id);
+    store.career.active = id;
+    saveStore();
+    return careerState();
+  });
+  ipcMain.handle('career:drop', (_e, id) => {
+    store.career.accepted = store.career.accepted.filter((x) => x !== id);
+    if (store.career.active === id) store.career.active = null;
+    saveStore();
+    return careerState();
+  });
+  ipcMain.handle('career:active', (_e, id) => { store.career.active = id || null; saveStore(); return careerState(); });
+  ipcMain.handle('infos:get', () => careerData.get('infos.json'));
+  ipcMain.handle('metar:get', async (_e, ids) => {
+    const list = [...new Set((ids || []).filter((x) => /^[A-Z]{4}$/.test(x)))].slice(0, 8);
+    if (!list.length) return [];
+    try {
+      const r = await fetch('https://aviationweather.gov/api/data/metar?format=json&ids=' + list.join(','), { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      return (Array.isArray(j) ? j : []).map((m) => ({ icao: m.icaoId, raw: m.rawOb, wdir: m.wdir, wspd: m.wspd, temp: m.temp, cat: m.fltCat, time: m.reportTime || m.obsTime }));
+    } catch (e) { return null; }
+  });
+  Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
+    .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
+
   // ---------- voix de Max ----------
   const voice = new MaxVoice(path.join(dataDir(), 'voix'));
   voice.on('status', (s) => send('voice:status', s));
@@ -197,7 +258,7 @@ app.whenReady().then(() => {
     stopFlight();
     const plan = o.plan || null;
     flight = {
-      mode: o.mode, plan, aircraft: o.aircraft || '', log: [],
+      mode: o.mode, plan, aircraft: o.aircraft || '', log: [], missionId: o.missionId || null,
       engine: new FlightEngine({ plan, hardLanding: store.settings.hard1, veryHardLanding: store.settings.hard2 })
     };
     if (o.mode === 'demo') {

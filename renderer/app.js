@@ -12,6 +12,8 @@ function showTab(name) {
   document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
+  if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
+  if (name === 'infos' && !S.metarAt) loadMetar();
 }
 
 // ---------------- voix et annonces ----------------
@@ -232,6 +234,7 @@ $('btnSimbrief').addEventListener('click', async () => {
     S.plan = await afv.loadSimbrief();
     $('sbMsg').textContent = 'Plan chargé.';
     renderPlan();
+    renderMissionHint();
   } catch (e) {
     $('sbMsg').textContent = (e.message || String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
   }
@@ -241,12 +244,14 @@ async function startFlight(mode) {
   if (mode === 'sim' && !S.simOk) { $('startMsg').textContent = 'Lance d’abord Microsoft Flight Simulator.'; return; }
   if (mode === 'demo') S.plan = await afv.demoPlan();
   const aircraft = $('selAircraft').value;
-  await afv.startFlight({ mode, plan: S.plan, aircraft, demoHard: $('demoHard').checked, speed: 20 });
+  const missionId = mode === 'demo' ? null : ($('selMission').value || null);
+  await afv.startFlight({ mode, plan: S.plan, aircraft, demoHard: $('demoHard').checked, speed: 20, missionId });
   S.flight = { mode, aircraft };
   S.phase = 0; S.trail = []; queue.length = 0;
   $('alerts').innerHTML = '';
   $('prep').hidden = true; $('live').hidden = false; $('btnStop').hidden = false;
-  $('flightSub').textContent = (S.plan ? (S.plan.callsign || '') + ' · ' + S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol sans plan SimBrief') + (aircraft ? ' · ' + aircraft : '') + (mode === 'demo' ? ' · démonstration' : '');
+  const curM = missionId && S.career ? S.career.missions.find((m) => m.id === missionId) : null;
+  $('flightSub').textContent = (curM ? 'Mission : ' + curM.title + ' · ' : '') + (S.plan ? (S.plan.callsign || '') + ' · ' + S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol sans plan SimBrief') + (aircraft ? ' · ' + aircraft : '') + (mode === 'demo' ? ' · démonstration' : '');
   renderPhases(0); renderMap(null); renderTod(null, 0);
   afv.voicePreload();
   renderMaxVoiceHint();
@@ -335,14 +340,17 @@ afv.on('flight:event', (e) => {
     addAlert('Hangar', e.reg + ' part en maintenance pour ' + e.days + ' jours.', 'red');
   }
 });
-afv.on('flight:report', (r) => { showReport(r); });
+afv.on('flight:report', (r) => {
+  showReport(r);
+  if (r.mission) maxSays(r.mission.validated ? 'Bravo commandant ! Mission validée, ' + r.mission.points + ' points de plus pour ta carrière.' : 'Mission non validée cette fois. ' + (r.mission.reason || ''));
+});
 afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });
 
 function showReport(r) {
   const h = (m) => (m == null ? '—' : Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0'));
   $('reportBody').innerHTML = '<div class="muted">' + esc(r.callsign || '') + ' ' + esc(r.from) + ' → ' + esc(r.to) + (r.aircraft ? ' · ' + esc(r.aircraft) : '') + '</div><div class="rep">' +
     [['Temps bloc', h(r.blockMinutes)], ['Temps de vol', h(r.flightMinutes)], ['Distance', fmt(r.distanceNm) + ' NM'], ['Carburant utilisé', r.fuelUsedKg == null ? '—' : fmt(r.fuelUsedKg) + ' kg'], ['Atterrissage', r.landingRate == null ? '—' : r.landingRate + ' ft/min'], ['Altitude max', 'FL' + Math.round(r.maxAlt / 100)]]
-      .map(([k, v]) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('') + '</div><p class="muted small">Rapport enregistré dans « Mes vols ».</p>';
+      .map(([k, v]) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('') + '</div>' + missionResult(r.mission) + '<p class="muted small">Rapport enregistré dans « Mes vols ».</p>';
   $('reportModal').hidden = false;
 }
 $('btnCloseReport').addEventListener('click', () => { $('reportModal').hidden = true; });
@@ -388,8 +396,8 @@ $('btnAddPlane').addEventListener('click', async () => {
 async function renderReports() {
   const list = await afv.listReports();
   if (!list.length) { $('reports').innerHTML = '<div class="empty">Aucun vol enregistré pour l’instant.</div>'; return; }
-  $('reports').innerHTML = '<table><thead><tr><th>Date</th><th>Vol</th><th>Trajet</th><th>Appareil</th><th>Temps de vol</th><th>Atterrissage</th></tr></thead><tbody>' +
-    list.map((r) => '<tr><td>' + esc(new Date(r.date).toLocaleString('fr-FR')) + (r.mode === 'demo' ? ' (démo)' : '') + '</td><td>' + esc(r.callsign) + '</td><td>' + esc(r.from) + ' → ' + esc(r.to) + '</td><td>' + esc(r.aircraft) + '</td><td>' + (r.flightMinutes == null ? '—' : Math.floor(r.flightMinutes / 60) + ' h ' + String(r.flightMinutes % 60).padStart(2, '0')) + '</td><td>' + (r.landingRate == null ? '—' : r.landingRate + ' ft/min') + '</td></tr>').join('') + '</tbody></table>';
+  $('reports').innerHTML = '<table><thead><tr><th>Date</th><th>Vol</th><th>Trajet</th><th>Appareil</th><th>Temps de vol</th><th>Atterrissage</th><th>Mission</th></tr></thead><tbody>' +
+    list.map((r) => '<tr><td>' + esc(new Date(r.date).toLocaleString('fr-FR')) + (r.mode === 'demo' ? ' (démo)' : '') + '</td><td>' + esc(r.callsign) + '</td><td>' + esc(r.from) + ' → ' + esc(r.to) + '</td><td>' + esc(r.aircraft) + '</td><td>' + (r.flightMinutes == null ? '—' : Math.floor(r.flightMinutes / 60) + ' h ' + String(r.flightMinutes % 60).padStart(2, '0')) + '</td><td>' + (r.landingRate == null ? '—' : r.landingRate + ' ft/min') + '</td><td>' + (r.mission ? (r.mission.validated ? '✓ +' + r.mission.points + ' pts' : 'Non validée') : '—') + '</td></tr>').join('') + '</tbody></table>';
 }
 $('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
 
@@ -540,6 +548,7 @@ function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store
   setSim(d.sim.connected);
   renderAircraftSelect(); renderFleet(); renderSounds(); renderFb(); renderSettings(); renderPhases(null); renderAnnHint();
   S.voice = await afv.voiceStatus(); renderVoice(); renderMaxVoiceHint();
+  S.infos = await afv.getInfos(); await refreshCareer(); loadMetar();
   UPD = await afv.getUpdate(); renderUpdate();
   const cl = await renderChangelog();
   const now = cl.find((v) => v.version === d.version);
@@ -549,3 +558,121 @@ function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store
     $('newsModal').hidden = false;
   } else if (d.firstRun) afv.changelogSeen();
 })();
+
+// ---------------- carrière, missions et infos du jour ----------------
+const fmtH = (h) => fmt(h) + ' h';
+async function refreshCareer(c) {
+  S.career = c || await afv.getCareer();
+  renderCareer(); renderMissions(); renderMissionSelect(); renderInfos();
+}
+afv.on('career:changed', (c) => refreshCareer(c));
+afv.on('infos:changed', (i) => { S.infos = i; renderInfos(); });
+
+function missionResult(m) {
+  if (!m) return '';
+  return '<div class="mres' + (m.validated ? '' : ' ko') + '"><b>' + (m.validated ? 'Mission validée : +' + m.points + ' points' : 'Mission non validée') + '</b><br>' + esc(m.title) + (m.reason ? '<br>' + esc(m.reason) : '') + '</div>';
+}
+
+function renderCareer() {
+  const c = S.career; if (!c) return;
+  $('carSub').textContent = (S.store.settings.pilot || 'Pilote') + ' · ' + c.points + ' points';
+  $('carGrade').textContent = c.gradeName;
+  $('carNext').textContent = c.next ? 'Prochain grade : ' + c.next + (c.todo.length ? ' · il reste ' + c.todo.join(', ') : ' · conditions remplies') : 'Tu as atteint le plus haut grade de la compagnie.';
+  const prevH = [0, 100, 250, 600, 1200][c.grade];
+  $('carBar').style.width = c.next ? Math.max(2, Math.min(100, Math.round(((c.hours - prevH) / (c.nextHours - prevH)) * 100))) + '%' : '100%';
+  $('carStats').innerHTML = [['Heures de vol', fmtH(c.hours)], ['Vols effectués', c.flights], ['Missions validées', c.training + c.regular], ['Atterrissage moyen', c.avgLanding == null ? '—' : c.avgLanding + ' ft/min']]
+    .map(([k, v]) => '<div class="tl"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('');
+  $('carLadder').innerHTML = c.grades.map((g, i) => '<li class="' + g.state + '"><span class="dotg">' + (g.state === 'done' ? '✓' : i + 1) + '</span><div><b>' + esc(g.name) + '</b>' + (g.state === 'current' ? ' · <span style="color:var(--red);font-weight:700">ton grade</span>' : '') +
+    '<div class="muted small">' + esc(g.req) + '</div><div class="small">Débloque : ' + esc(g.unlock) + '</div></div></li>').join('');
+  const acc = c.missions.filter((m) => m.accepted);
+  $('carActive').innerHTML = acc.length ? acc.map((m) => '<div class="am"><div class="t">' + esc(m.title) + '</div><div class="muted small">' + esc(m.role) + ' · ' + esc(m.from) + ' → ' + esc(m.to) + ' · ' + esc(m.aircraft) +
+    (m.repeat > 1 ? ' · ' + m.validated + '/' + m.repeat + ' vols validés' : '') + '</div></div>').join('') : '<p class="muted">Aucune mission acceptée. Choisis-en une dans « Missions & rôles ».</p>';
+  const all = ['A220', 'A320', 'A350', 'B777'];
+  $('carQuals').innerHTML = all.map((q) => '<span class="qual' + (c.quals.includes(q) ? '' : ' off') + '">' + q + (c.quals.includes(q) ? '' : ' (verrouillée)') + '</span>').join('');
+}
+
+S.misFilter = 'all';
+function renderMissions() {
+  const c = S.career; if (!c) return;
+  $('misSub').textContent = 'Grade actuel : ' + c.gradeName;
+  const byId = Object.fromEntries(c.missions.map((m) => [m.id, m]));
+  $('misDaily').innerHTML = c.daily.length ? c.daily.map((id, i) => { const m = byId[id]; return '<button class="dm' + (i === 0 ? ' first' : '') + '" data-mis="' + id + '">' + (i === 0 ? '<span class="x2">Vol du jour · points ×2</span>' : '') +
+    '<span class="r">' + esc(m.from) + ' → ' + esc(m.to) + '</span><span class="small">' + esc(m.title) + '</span><span class="muted small">' + esc(m.aircraft) + ' · ' + esc(m.duration) + ' · +' + m.reward * m.bonus + ' pts</span></button>'; }).join('')
+    : '<p class="muted">Aucune mission disponible pour ton grade aujourd’hui.</p>';
+  const filters = [['all', 'Toutes'], ['pass', 'Passagers'], ['cargo', 'Cargo'], ['charter', 'Charter / VIP'], ['human', 'Humanitaire'], ['form', 'Formation']];
+  $('misFilters').innerHTML = filters.map(([k, l]) => '<button class="tag' + (S.misFilter === k ? ' on' : '') + '" data-filter="' + k + '" aria-pressed="' + (S.misFilter === k) + '">' + l + '</button>').join('');
+  const shown = c.missions.filter((m) => S.misFilter === 'all' || m.cat === S.misFilter);
+  if (!S.misSel || !byId[S.misSel]) S.misSel = (c.active || (shown[0] && shown[0].id));
+  $('misList').innerHTML = shown.map((m) => '<button class="mi' + (m.id === S.misSel ? ' on' : '') + '" data-mis="' + m.id + '"><span class="r">' + esc(m.category) + ' · ' + esc(m.from) + ' → ' + esc(m.to) + '</span><span class="t">' + esc(m.title) + '</span>' +
+    '<span class="muted small">' + esc(m.role) + ' · ' + esc(m.aircraft) + ' · ' + esc(m.duration) + '</span><span class="st' + (m.locked ? ' lock' : m.accepted ? ' run' : '') + '">' + esc(m.status) + '</span></button>').join('');
+  const m = byId[S.misSel];
+  if (!m) { $('misDetail').innerHTML = ''; return; }
+  const btn = m.locked ? '<p class="muted"><b>Verrouillée :</b> ' + esc(m.locked) + '</p>'
+    : m.accepted ? '<div class="row wrap"><button class="btn red" data-fly="' + m.id + '">Voler cette mission</button><button class="btn ghost" data-sb="' + m.id + '">Préparer dans SimBrief</button><button class="btn ghost" data-drop="' + m.id + '">Abandonner</button></div>'
+      : '<div class="row wrap"><button class="btn red" data-accept="' + m.id + '">Accepter la mission</button><button class="btn ghost" data-sb="' + m.id + '">Préparer dans SimBrief</button></div>';
+  $('misDetail').innerHTML = '<div class="muted small">' + esc(m.category) + (m.daily ? ' · mission du jour' : '') + '</div><h2>' + esc(m.from) + ' → ' + esc(m.to) + '</h2><div style="font-weight:600;margin-bottom:10px">' + esc(m.title) + '</div>' +
+    '<div class="am"><div class="t">Rôle à tenir : ' + esc(m.role) + '</div><div class="muted">' + esc(m.roleDesc) + '</div></div>' +
+    '<div class="kv"><div><div class="k">Appareil</div><div class="v">' + esc(m.aircraft) + '</div></div><div><div class="k">Durée estimée</div><div class="v">' + esc(m.duration) + '</div></div>' +
+    '<div><div class="k">Grade minimum</div><div class="v">' + esc(m.gradeName) + '</div></div><div><div class="k">Récompense</div><div class="v">+' + m.reward * m.bonus + ' points' + (m.gives ? ' · qualif. ' + esc(m.gives) : '') + '</div></div></div>' +
+    (m.repeat > 1 ? '<p class="muted">Progression : ' + m.validated + ' / ' + m.repeat + ' vols validés.</p>' : '') +
+    '<p class="muted"><b>Briefing :</b> ' + esc(m.brief) + '</p>' +
+    '<p class="muted small">Pour valider : charge le plan SimBrief ' + esc(m.from) + ' → ' + esc(m.to) + ' dans le tracker, choisis cette mission et vole jusqu’au parking sans atterrissage trop dur.</p>' + btn;
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-mis],[data-filter],[data-accept],[data-drop],[data-fly],[data-sb]');
+  if (!b) return;
+  if (b.dataset.filter) { S.misFilter = b.dataset.filter; renderMissions(); return; }
+  if (b.dataset.mis) { S.misSel = b.dataset.mis; if (!$('tab-missions').classList.contains('on')) showTab('missions'); renderMissions(); return; }
+  if (b.dataset.accept) { await refreshCareer(await afv.acceptMission(b.dataset.accept)); return; }
+  if (b.dataset.drop) { await refreshCareer(await afv.dropMission(b.dataset.drop)); return; }
+  if (b.dataset.sb) { const m = S.career.missions.find((x) => x.id === b.dataset.sb); if (m) window.open(m.simbrief); return; }
+  if (b.dataset.fly) { await refreshCareer(await afv.setActiveMission(b.dataset.fly)); $('selMission').value = b.dataset.fly; renderMissionHint(); showTab('vol'); }
+});
+
+function renderMissionSelect() {
+  const c = S.career; if (!c) return;
+  const sel = $('selMission');
+  const cur = sel.value || c.active || '';
+  const acc = c.missions.filter((m) => m.accepted);
+  sel.innerHTML = '<option value="">Vol libre (sans mission)</option>' + acc.map((m) => '<option value="' + m.id + '">' + esc(m.from + ' → ' + m.to + ' · ' + m.title) + '</option>').join('');
+  sel.value = acc.some((m) => m.id === cur) ? cur : '';
+  renderMissionHint();
+}
+function renderMissionHint() {
+  const m = S.career && S.career.missions.find((x) => x.id === $('selMission').value);
+  if (!m) { $('missionHint').textContent = S.career && S.career.missions.some((x) => x.accepted) ? '' : 'Accepte une mission dans « Missions & rôles » pour faire avancer ta carrière.'; return; }
+  const ok = S.plan && S.plan.origin && S.plan.origin.icao === m.from && S.plan.destination.icao === m.to;
+  $('missionHint').innerHTML = esc(m.role) + ' · ' + esc(m.aircraft) + ' · +' + m.reward * m.bonus + ' pts. ' +
+    (ok ? '<b style="color:#1B5E32">Le plan SimBrief correspond à la mission.</b>' : 'Charge un plan SimBrief ' + esc(m.from) + ' → ' + esc(m.to) + ' pour que la mission soit validée. <button class="linkbtn" data-sb="' + m.id + '">Préparer dans SimBrief</button>');
+}
+$('selMission').addEventListener('change', () => { afv.setActiveMission($('selMission').value || null); renderMissionHint(); });
+
+function renderInfos() {
+  const i = (S.infos && S.infos.data) || {};
+  const msg = i.message || {};
+  $('infosDate').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('infoTitle').textContent = msg.title || 'Bienvenue';
+  $('infoText').textContent = msg.text || '';
+  $('infoAuthor').textContent = msg.author ? '— ' + msg.author : '';
+  $('infoEvents').innerHTML = (i.events || []).map((e) => '<div class="ev"><b>' + esc(e.title) + '</b><div class="muted">' + esc(e.note) + '</div></div>').join('') || '<p class="muted">Aucun événement aujourd’hui.</p>';
+  $('infoAlerts').innerHTML = (i.alerts || []).map((a) => '<div class="ev"><b>' + esc(a.kind) + '</b><div class="muted">' + esc(a.text) + '</div></div>').join('') || '<p class="muted">Aucune alerte.</p>';
+  const c = S.career;
+  const m = c && c.daily.length ? c.missions.find((x) => x.id === c.daily[0]) : null;
+  $('dayFlight').innerHTML = m ? '<div class="muted small">Vol du jour proposé par Max</div><h2>' + esc(m.from) + ' → ' + esc(m.to) + '</h2><p class="muted">' + esc(m.title) + ' · ' + esc(m.aircraft) + ' · ' + esc(m.duration) + '</p>' +
+    '<p><span class="x2">Points doublés aujourd’hui</span></p><button class="btn ghost" data-mis="' + m.id + '">Voir la mission</button>' : '<div class="muted small">Vol du jour</div><p class="muted">Aucune mission disponible pour ton grade.</p>';
+}
+
+async function loadMetar() {
+  const c = S.career;
+  const ids = ['LFPG', 'LFPO'];
+  if (c) for (const id of c.daily.slice(0, 2)) { const m = c.missions.find((x) => x.id === id); if (m) ids.push(m.from, m.to); }
+  $('metar').innerHTML = '<p class="muted">Chargement de la météo…</p>';
+  const list = await afv.getMetar(ids);
+  S.metarAt = Date.now();
+  if (!list) { $('metar').innerHTML = '<p class="muted">Météo indisponible pour le moment (pas de connexion ?).</p>'; return; }
+  const cat = { VFR: 'Conditions VFR', MVFR: 'VFR marginal', IFR: 'Conditions IFR', LIFR: 'IFR basses' };
+  $('metar').innerHTML = list.map((w) => '<div class="wxi"><div class="row between"><span class="c">' + esc(w.icao) + '</span><span class="muted small">' + esc(cat[w.cat] || '') + '</span></div>' +
+    '<div class="small">' + (w.wspd != null ? 'Vent ' + (w.wdir === 'VRB' ? 'variable' : esc(w.wdir) + '°') + ' · ' + esc(w.wspd) + ' kt' : '') + (w.temp != null ? ' · ' + esc(w.temp) + ' °C' : '') + '</div>' +
+    '<div class="metar" style="margin-top:6px">' + esc(w.raw) + '</div></div>').join('') || '<p class="muted">Aucune observation reçue.</p>';
+}
+$('btnMetar').addEventListener('click', loadMetar);

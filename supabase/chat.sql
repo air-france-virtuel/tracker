@@ -48,7 +48,7 @@ $$;
 -- ---------- droits ----------
 revoke all on public.pilots, public.messages, public.reports from anon, authenticated;
 grant select, insert on public.pilots to authenticated;
-grant update (pseudo, grade) on public.pilots to authenticated;
+grant update (id, pseudo, grade) on public.pilots to authenticated; -- id : nécessaire à l’« upsert », protégé par pilots_update
 grant select, insert on public.messages to authenticated;
 grant select, insert on public.reports to authenticated;
 

@@ -1,6 +1,6 @@
 {
   "name": "air-france-virtuel-tracker",
-  "version": "0.5.3-beta",
+  "version": "0.5.4-beta",
   "description": "Tracker de vol (ACARS) Air France Virtuel pour Microsoft Flight Simulator - version bêta",
   "main": "src/main.js",
   "scripts": {

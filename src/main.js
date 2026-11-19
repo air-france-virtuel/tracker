@@ -254,6 +254,22 @@ app.whenReady().then(() => {
   ipcMain.handle('compact:pin', (_e, on) => { if (compact && !compact.isDestroyed()) compact.setAlwaysOnTop(!!on); return !!on; });
   ipcMain.on('compact:push', (_e, d) => { if (compact && !compact.isDestroyed()) compact.webContents.send('compact:data', d); });
 
+  // ---------- radar météo (RainViewer, dernière image disponible) ----------
+  let radarCache = null;
+  ipcMain.handle('radar:get', async () => {
+    if (radarCache && Date.now() - radarCache.at < 5 * 60 * 1000) return radarCache.data;
+    try {
+      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      const past = (j.radar && j.radar.past) || [];
+      const last = past[past.length - 1];
+      if (!last || !j.host) throw new Error('vide');
+      radarCache = { at: Date.now(), data: { host: j.host, path: last.path, time: last.time * 1000 } };
+      return radarCache.data;
+    } catch (e) { return null; }
+  });
+
   // ---------- vols réels ----------
   ipcMain.handle('real:live', (_e, force) => real.live(!!force));
   ipcMain.handle('real:details', (_e, cs, hex) => real.details(String(cs || ''), String(hex || '')));

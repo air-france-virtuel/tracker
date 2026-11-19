@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('afv', {
   compactClose: () => ipcRenderer.invoke('compact:close'),
   compactPin: (on) => ipcRenderer.invoke('compact:pin', !!on),
   compactPush: (d) => ipcRenderer.send('compact:push', d),
+  getRadar: () => ipcRenderer.invoke('radar:get'),
   realLive: (force) => ipcRenderer.invoke('real:live', !!force),
   realDetails: (cs, hex) => ipcRenderer.invoke('real:details', cs, hex),
   fileUrl: (p) => pathToFileURL(p).href,

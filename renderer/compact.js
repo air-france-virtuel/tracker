@@ -34,15 +34,15 @@ function renderMap(d) {
   const pos = d.pos ? { lat: d.pos[0], lon: d.pos[1] } : null;
   const all = pts.concat(pos ? [pos] : []);
   if (!all.length) { svg.innerHTML = ''; return; }
-  let minLat = Math.min(...all.map((p) => p.lat)), maxLat = Math.max(...all.map((p) => p.lat));
-  let minLon = Math.min(...all.map((p) => p.lon)), maxLon = Math.max(...all.map((p) => p.lon));
-  const pad = 0.6; minLat -= pad; maxLat += pad; minLon -= pad; maxLon += pad;
-  const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
-  const sc = Math.min((W - 30) / ((maxLon - minLon) * k), (H - 30) / (maxLat - minLat));
-  const ox = W / 2 - ((minLon + maxLon) / 2) * k * sc, oy = H / 2 + ((minLat + maxLat) / 2) * sc;
-  const X = (p) => (p.lon * k * sc + ox).toFixed(1), Y = (p) => (oy - p.lat * sc).toFixed(1);
+  const L = window.MapLayers;
+  const xs = all.map((p) => L.LX(p.lon)), ys = all.map((p) => L.LY(p.lat));
+  const pad = 1;
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  const sc = Math.min((W - 30) / (x1 - x0), (H - 30) / (y1 - y0));
+  const ox = W / 2 - ((x0 + x1) / 2) * sc, oy = H / 2 - ((y0 + y1) / 2) * sc;
+  const X = (p) => (L.LX(p.lon) * sc + ox).toFixed(1), Y = (p) => (L.LY(p.lat) * sc + oy).toFixed(1);
   const line = (a) => a.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
-  let h = '<rect x="-50" y="-50" width="500" height="320" fill="#071733"/><path d="' + (window.WORLD_PATH || '') + '" transform="matrix(' + (k * sc) + ' 0 0 ' + sc + ' ' + (ox - 180 * k * sc) + ' ' + (oy - 90 * sc) + ')" fill="#12305F" stroke="#26467F" stroke-width="0.8" vector-effect="non-scaling-stroke"/>';
+  let h = '<rect x="-50" y="-50" width="500" height="320" fill="#071733"/><path d="' + (window.WORLD_PATH || '') + '" transform="matrix(' + sc + ' 0 0 ' + sc + ' ' + ox + ' ' + oy + ')" fill="#12305F" stroke="#26467F" stroke-width="0.8" vector-effect="non-scaling-stroke"/>';
   if (pts.length > 1) h += '<path d="' + line(pts) + '" fill="none" stroke="#6E8AC8" stroke-width="2" stroke-dasharray="6 5"/>';
   const tr = (d.trail || []).map((p) => ({ lat: p[0], lon: p[1] }));
   if (tr.length > 1) h += '<path d="' + line(tr) + '" fill="none" stroke="#3DDC84" stroke-width="3"/>';

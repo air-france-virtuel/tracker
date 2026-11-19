@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file:; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://gibs.earthdata.nasa.gov https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>Air France Virtuel – Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -108,10 +108,11 @@
           <label class="field inline">Rechercher <input id="realSearch" placeholder="AF 1234, Nice, KJFK…"></label>
         </div>
         <div class="card map-card">
-          <div class="row between"><h2>Carte des vols en cours</h2>
-            <div class="row"><button class="tag on" data-view="monde">Monde</button><button class="tag" data-view="europe">Europe</button><button class="tag" data-view="atlantique">Atlantique</button><button class="tag" data-view="antilles">Antilles</button></div></div>
+          <div class="row between wrap"><h2>Carte des vols en cours</h2>
+            <div class="row wrap"><button class="tag on" data-view="monde">Monde</button><button class="tag" data-view="europe">Europe</button><button class="tag" data-view="atlantique">Atlantique</button><button class="tag" data-view="antilles">Antilles</button>
+            <span style="width:10px"></span><button class="tag on" data-layer="reels:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="reels:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="reels:radar" aria-pressed="false">Radar météo</button></div></div>
           <svg id="realMap" viewBox="0 0 360 150" role="img" aria-label="Carte des vols Air France en cours"></svg>
-          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span>Fond de carte : Natural Earth</span></div>
+          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="realCredit">Fond : Natural Earth</span></div>
         </div>
         <div class="mis-grid">
           <div id="realList"></div>
@@ -169,7 +170,7 @@
           <div class="col">
             <div class="card map-card">
               <div class="row between" style="margin-bottom:8px"><h3 class="caps">Carte du vol</h3>
-                <div class="row"><button class="tag on" data-mapmode="route">Route entière</button><button class="tag" data-mapmode="avion">Suivre l’avion</button></div></div>
+                <div class="row wrap"><button class="tag on" data-mapmode="route">Route entière</button><button class="tag" data-mapmode="avion">Suivre l’avion</button><span style="width:6px"></span><button class="tag on" data-layer="vol:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="vol:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="vol:radar" aria-pressed="false">Radar</button></div></div>
               <svg id="map" viewBox="0 0 600 300" role="img" aria-label="Carte du vol"></svg>
               <div class="map-legend"><span id="mapFrom"></span><span id="mapDist"></span><span id="mapTo"></span></div>
             </div>
@@ -320,6 +321,7 @@
 </div>
 
 <script src="monde.js"></script>
+<script src="maplayers.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

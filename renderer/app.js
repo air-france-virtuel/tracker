@@ -166,42 +166,79 @@ function renderTelem(t) {
 }
 S.mapMode = 'route';
 S.lastPos = null;
+S.layers = { vol: { sat: false, radar: false }, reels: { sat: false, radar: false } };
+// Squelette d'une carte : océan, satellite, terres, radar, puis le dessin du vol par-dessus.
+function mapSkeleton(svg) {
+  if (svg.querySelector('.fg')) return;
+  svg.innerHTML = '<rect class="ocean" x="-2000" y="-2000" width="5000" height="5000" fill="#DCE6F5"/><g class="sat"></g>' +
+    '<path class="landp" d="' + (window.WORLD_PATH || '') + '" fill="#F7F9FC" stroke="#B8C4DA" stroke-width="0.8" vector-effect="non-scaling-stroke"/><g class="radar"></g><g class="fg"></g>';
+}
+// Applique les fonds (plan / satellite / radar) à une carte : m = matrice Mercator → écran, view = zone visible.
+function applyLayers(svg, which, m, view, ppu, redraw) {
+  const L = S.layers[which];
+  const mat = 'matrix(' + m.join(' ') + ')';
+  for (const sel of ['.sat', '.landp', '.radar']) svg.querySelector(sel).setAttribute('transform', mat);
+  svg.querySelector('.ocean').setAttribute('fill', L.sat ? '#0B1F3F' : '#DCE6F5');
+  const land = svg.querySelector('.landp');
+  land.setAttribute('fill', L.sat ? 'none' : '#F7F9FC');
+  land.setAttribute('stroke', L.sat ? 'rgba(255,255,255,.55)' : '#B8C4DA');
+  MapLayers.fill(svg.querySelector('.sat'), { view, pxPerUnit: ppu, sat: L.sat, radar: false });
+  MapLayers.fill(svg.querySelector('.radar'), { view, pxPerUnit: ppu, sat: false, radar: L.radar, onReady: redraw });
+}
 function renderMap(t) {
   const pl = S.plan;
   const svg = $('map');
+  mapSkeleton(svg);
+  const fg = svg.querySelector('.fg');
   if (t && t.lat != null) S.lastPos = t; else t = t || S.lastPos;
   const pts = pl ? (pl.route_points && pl.route_points.length ? pl.route_points : [pl.origin, pl.destination]).map((p) => ({ lat: p.lat, lon: p.lon })) : [];
-  if (!pl && !t) { svg.innerHTML = '<text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="14">La carte s’affiche avec un plan SimBrief ou dès que l’avion bouge</text>'; return; }
-  // zone affichée : toute la route, ou autour de l'avion (environ 160 NM)
-  let all = S.mapMode === 'avion' && t ? [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }] : pts.concat(S.trail);
-  if (!all.length && t) all = [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }];
-  let minLat = Math.min(...all.map((p) => p.lat)), maxLat = Math.max(...all.map((p) => p.lat));
-  let minLon = Math.min(...all.map((p) => p.lon)), maxLon = Math.max(...all.map((p) => p.lon));
-  const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
-  const w = Math.max(0.5, (maxLon - minLon) * k), h = Math.max(0.5, maxLat - minLat);
-  const sc = Math.min(540 / w, 240 / h);
-  const ox = 300 - ((minLon + maxLon) / 2) * k * sc, oy = 150 + ((minLat + maxLat) / 2) * sc;
-  const X = (p) => (p.lon * k * sc + ox).toFixed(1), Y = (p) => (oy - p.lat * sc).toFixed(1);
-  const line = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
-  // fond : océan + terres (Natural Earth) dans la même projection
-  let h2 = '<rect x="-10" y="-10" width="620" height="320" fill="#DCE6F5"/>' +
-    '<path d="' + (window.WORLD_PATH || '') + '" transform="matrix(' + (k * sc) + ' 0 0 ' + sc + ' ' + (ox - 180 * k * sc) + ' ' + (oy - 90 * sc) + ')" fill="#F7F9FC" stroke="#B8C4DA" stroke-width="0.8" vector-effect="non-scaling-stroke"/>';
-  if (pl) {
-    h2 += '<path d="' + line(pts) + '" fill="none" stroke="#7F8CA8" stroke-width="2" stroke-dasharray="6 6"/>';
+  if (!pl && !t) {
+    applyLayers(svg, 'vol', [0.8, 0, 0, 0.8, 300 - 180 * 0.8, 150 - 140 * 0.8], [0, 0, 360, 360], 0.8, () => renderMap(null));
+    fg.innerHTML = '<rect x="120" y="128" width="360" height="34" rx="8" fill="rgba(255,255,255,.9)"/><text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="13">La carte suit l’avion dès le début du suivi</text>';
+    return;
   }
-  if (S.trail.length > 1) h2 += '<path d="' + line(S.trail) + '" fill="none" stroke="#0A1E4A" stroke-width="3"/>';
+  const box = S.mapMode === 'avion' && t ? [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }] : (pts.length ? pts.concat(S.trail) : [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }]);
+  const xs = box.map((p) => MapLayers.LX(p.lon)), ys = box.map((p) => MapLayers.LY(p.lat));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sc = Math.min(540 / Math.max(0.3, x1 - x0), 240 / Math.max(0.3, y1 - y0));
+  const ox = 300 - ((x0 + x1) / 2) * sc, oy = 150 - ((y0 + y1) / 2) * sc;
+  const X = (p) => (MapLayers.LX(p.lon) * sc + ox).toFixed(1), Y = (p) => (MapLayers.LY(p.lat) * sc + oy).toFixed(1);
+  const line = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
+  const ppu = sc * ((svg.clientWidth || 600) / 600);
+  applyLayers(svg, 'vol', [sc, 0, 0, sc, ox, oy], [-ox / sc, -oy / sc, (600 - ox) / sc, (300 - oy) / sc], ppu, () => renderMap(null));
+  const sat = S.layers.vol.sat;
+  const ink = sat ? '#fff' : '#0A1E4A';
+  const halo = sat ? '#0A1E4A' : '#fff';
+  let h2 = '';
+  if (pl) h2 += '<path d="' + line(pts) + '" fill="none" stroke="' + (sat ? '#C9D4EE' : '#7F8CA8') + '" stroke-width="2" stroke-dasharray="6 6"/>';
+  if (S.trail.length > 1) h2 += '<path d="' + line(S.trail) + '" fill="none" stroke="' + (sat ? '#3DDC84' : '#0A1E4A') + '" stroke-width="3"/>';
   if (pl) {
-    h2 += '<circle cx="' + X(pl.origin) + '" cy="' + Y(pl.origin) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
-    h2 += '<circle cx="' + X(pl.destination) + '" cy="' + Y(pl.destination) + '" r="6" fill="#fff" stroke="#0A1E4A" stroke-width="3"/>';
-    h2 += '<text x="' + X(pl.origin) + '" y="' + (Y(pl.origin) - 12) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A" paint-order="stroke" stroke="#fff" stroke-width="3">' + esc(pl.origin.icao) + '</text>';
-    h2 += '<text x="' + X(pl.destination) + '" y="' + (+Y(pl.destination) + 22) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#0A1E4A" paint-order="stroke" stroke="#fff" stroke-width="3">' + esc(pl.destination.icao) + '</text>';
-    if (pl.tod) h2 += '<circle cx="' + X(pl.tod) + '" cy="' + Y(pl.tod) + '" r="4" fill="#E0A800"/><text x="' + X(pl.tod) + '" y="' + (Y(pl.tod) - 8) + '" text-anchor="middle" font-size="11" fill="#7A5B00" paint-order="stroke" stroke="#fff" stroke-width="3">TOD</text>';
+    for (const [p, dy] of [[pl.origin, -12], [pl.destination, 22]]) {
+      h2 += '<circle cx="' + X(p) + '" cy="' + Y(p) + '" r="6" fill="' + halo + '" stroke="' + ink + '" stroke-width="3"/>';
+      h2 += '<text x="' + X(p) + '" y="' + (+Y(p) + dy) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="3">' + esc(p.icao) + '</text>';
+    }
+    if (pl.tod) h2 += '<circle cx="' + X(pl.tod) + '" cy="' + Y(pl.tod) + '" r="4" fill="#E0A800"/><text x="' + X(pl.tod) + '" y="' + (Y(pl.tod) - 8) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#7A5B00" paint-order="stroke" stroke="#fff" stroke-width="3">TOD</text>';
   }
   if (t) h2 += '<g transform="translate(' + X(t) + ' ' + Y(t) + ') rotate(' + ((t.hdg || 0) - 90).toFixed(0) + ')"><path d="M12 0 L-8 -8 L-4 0 L-8 8 Z" fill="#C8102E" stroke="#fff" stroke-width="1.5"/></g>';
-  svg.innerHTML = h2;
+  if (S.layers.vol.radar) h2 += '<text x="592" y="292" text-anchor="end" font-size="10" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="3">Radar : RainViewer' + (MapLayers.state.radar ? ' · ' + new Date(MapLayers.state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '') + '</text>';
+  else if (sat) h2 += '<text x="592" y="292" text-anchor="end" font-size="10" fill="#fff">Images : NASA GIBS</text>';
+  fg.innerHTML = h2;
   $('mapFrom').textContent = pl ? pl.origin.icao + (pl.origin.rwy ? ' · piste ' + pl.origin.rwy : '') : '';
   $('mapTo').textContent = pl ? pl.destination.icao + (pl.destination.rwy ? ' · piste ' + pl.destination.rwy : '') : '';
 }
+// Boutons Plan / Satellite / Radar (carte du tracker et carte des vols réels)
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-layer]'); if (!b) return;
+  const [which, kind] = b.dataset.layer.split(':');
+  const L = S.layers[which];
+  if (kind === 'radar') L.radar = !L.radar; else L.sat = kind === 'sat';
+  document.querySelectorAll('[data-layer^="' + which + ':"]').forEach((x) => {
+    const k = x.dataset.layer.split(':')[1];
+    const on = k === 'radar' ? L.radar : (k === 'sat' ? L.sat : !L.sat);
+    x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on));
+  });
+  if (which === 'vol') renderMap(null); else renderRealMap(realShown());
+});
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mapmode]'); if (!b) return;
   S.mapMode = b.dataset.mapmode;
@@ -790,36 +827,48 @@ document.querySelector('[data-tab=reels]').addEventListener('click', () => {
 });
 
 // ---------------- carte des vols réels ----------------
-const VIEWS = { monde: [0, 0, 360, 150], europe: [165, 15, 50, 32], atlantique: [95, 20, 120, 60], antilles: [100, 60, 30, 20] };
+// Vues prédéfinies, données en lon/lat puis converties en Mercator.
+const vbox = (lon0, lat1, lon1, lat0) => [MapLayers.LX(lon0), MapLayers.LY(lat1), MapLayers.LX(lon1) - MapLayers.LX(lon0), MapLayers.LY(lat0) - MapLayers.LY(lat1)];
+const VIEWS = { monde: vbox(-180, 78, 180, -58), europe: vbox(-12, 60, 32, 34), atlantique: vbox(-85, 58, 35, 5), antilles: vbox(-72, 22, -55, 10) };
 let mapVB = VIEWS.monde.slice();
-const MX = (lon) => lon + 180; const MY = (lat) => 90 - lat;
+const MX = (lon) => MapLayers.LX(lon); const MY = (lat) => MapLayers.LY(lat);
 const PLANE = 'M0 -5 L1 -1.5 L5 1 L5 2 L1 1 L0.8 3.6 L2 4.6 L2 5.2 L0 4.6 L-2 5.2 L-2 4.6 L-0.8 3.6 L-1 1 L-5 2 L-5 1 L-1 -1.5 Z';
 function renderRealMap(list) {
   const svg = $('realMap'); if (!svg) return;
+  mapSkeleton(svg);
   const [x, y, w, h] = mapVB;
-  svg.setAttribute('viewBox', x + ' ' + y + ' ' + w + ' ' + h);
-  const k = Math.pow(w / 360, 0.6); // les symboles rétrécissent moins vite que la carte au zoom
-  let g = '';
-  for (let lon = -150; lon <= 180; lon += 30) g += '<line class="grid" x1="' + MX(lon) + '" y1="0" x2="' + MX(lon) + '" y2="150" stroke-width="' + (0.1 * k * 3) + '"/>';
-  for (let lat = 60; lat >= -60; lat -= 30) g += '<line class="grid" x1="0" y1="' + MY(lat) + '" x2="360" y2="' + MY(lat) + '" stroke-width="' + (0.1 * k * 3) + '"/>';
-  let h2 = '<path class="land" d="' + (window.WORLD_PATH || '') + '" stroke-width="' + (0.25 * k) + '"/>' + g;
+  // la carte garde le rapport largeur/hauteur de l'écran
+  const ratio = (svg.clientHeight || 420) / (svg.clientWidth || 1000);
+  const hh = w * ratio, yy = y + h / 2 - hh / 2;
+  svg.setAttribute('viewBox', x + ' ' + yy + ' ' + w + ' ' + hh);
+  mapVB = [x, yy, w, hh];
+  const ppu = (svg.clientWidth || 1000) / w;
+  applyLayers(svg, 'reels', [1, 0, 0, 1, 0, 0], [x, yy, x + w, yy + hh], ppu, () => renderRealMap(realShown()));
+  const k = Math.pow(w / 360, 0.6);
+  const sat = S.layers.reels.sat;
+  const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
+  let h2 = '';
   const sel = S.real.flights.find((f) => f.callsign === S.real.sel);
   if (sel) {
     const d = S.real.det[sel.callsign] || {};
     const fp = sel.fromPos || d.fromPos; const tp = sel.toPos || d.toPos;
     const pts = [fp, [sel.lat, sel.lon], tp].filter(Boolean);
-    if (pts.length > 1) h2 += '<polyline class="rte" stroke-width="' + (0.35 * k) + '" stroke-dasharray="' + (1.6 * k) + ' ' + (1 * k) + '" points="' + pts.map((p) => MX(p[1]) + ',' + MY(p[0])).join(' ') + '"/>';
+    if (pts.length > 1) h2 += '<polyline fill="none" stroke="#F0374E" stroke-width="' + (0.35 * k) + '" stroke-dasharray="' + (1.6 * k) + ' ' + (1 * k) + '" points="' + pts.map((p) => MX(p[1]) + ',' + MY(p[0])).join(' ') + '"/>';
     for (const [p, code] of [[fp, sel.from || d.from], [tp, sel.to || d.to]]) if (p) {
-      h2 += '<circle class="ap" cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" stroke-width="' + (0.35 * k) + '"/>' +
-        '<text class="lbl" x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '">' + esc(code || '') + '</text>';
+      h2 += '<circle cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" fill="' + halo + '" stroke="#F0374E" stroke-width="' + (0.35 * k) + '"/>' +
+        '<text x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.6 * k) + '">' + esc(code || '') + '</text>';
     }
   }
   const sz = 0.33 * k;
   for (const f of list) {
     const on = f.callsign === S.real.sel;
-    h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"/></g>';
+    h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"' + (sat && !on ? ' style="fill:#fff"' : '') + '/></g>';
   }
-  svg.innerHTML = h2;
+  svg.querySelector('.fg').innerHTML = h2;
+  const credit = ['Fond : Natural Earth'];
+  if (sat) credit.push('Satellite : NASA GIBS');
+  if (S.layers.reels.radar) credit.push('Radar : RainViewer' + (MapLayers.state.radar ? ' (' + new Date(MapLayers.state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : ''));
+  const c = $('realCredit'); if (c) c.textContent = credit.join(' · ');
 }
 function setView(vb) {
   mapVB = vb;
@@ -834,7 +883,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-vi
     ev.preventDefault();
     const [mx, my] = toMap(ev);
     const f = ev.deltaY > 0 ? 1.25 : 0.8;
-    const w = Math.min(360, Math.max(8, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
+    const w = Math.min(360, Math.max(4, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
     setView([mx - (mx - mapVB[0]) * (w / mapVB[2]), my - (my - mapVB[1]) * (h / mapVB[3]), w, h]);
   }, { passive: false });
   let drag = null;

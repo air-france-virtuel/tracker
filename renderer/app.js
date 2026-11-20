@@ -1148,8 +1148,8 @@ async function loadCompanyFleet() {
 }
 setTimeout(loadCompanyFleet, 2500);
 const companyPlane = (reg) => (S.plan2.company || []).find((c) => c.reg === reg) || null;
-// familles d'avions compatibles avec notre appareil (un A320 peut reprendre les vols A319 / A320 / A321)
-const sameFamily = (type, ours) => /^A3(19|20|21)$/.test(ours) ? /^A(3(18|19|20|21)|19N|20N|21N)$/i.test(type || '') : String(type || '').toUpperCase() === ours;
+// vols que notre avion peut reprendre : même modèle seulement (notre A320 reprend les vols A320 et A320neo, pas les A319 ni les A321)
+const sameFamily = (type, ours) => ours === 'A320' ? /^A(320|20N)$/i.test(type || '') : String(type || '').toUpperCase() === ours;
 function planSimbrief(f) {
   const own = companyPlane(S.plan2.myReg);
   const p = own
@@ -1313,7 +1313,7 @@ function maxDayHtml(all, mine) {
           ? 'Je te propose ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's qui s’enchaînent' : '') + ', ' + hm(day.block) + ' de vol' + (day.legs.length > 1 ? ', avec 40 min à 3 h d’escale' : '') + ' :<ol class="mday">' + day.legs.map(leg).join('') + '</ol>' +
             (day.end && !/^LFP[GO]$/.test(day.end) && day.end !== S.plan2.base ? '<span class="muted small">L’avion finit la journée à ' + esc(day.end) + ' : je n’ai pas trouvé de vol retour assez tôt. </span>' : '<span class="muted small">L’avion revient à ' + esc(day.end) + ' en fin de journée. </span>') +
             '<span class="muted small">SimBrief prépare chaque vol avec l’indicatif LAT et l’immatriculation ' + esc(own.reg) + '.</span>'
-          : 'Je ne trouve plus de vol ' + esc(own.type === 'A320' ? 'A319 / A320 / A321' : own.type) + ' au départ de ' + esc(S.plan2.base) + ' aujourd’hui. Choisis un autre aéroport ou actualise le planning.') +
+          : 'Je ne trouve plus de vol ' + esc(own.type === 'A320' ? 'A320' : own.type) + ' au départ de ' + esc(S.plan2.base) + ' aujourd’hui. Choisis un autre aéroport ou actualise le planning.') +
         (own.installed ? '' : '<br><span class="muted small">La livrée n’est pas encore installée : rubrique « Livrées ».</span>'),
       say: day.legs.length ? 'Voici ta journée avec ' + own.reg + ' : ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's' : '') + '. Tu pars de ' + day.legs[0].from + (day.legs[0].depEst ? ' à ' + sayTime(day.legs[0].depEst) : '') + ', puis ' + day.legs.map((f) => f.to).join(', puis ') + '. ' + hm(day.block).replace(' h ', ' heures ') + ' de vol au total. Bonne journée !' : ''
     };

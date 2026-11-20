@@ -1148,8 +1148,8 @@ async function loadCompanyFleet() {
 }
 setTimeout(loadCompanyFleet, 2500);
 const companyPlane = (reg) => (S.plan2.company || []).find((c) => c.reg === reg) || null;
-// vols que notre avion peut reprendre : même modèle seulement (notre A320 reprend les vols A320 et A320neo, pas les A319 ni les A321)
-const sameFamily = (type, ours) => ours === 'A320' ? /^A(320|20N)$/i.test(type || '') : String(type || '').toUpperCase() === ours;
+// vols que notre avion peut reprendre : exactement le même modèle (notre A320 « classique » : ni A319, ni A321, ni A320neo)
+const sameFamily = (type, ours) => String(type || '').toUpperCase() === String(ours || '').toUpperCase();
 function planSimbrief(f) {
   const own = companyPlane(S.plan2.myReg);
   const p = own

@@ -1330,7 +1330,7 @@ function maxDayHtml(all, mine) {
   const byModel = {};
   for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
   const opts = '<option value="">Choisis ton avion…</option>' +
-    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => { const b = bookingOf(c.reg); return '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.label) + ' de la compagnie' + (b ? (b.mine ? ' · pris par toi' : ' · pris par ' + esc(b.pseudo)) : '') + '</option>'; }).join('') + '</optgroup>' : '') +
+    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => { const b = bookingOf(c.reg); return '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.label) + ' de la compagnie' + (b ? (b.mine ? ' · piloté par toi' : ' · piloté par ' + esc(b.pseudo)) : '') + '</option>'; }).join('') + '</optgroup>' : '') +
     '<optgroup label="──────────" disabled></optgroup>' + Object.keys(byModel).sort().map((m) => '<optgroup label="Air France · ' + esc(m) + '">' +
     byModel[m].sort((a, b) => a.reg.localeCompare(b.reg)).map((r) => '<option value="' + esc(r.reg) + '"' + (r.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(r.reg) + ' · ' + r.n + ' vol' + (r.n > 1 ? 's' : '') + '</option>').join('') + '</optgroup>').join('');
   const reg = S.plan2.myReg;
@@ -1362,10 +1362,10 @@ function maxDayHtml(all, mine) {
     add = day.legs.map((f) => f.key);
     const b = bookingOf(own.reg);
     if (b && !b.mine) {
-      t = { html: '<b>' + esc(own.reg) + ' est déjà pris par ' + esc(b.pseudo) + '</b> jusqu’à ' + hLocal(b.until) + ' au plus tard. Tant qu’il l’a, personne d’autre ne peut le prendre : choisis un autre avion, ou reviens quand il l’aura rendu.', say: own.reg + ' est déjà pris par ' + b.pseudo + '. Choisis un autre avion.' };
+      t = { html: '<b>' + esc(own.reg) + ' est déjà piloté par ' + esc(b.pseudo) + '</b> jusqu’à ' + hLocal(b.until) + ' au plus tard. Tant qu’il l’a, personne d’autre ne peut le prendre : choisis un autre avion, ou reviens quand il l’aura rendu.', say: own.reg + ' est déjà piloté par ' + b.pseudo + '. Choisis un autre avion.' };
       add = []; booked = 'other';
     } else if (b) {
-      t.html += '<div class="muted small" style="margin-top:6px">✔ <b>Tu as pris ' + esc(own.reg) + '</b> jusqu’à ' + hLocal(b.until) + ' : les autres pilotes ne peuvent pas le prendre. Pense à le rendre si tu ne voles plus.</div>';
+      t.html += '<div class="muted small" style="margin-top:6px">✔ <b>Tu pilotes ' + esc(own.reg) + '</b> jusqu’à ' + hLocal(b.until) + ' : les autres pilotes ne peuvent pas le prendre. Pense à le rendre si tu ne voles plus.</div>';
       booked = 'mine';
     } else if (S.plan2.book.error) {
       t.html += '<div class="muted small" style="margin-top:6px">Réservation impossible pour l’instant : ' + esc(S.plan2.book.error) + '</div>';

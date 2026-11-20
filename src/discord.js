@@ -112,23 +112,22 @@ class DiscordPresence {
   }
 }
 
-const COMPANY = 'Les Ailes Tricolores';
 // Construit le statut affiché sur Discord à partir de l'état du tracker.
 // st : { flying, callsign, route, phase, alt, aircraft, startedAt, grade }
 function buildActivity(st, cfg) {
   cfg = cfg || {};
-  // status_display_type 2 : dans la liste des membres, Discord affiche la 1re ligne :
-  // « Les Ailes Tricolores · Vol LAT010 · LFPG → RJTT » (la compagnie, puis ce que fait le pilote)
+  // status_display_type 2 : dans la liste des membres, Discord affiche la 1re ligne (« Vol LAT010 · LFPG → RJTT »)
+  // au lieu du seul nom de l'appli ; le nom de la compagnie reste en titre du profil (une seule fois)
   const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Les Ailes Tricolores · Tracker' }, instance: false, status_display_type: 2 };
   if (st && st.flying) {
     // « Vol AFR123 · LFPG → LFMN » puis « Croisière · FL350 · reste 1 h 12 » ; Discord ajoute le temps de vol (chrono)
-    a.details = cut(COMPANY + ' · Vol ' + ([st.callsign, st.route].filter(Boolean).join(' · ') || 'libre'), 128);
+    a.details = cut('Vol ' + ([st.callsign, st.route].filter(Boolean).join(' · ') || 'libre'), 128);
     a.state = cut([st.phase, st.alt, st.remaining].filter(Boolean).join(' · ') || 'En vol', 128);
     a.assets.large_text = 'Vol pour Les Ailes Tricolores';
     if (st.startedAt) a.timestamps = { start: Math.floor(st.startedAt) };
     if (cfg.smallImage) { a.assets.small_image = cfg.smallImage; a.assets.small_text = cut(st.phase || 'En vol', 128); }
   } else {
-    a.details = COMPANY + ' · Prépare son prochain vol';
+    a.details = 'Prépare son prochain vol';
     a.state = cut(st && st.grade ? st.grade : 'Au sol', 128);
   }
   const btn = (cfg.buttons || []).filter((b) => b && b.label && /^https:\/\//.test(b.url)).slice(0, 2).map((b) => ({ label: cut(b.label, 32), url: b.url }));

@@ -1,8 +1,9 @@
 [
   {
-    "version": "1.1.0",
+    "version": "1.1.0-beta",
     "date": "2026-11-20",
     "added": [
+      "Version bêta : toutes ces nouveautés sont à tester, signale tout souci dans « Donner mon avis »",
       "Max par-dessus le simulateur : une petite fenêtre toujours au premier plan s’ouvre au début du vol (déplaçable, réductible, voix coupable). Réglages › « Afficher Max par-dessus le simulateur » pour la désactiver",
       "Check-list à chaque phase du vol (avant départ, roulage, décollage, montée, croisière, descente, approche, après atterrissage, parking) : Max la lit à voix haute et coche tout seul ce qu’il voit dans le simulateur (frein de parking, volets, train, phares, strobes, anticollision, pilote auto, altimètre, spoilers, moteurs). Le reste se coche d’un clic",
       "Max suit ton plan SimBrief : piste et SID au départ, profil de montée et de descente (ex. 250 kt, puis 300 kt, puis Mach 0,84), paliers, cost index, STAR, altitude et niveau de transition, carburant prévu et dégagement. Plus de consignes générales qui ne viennent pas de SimBrief",

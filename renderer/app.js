@@ -1705,7 +1705,7 @@ const sideCache = {};
 const setTxt = (id, v) => { if (sideCache[id] !== v) { sideCache[id] = v; $(id).textContent = v; } };
 function sideRefresh() {
   const flying = !!S.flight;
-  $('chipFly').hidden = !flying; $('chipBeta').hidden = true; // plus de mention « bêta » depuis la 1.0.0
+  $('chipFly').hidden = !flying; $('chipBeta').hidden = flying || !/beta/i.test($('ver').textContent); // badge BÊTA seulement pour une version bêta
   $('btnGoFly').classList.toggle('live', flying);
   setTxt('goFlyText', flying ? 'Revenir à mon vol' : 'Démarrer un vol');
   $('navBrief').disabled = !S.plan;

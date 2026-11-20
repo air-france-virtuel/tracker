@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.7.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Nouvelle rubrique « Livrées » : télécharge et installe les livrées de la compagnie en un clic, directement dans ton dossier Community de MSFS 2024",
+      "Première livrée disponible : Les Ailes Tricolores « Ruban » pour le Fenix A320 IAE (F-HLAT)",
+      "Le dossier Community est trouvé tout seul (version Steam ou Microsoft Store) ; bouton « Changer » si besoin",
+      "Une pastille « MAJ » prévient quand une nouvelle version d’une livrée est sortie ; bouton « Désinstaller » pour la retirer"
+    ],
+    "removed": [],
+    "fixed": []
+  },
+  {
     "version": "0.6.1-beta",
     "date": "2026-11-20",
     "added": [],

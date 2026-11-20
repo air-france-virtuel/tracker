@@ -12,6 +12,7 @@ function showTab(name) {
   document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
+  if (name === 'livrees') loadLiveries(false);
   if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
   if (name === 'infos' && !S.metarAt) loadMetar();
 }
@@ -1628,3 +1629,69 @@ async function loadChatReports() {
 }
 $('chatReportsBtn').addEventListener('click', loadChatReports);
 chatLoad();
+
+// ---------------- livrées de la compagnie ----------------
+const LV = { data: null };
+const mo = (n) => (n ? (n / 1048576).toFixed(0) + ' Mo' : '');
+async function loadLiveries(force) {
+  try { LV.data = await afv.listLiveries(force); } catch (e) { LV.data = { community: null, livrees: [], error: String(e.message || e) }; }
+  renderLiveries();
+}
+function renderLiveries() {
+  const d = LV.data;
+  if (!d) return;
+  $('livCom').textContent = d.community ? d.community + (d.communityAuto ? ' (trouvé automatiquement)' : '') : 'Introuvable : clique sur « Changer » et choisis le dossier Community de MSFS 2024.';
+  $('btnLivAuto').hidden = !d.community || d.communityAuto;
+  $('btnLivOpen').disabled = !d.community;
+  const upd = d.livrees.filter((l) => l.outdated).length;
+  $('chipLiv').hidden = !upd; $('chipLiv').textContent = upd ? 'MAJ' : '';
+  if (!d.livrees.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée disponible pour le moment.</div>'; return; }
+  $('livList').innerHTML = d.livrees.map((l) => {
+    const j = l.job || {};
+    const busy = j.state === 'download' || j.state === 'extract';
+    let state = '<span class="badge">' + (l.outdated ? 'Mise à jour disponible' : 'Installée') + '</span>';
+    if (!l.installed) state = '<span class="badge red">Non installée</span>';
+    if (l.outdated) state = '<span class="badge red">Mise à jour disponible</span>';
+    let acts = '';
+    if (busy) {
+      const lab = j.state === 'download' ? 'Téléchargement… ' + (j.percent || 0) + ' %' + (j.total ? ' · ' + mo(j.got) + ' / ' + mo(j.total) : '') : 'Installation… ' + (j.percent || 0) + ' %';
+      acts = '<div style="flex:1"><div class="muted small">' + esc(lab) + '</div><div class="progress"><i style="width:' + (j.percent || 0) + '%"></i></div></div>';
+    } else {
+      if (!l.installed) acts += '<button class="btn red" data-inst="' + esc(l.id) + '"' + (d.community ? '' : ' disabled') + '>Installer</button>';
+      else if (l.outdated) acts += '<button class="btn red" data-inst="' + esc(l.id) + '">Mettre à jour</button>';
+      else acts += '<button class="btn small ghost" data-inst="' + esc(l.id) + '">Réinstaller</button>';
+      if (l.installed && !l.manual) acts += '<button class="btn small ghost" data-rem="' + esc(l.id) + '">Désinstaller</button>';
+    }
+    const msg = j.state === 'error' ? '<div class="err">' + esc(j.error) + '</div>' : (j.state === 'done' ? '<div class="muted small">Installée ! Redémarre MSFS 2024 pour la voir dans la sélection de l’avion.</div>' : '');
+    const manual = l.manual ? '<div class="muted small">Déjà présente dans ton dossier Community (installée à la main).</div>' : '';
+    return '<div class="liv">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '') +
+      '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + '</span>' + state + '</div>' +
+      '<div class="tags">' + [l.aircraft, l.engine, l.reg, l.version ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
+      (l.description ? '<div class="muted">' + esc(l.description) + '</div>' : '') +
+      (l.requires ? '<div class="muted small">Nécessite : ' + esc(l.requires) + '</div>' : '') +
+      manual + '<div class="acts">' + acts + '</div>' + msg + '</div></div>';
+  }).join('');
+}
+$('livList').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  if (b.dataset.inst) { b.disabled = true; await afv.installLivery(b.dataset.inst); }
+  if (b.dataset.rem) {
+    if (!window.confirm('Désinstaller cette livrée ? Elle sera retirée de ton dossier Community.')) return;
+    try { await afv.removeLivery(b.dataset.rem); } catch (e) { window.alert(String(e.message || e)); }
+    loadLiveries(false);
+  }
+});
+afv.on('livrees:job', ({ id, job }) => {
+  if (!LV.data) return;
+  const l = LV.data.livrees.find((x) => x.id === id);
+  if (!l) return;
+  l.job = job;
+  if (job.state === 'done' || job.state === 'error') { loadLiveries(false).then(() => { const x = LV.data.livrees.find((y) => y.id === id); if (x) { x.job = job; renderLiveries(); } }); return; }
+  renderLiveries();
+});
+$('btnLivRefresh').addEventListener('click', () => loadLiveries(true));
+$('btnLivPick').addEventListener('click', async () => { const r = await afv.pickCommunity(); if (r) { LV.data = r; renderLiveries(); } });
+$('btnLivAuto').addEventListener('click', async () => { LV.data = await afv.resetCommunity(); renderLiveries(); });
+$('btnLivOpen').addEventListener('click', () => afv.openCommunity());
+setTimeout(() => loadLiveries(false), 4000); // pastille « MAJ » si une nouvelle version de livrée est sortie

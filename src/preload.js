@@ -50,10 +50,16 @@ contextBridge.exposeInMainWorld('afv', {
   chatHide: (id) => ipcRenderer.invoke('chat:hide', id),
   chatBan: (uid) => ipcRenderer.invoke('chat:ban', uid),
   chatReports: () => ipcRenderer.invoke('chat:reports'),
+  listLiveries: (force) => ipcRenderer.invoke('livrees:list', !!force),
+  installLivery: (id) => ipcRenderer.invoke('livrees:install', id),
+  removeLivery: (id) => ipcRenderer.invoke('livrees:remove', id),
+  pickCommunity: () => ipcRenderer.invoke('livrees:pickCommunity'),
+  resetCommunity: () => ipcRenderer.invoke('livrees:resetCommunity'),
+  openCommunity: () => ipcRenderer.invoke('livrees:openCommunity'),
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

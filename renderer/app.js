@@ -77,8 +77,15 @@ function startChecklist(phase) {
   if (S.lastT) Checklists.update(S.ck, ckContext(S.lastT));
   S.ckDoneSaid = S.ck.complete;
   // Max lit la check-list juste après son conseil de phase
-  setTimeout(() => { if (S.flight && S.ck && S.ck.phase === phase && !S.ck.complete) { const a = Checklists.announce(S.ck); $('maxSay').textContent = a; S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: a }]).slice(-4); maxSpeak(a); pushMax(); } }, 2500);
+  // pendant la course au décollage et le freinage, un copilote ne lit pas de check-list : il fait les annonces
+  if (phase !== 2 && phase !== 7) setTimeout(() => { if (S.flight && S.ck && S.ck.phase === phase && !S.ck.complete) { const a = Checklists.announce(S.ck); $('maxSay').textContent = a; S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: a }]).slice(-4); maxSpeak(a); pushMax(); } }, 2500);
   pushMax();
+}
+// Annonces de copilote (cent nœuds, vario positif, transition, mille pieds avant le niveau, 2 500 / 1 000 / 500 / minimums…) :
+// elles passent avant tout le reste, comme dans un vrai cockpit.
+function tickCallouts(t) {
+  if (!S.co) return;
+  for (const c of Callouts.update(S.co, t, S.phase, S.plan)) { maxStop(); maxSays(c); }
 }
 function tickChecklist(t) {
   if (!S.ck) return;
@@ -91,12 +98,6 @@ function flightInfos(t, d) {
   const I = S.infos = S.infos || {};
   if (!S.flight || t.onGround) { I.lastAlt = t.alt; return; }
   const prev = I.lastAlt; I.lastAlt = t.alt;
-  // altitude / niveau de transition donnés par SimBrief
-  const pl = S.plan;
-  if (prev != null && pl) {
-    if (pl.transAlt && prev < pl.transAlt && t.alt >= pl.transAlt && !I.ta) { I.ta = true; maxSays('Altitude de transition, ' + fmt(pl.transAlt) + ' pieds : calage standard, 1013.'); }
-    if (pl.transLevel && prev > pl.transLevel && t.alt <= pl.transLevel && S.phase >= 5 && !I.tl) { I.tl = true; maxSays('Niveau de transition : calage QNH de ' + pl.destination.icao + '.'); }
-  }
   const o = S.ops, R = S.route;
   if (o && R && R.total > 150 && o.remaining != null && !I.half && o.remaining < R.total / 2 && S.phase >= 3) {
     I.half = true;
@@ -450,7 +451,7 @@ async function startFlight(mode) {
   afv.voicePreload();
   renderMaxVoiceHint();
   $('maxPhase').textContent = 'Phase : Boarding';
-  S.maxHist = []; S.infos = {};
+  S.maxHist = []; S.infos = {}; S.co = Callouts.create();
   if (S.store && S.store.settings.maxOverlay !== false) await openMax();
   maxSays(adviceFor(0));
   startChecklist(0);
@@ -508,6 +509,7 @@ afv.on('flight:tick', (d) => {
   renderTod(d.tod, d.phase);
   S.lastTod = d.tod;
   opsTick(t, d);
+  tickCallouts(t);
   tickChecklist(t);
   flightInfos(t, d);
 });

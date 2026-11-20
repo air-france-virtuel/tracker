@@ -18,7 +18,11 @@ const XVARS = [
   ['LIGHT STROBE', 'bool'],
   ['KOHLSMAN SETTING MB', 'millibars'],
   ['SPOILERS HANDLE POSITION', 'percent'],
-  ['AUTOPILOT MASTER', 'bool']
+  ['AUTOPILOT MASTER', 'bool'],
+  // altitude comme sur l'écran de vol : barométrique (calage de l'altimètre) et niveau de vol standard
+  ['PLANE ALTITUDE', 'feet'],
+  ['INDICATED ALTITUDE', 'feet'],
+  ['PRESSURE ALTITUDE', 'feet']
 ];
 
 const VARS = [
@@ -97,6 +101,10 @@ class SimLink extends EventEmitter {
             const d = r.data; const v = XVARS.map(() => d.readFloat64());
             if (v.every((x) => typeof x === 'number' && Number.isFinite(x))) {
               this.extra = { flapsIdx: Math.round(v[0]), landLt: v[1] > 0.5, beacon: v[2] > 0.5, strobe: v[3] > 0.5, baroMb: v[4], spoilers: v[5], ap: v[6] > 0.5 };
+              // Écart entre l'altitude affichée par l'avion et l'altitude géométrique : au-dessus de 18 000 ft on montre
+              // le niveau de vol (altitude pression, 1013), en dessous l'altitude indiquée (calage du pilote).
+              const shown = v[9] >= 18000 ? v[9] : v[8];
+              this.altCorr = Math.abs(shown - v[7]) < 5000 ? shown - v[7] : 0;
             }
           } catch (e) { /* paquet incomplet : on garde les valeurs précédentes */ }
           return;
@@ -112,7 +120,7 @@ class SimLink extends EventEmitter {
         } catch (e) { return; }
         if (v.some((x) => typeof x !== 'number' || Number.isNaN(x))) return;
         this.emit('data', {
-          lat: v[0], lon: v[1], alt: v[2], agl: v[3], ias: v[4], gs: v[5], vs: v[6], hdg: v[7],
+          lat: v[0], lon: v[1], alt: v[2] + (this.altCorr || 0), altTrue: v[2], agl: v[3], ias: v[4], gs: v[5], vs: v[6], hdg: v[7],
           onGround: v[8] > 0.5, fuelKg: v[9] * 0.4536, engOn: v[10] > 0.5 || v[11] > 0.5,
           parkBrake: v[12] > 0.5, gearDown: v[13] > 0.5, tdVel: v[14], simRate: v[15], windDir: v[16], windKt: v[17], title,
           time: Date.now() / 1000, ...(this.extra || {})

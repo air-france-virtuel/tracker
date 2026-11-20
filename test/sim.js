@@ -28,10 +28,15 @@ function buf(n, bytes) {
   assert.doesNotThrow(() => handle.emit('simObjectData', { requestID: 1, data: buf(3, 100) }));      // paquet très court : ignoré
   assert.strictEqual(got.length, 2);
   // données des check-lists (demande à part) : ajoutées au paquet suivant
-  handle.emit('simObjectData', { requestID: 2, data: buf(1, 56) });
+  handle.emit('simObjectData', { requestID: 2, data: buf(1, 80) });
   handle.emit('simObjectData', { requestID: 1, data: buf(1, 144 + 256) });
   assert.strictEqual(got[got.length - 1].flapsIdx, 1); assert.strictEqual(got[got.length - 1].landLt, true);
   assert.doesNotThrow(() => handle.emit('simObjectData', { requestID: 2, data: buf(1, 20) })); // paquet incomplet : ignoré
+  // altitude comme sur l'écran de vol : FL310 affiché alors que l'altitude géométrique est 29 800 ft
+  const seq = [1, 0, 1, 1, 1013.25, 0, 1, 29800, 31300, 31000]; let ix = 0;
+  handle.emit('simObjectData', { requestID: 2, data: { readFloat64: () => seq[ix++] } });
+  handle.emit('simObjectData', { requestID: 1, data: { readFloat64: () => 29800, readString256: () => 'PMDG 777' } });
+  assert.strictEqual(got[got.length - 1].alt, 31000); assert.strictEqual(got[got.length - 1].altTrue, 29800);
   s.stop();
   console.log('connexion simulateur : OK');
 })().catch((e) => { console.error(e); process.exit(1); });

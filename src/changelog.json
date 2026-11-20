@@ -14,7 +14,7 @@
     ],
     "fixed": [
       "Chat des pilotes : après une coupure de connexion, le message « cannot add postgres_changes callbacks… after subscribe() » restait affiché et « Réessayer » ne marchait pas. Le chat se reconnecte maintenant tout seul",
-      "Discord : dans la liste des membres, ton statut montre maintenant ton vol (« Vol LAT010 · LFPG → RJTT ») ou « Prépare son prochain vol », et plus seulement « Les Ailes Tricolores »"
+      "Discord : dans la liste des membres, ton statut montre le nom de la compagnie puis ce que tu fais (« Les Ailes Tricolores · Vol LAT010 · LFPG → RJTT » ou « Les Ailes Tricolores · Prépare son prochain vol »), et plus seulement « Les Ailes Tricolores »"
     ]
   },
   {

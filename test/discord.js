@@ -21,7 +21,7 @@ server.listen(pipePath(0), async () => {
   await new Promise((r) => setTimeout(r, 400));
   assert.strictEqual(got[0].op, 0); assert.strictEqual(got[0].d.client_id, '123456789012345678');
   const act = got.find((g) => g.op === 1 && g.d.cmd === 'SET_ACTIVITY').d.args.activity;
-  assert.strictEqual(act.details, 'Vol AFR123 · LFPG → LFMN');
+  assert.strictEqual(act.details, 'Les Ailes Tricolores · Vol AFR123 · LFPG → LFMN');
   assert.strictEqual(act.state, 'Croisière · FL350 · reste 1 h 12');
   assert.strictEqual(act.timestamps.start, 1700000000000);
   assert.strictEqual(act.buttons.length, 1);
@@ -30,12 +30,12 @@ server.listen(pipePath(0), async () => {
   p.set(buildActivity({ flying: false, grade: 'Premier Officier' }, {}));
   await new Promise((r) => setTimeout(r, 200));
   const last = got.filter((g) => g.op === 1).pop().d.args.activity;
-  assert.strictEqual(last.details, 'Prépare son prochain vol'); assert.strictEqual(last.state, 'Premier Officier');
+  assert.strictEqual(last.details, 'Les Ailes Tricolores · Prépare son prochain vol'); assert.strictEqual(last.state, 'Premier Officier');
   // ancienne version de Discord qui refuse status_display_type : le statut est renvoyé sans
   p.onFrame(1, { evt: 'ERROR', data: { message: 'child "status_display_type" fails' } });
   await new Promise((r) => setTimeout(r, 200));
   const again = got.filter((g) => g.op === 1).pop().d.args.activity;
-  assert.strictEqual(again.status_display_type, undefined); assert.strictEqual(again.details, 'Prépare son prochain vol');
+  assert.strictEqual(again.status_display_type, undefined); assert.strictEqual(again.details, 'Les Ailes Tricolores · Prépare son prochain vol');
   // identifiant absent : rien n'est envoyé
   const q = new DiscordPresence(); q.configure('', true); assert.strictEqual(q.enabled, false);
   p.stop();

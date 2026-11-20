@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.9.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Planning du jour : l’A320 de la compagnie (F-HLAT, livrée « Ruban ») apparaît en premier dans « Max : quel avion prends-tu ? »",
+      "Avec l’avion de la compagnie, Max te propose une journée de vols A320 classiques (sans A319, A321 ni A320neo) qui s’enchaînent : chaque vol part de l’arrivée du précédent, 40 min à 3 h d’escale, retour à Paris en fin de journée",
+      "Choix de l’aéroport de départ de l’avion, bouton « Autre proposition » et ajout de toute la journée à « Ma journée » en un clic",
+      "Les liens SimBrief préparent alors les vols avec l’indicatif LAT et l’immatriculation de notre avion"
+    ],
+    "removed": [],
+    "fixed": []
+  },
+  {
     "version": "0.8.1-beta",
     "date": "2026-11-20",
     "added": [],

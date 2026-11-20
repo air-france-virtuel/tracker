@@ -475,7 +475,7 @@ $('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
 async function renderSounds() {
   let files = {};
   try { files = await afv.uaFiles(S.plan && S.plan.aircraft); } catch (e) { files = {}; }
-  S.uaFound = Object.values(files).some((f) => f && f.file);
+  S.uaFound = Object.values(files || {}).some((f) => f && f.file);
   renderAnnHint();
 }
 $('btnSndRefresh').addEventListener('click', () => { loadUa(); renderSounds(); });
@@ -1136,8 +1136,25 @@ loadNews(false);
 S.plan2 = { cat: 'tous', data: null };
 const CAT = { court: 'Court-courrier', moyen: 'Moyen-courrier', long: 'Long-courrier', 'court-moyen': 'Court / moyen', inconnu: 'Non classé' };
 const hm = (min) => min == null ? '—' : Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0');
+// Avions de la compagnie : un par livrée (catalogue de la rubrique « Livrées »), ex. F-HLAT, A320 « Ruban »
+S.plan2.company = [];
+async function loadCompanyFleet() {
+  try {
+    const r = await afv.listLiveries(false);
+    S.plan2.company = (r.livrees || []).filter((l) => l.reg).map((l) => ({ reg: l.reg, type: (l.aircraft || '').replace(/^.*\b(A3\d\d)\b.*$/, '$1') || 'A320', name: l.name, aircraft: l.aircraft || '', engine: l.engine || '', installed: !!l.installed }));
+  } catch (e) { S.plan2.company = []; }
+  if ($('tab-planning').classList.contains('on')) renderPlanning();
+}
+setTimeout(loadCompanyFleet, 2500);
+const companyPlane = (reg) => (S.plan2.company || []).find((c) => c.reg === reg) || null;
+// familles d'avions compatibles avec notre appareil (un A320 peut reprendre les vols A319 / A320 / A321)
+const sameFamily = (type, ours) => /^A3(19|20|21)$/.test(ours) ? /^A(3(18|19|20|21)|19N|20N|21N)$/i.test(type || '') : String(type || '').toUpperCase() === ours;
 function planSimbrief(f) {
-  return 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(Object.assign({ orig: f.from, dest: f.to, airline: 'AFR', fltnum: (f.number || '').replace(/\D/g, '') }, f.type ? { type: f.type } : {})).toString();
+  const own = companyPlane(S.plan2.myReg);
+  const p = own
+    ? { orig: f.from, dest: f.to, airline: 'LAT', fltnum: (f.number || '').replace(/\D/g, ''), type: own.type, reg: own.reg }
+    : Object.assign({ orig: f.from, dest: f.to, airline: 'AFR', fltnum: (f.number || '').replace(/\D/g, '') }, f.type ? { type: f.type } : {});
+  return 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(p).toString();
 }
 async function loadPlanning(refresh) {
   if (refresh) $('planSub').textContent = 'Relevé des vols Air France en cours…';
@@ -1237,16 +1254,35 @@ function maxDayHtml(all, mine) {
   const regs = {};
   for (const f of all) if (f.reg) { const r = regs[f.reg] || (regs[f.reg] = { reg: f.reg, model: f.model || f.type || 'Type inconnu', n: 0 }); if (f.status !== 'Annulé') r.n++; }
   const list = Object.values(regs);
-  if (!list.length) return '';
+  const company = S.plan2.company || [];
+  if (!list.length && !company.length) return '';
   // par défaut : l'avion du premier vol de « Ma journée »
-  if (!S.plan2.myReg || !regs[S.plan2.myReg]) { const m = mine.find((f) => f.reg); S.plan2.myReg = m ? m.reg : null; S.plan2.myKey = m ? m.key : null; }
+  if (!S.plan2.myReg || (!regs[S.plan2.myReg] && !companyPlane(S.plan2.myReg))) { const m = mine.find((f) => f.reg); S.plan2.myReg = m ? m.reg : null; S.plan2.myKey = m ? m.key : null; }
   const byModel = {};
   for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
-  const opts = '<option value="">Choisis ton avion…</option>' + Object.keys(byModel).sort().map((m) => '<optgroup label="' + esc(m) + '">' +
+  const opts = '<option value="">Choisis ton avion…</option>' +
+    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.type) + ' de la compagnie</option>').join('') + '</optgroup>' : '') +
+    '<optgroup label="──────────" disabled></optgroup>' + Object.keys(byModel).sort().map((m) => '<optgroup label="Air France · ' + esc(m) + '">' +
     byModel[m].sort((a, b) => a.reg.localeCompare(b.reg)).map((r) => '<option value="' + esc(r.reg) + '"' + (r.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(r.reg) + ' · ' + r.n + ' vol' + (r.n > 1 ? 's' : '') + '</option>').join('') + '</optgroup>').join('');
   const reg = S.plan2.myReg;
   let t = { html: 'Choisis un vol dans <b>Vols réels › À venir</b> (bouton « Prendre ce vol ») ou dis-moi quel avion tu veux prendre : je te dirai si c’est un seul vol ou si tu dois suivre la journée de l’avion.', say: '' }, add = [];
-  if (reg) {
+  const own = companyPlane(reg);
+  if (own) {
+    // notre propre avion : pas de rotation réelle à suivre, on propose les prochains vols de la même famille
+    const now = Date.now();
+    const next = all.filter((f) => sameFamily(f.type, own.type) && f.status !== 'Annulé' && f.status !== 'Arrivé' && f.status !== 'En vol' && (!f.depEst || f.depEst > now - 15 * 60000))
+      .sort((a, b) => (a.depEst || 0) - (b.depEst || 0)).slice(0, 4);
+    const line = (f) => '<li><b>' + esc(f.number || f.callsign) + '</b> · ' + esc(f.from) + ' → ' + esc(f.to) + ' · départ ' + hhZ(f.depEst) + ' · ' + hm(f.blockMin) + ' <span class="muted small">(' + esc(f.model || f.type) + ')</span>' + (mine.some((m) => m.key === f.key) ? ' <span class="pst arrive">dans ma journée</span>' : '') + '</li>';
+    t = {
+      html: '<b>Tu voles sur ' + esc(own.reg) + ', l’' + esc(own.type) + ' de la compagnie</b>' + (own.name ? ' (' + esc(own.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'livrée ')) + ')' : '') + '. ' +
+        'C’est notre avion : pas de journée d’avion réelle à respecter, tu choisis tes vols librement parmi les vols ' + esc(own.type === 'A320' ? 'A319, A320 et A321' : own.type) + ' du jour. ' +
+        'Le lien SimBrief prépare le vol avec l’indicatif <b>LAT</b> et l’immatriculation <b>' + esc(own.reg) + '</b>.' +
+        (next.length ? '<br>Prochains vols possibles :<ul class="mday">' + next.map(line).join('') + '</ul>' : '<br>Aucun vol de ce type ne part bientôt : actualise le planning.') +
+        (own.installed ? '' : '<span class="muted small">La livrée n’est pas encore installée : rubrique « Livrées ». </span>'),
+      say: 'Tu voles sur ' + own.reg + ', l’' + own.type + ' de la compagnie. Pas de rotation à respecter : choisis librement tes vols' + (next[0] ? '. Le prochain qui part est le ' + (next[0].number || next[0].callsign) + ', de ' + next[0].from + ' vers ' + next[0].to + (next[0].depEst ? ', à ' + sayTime(next[0].depEst) : '') : '') + '.'
+    };
+    add = next.slice(0, 1).map((f) => f.key);
+  } else if (reg) {
     const p = aircraftPlan(all, reg, S.plan2.myKey, Date.now());
     t = maxPlanText(p, reg, regs[reg].model, mine.map((m) => m.key));
     add = p.todo.map((f) => f.key);
@@ -1256,8 +1292,8 @@ function maxDayHtml(all, mine) {
   return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">Max : quel avion prends-tu ?</div><div class="muted small">Un seul vol ou toute la journée de l’avion</div></div>' +
     '<select id="maxDayReg" aria-label="Avion que je veux prendre">' + opts + '</select></div>' +
     '<div class="max-say">' + t.html + '</div>' +
-    (reg ? '<div class="row" style="margin-top:8px">' + (missing ? '<button class="btn small red" data-maxday-add>' + (add.length > 1 ? 'Ajouter ' + (missing === add.length ? 'les ' + missing + ' vols' : 'les ' + missing + ' vols manquants') + ' à « Ma journée »' : 'Ajouter ce vol à « Ma journée »') + '</button>' : (add.length ? '<span class="muted small">Tout est déjà dans « Ma journée ».</span>' : '')) +
-      (t.say ? '<button class="btn small ghost" data-maxday-say>Écouter Max</button>' : '') + '<button class="btn small ghost" data-prot="' + esc(reg) + '">Voir la journée de l’avion</button></div>' : '') + '</div>';
+    (reg ? '<div class="row" style="margin-top:8px">' + (missing ? '<button class="btn small red" data-maxday-add>' + (own ? 'Ajouter le prochain vol à « Ma journée »' : add.length > 1 ? 'Ajouter ' + (missing === add.length ? 'les ' + missing + ' vols' : 'les ' + missing + ' vols manquants') + ' à « Ma journée »' : 'Ajouter ce vol à « Ma journée »') + '</button>' : (add.length ? '<span class="muted small">Tout est déjà dans « Ma journée ».</span>' : '')) +
+      (t.say ? '<button class="btn small ghost" data-maxday-say>Écouter Max</button>' : '') + (own ? '' : '<button class="btn small ghost" data-prot="' + esc(reg) + '">Voir la journée de l’avion</button>') + '</div>' : '') + '</div>';
 }
 
 // Journée d'un avion : tous ses vols du jour, dans l'ordre (rotation)

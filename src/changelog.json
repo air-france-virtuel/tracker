@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.9.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Planning du jour : l’A320 de la compagnie (F-HLAT, livrée « Ruban ») apparaît en premier dans « Max : quel avion prends-tu ? »",
+      "Avec l’avion de la compagnie, pas de journée d’avion réelle à suivre : Max propose les prochains vols A319 / A320 / A321 du jour",
+      "Les liens SimBrief préparent alors le vol avec l’indicatif LAT et l’immatriculation de notre avion"
+    ],
+    "removed": [],
+    "fixed": []
+  },
+  {
     "version": "0.8.1-beta",
     "date": "2026-11-20",
     "added": [],

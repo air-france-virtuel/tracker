@@ -3,6 +3,9 @@
     "version": "1.1.0",
     "date": "2026-11-20",
     "added": [
+      "Nouvelle rubrique « Pilotes en vol » : carte et liste des pilotes des Ailes Tricolores en vol en ce moment (nom de pilote, indicatif, départ → arrivée, avion, altitude, vitesse, phase du vol), mise à jour en direct",
+      "Ta position est partagée pendant les vols suivis par le tracker (pas en démo) et disparaît dès la fin du vol ; Réglages › « Me montrer aux autres pilotes quand je vole » pour ne pas apparaître",
+      "Pastille dans le menu : nombre de pilotes en vol",
       "Carte du vol : zoom avec la molette de la souris, un double-clic ou les boutons + / −, et déplacement en faisant glisser la carte (plan, satellite et radar)",
       "« Route entière » ou « Suivre l’avion » recentre la carte"
     ],

@@ -13,6 +13,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
   if (name === 'livrees') loadLiveries(false);
+  if (name === 'ligne') loadLive();
   if (name === 'sons') loadUa();
   if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
   if (name === 'infos' && !S.metarAt) loadMetar();
@@ -174,7 +175,7 @@ function renderTelem(t) {
 }
 S.mapMode = 'route';
 S.lastPos = null;
-S.layers = { vol: { sat: false, radar: false }, reels: { sat: false, radar: false } };
+S.layers = { vol: { sat: false, radar: false }, reels: { sat: false, radar: false }, ligne: { sat: false, radar: false } };
 // Squelette d'une carte : océan, satellite, terres, radar, puis le dessin du vol par-dessus.
 function mapSkeleton(svg) {
   if (svg.querySelector('.fg')) return;
@@ -249,7 +250,7 @@ document.addEventListener('click', (e) => {
     const on = k === 'radar' ? L.radar : (k === 'sat' ? L.sat : !L.sat);
     x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on));
   });
-  if (which === 'vol') renderMap(null); else renderRealMap(realShown());
+  if (which === 'vol') renderMap(null); else if (which === 'ligne') renderLiveMap(); else renderRealMap(realShown());
 });
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mapmode]'); if (!b) return;
@@ -562,7 +563,7 @@ function renderSettings() {
   const s = S.store.settings;
   $('sPilot').value = s.pilot; $('sSimbrief').value = s.simbrief; $('sAnn').checked = s.announcements;
   $('sVol').value = s.volume; $('sHard1').value = s.hard1; $('sHard2').value = s.hard2;
-  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sChat').checked = s.chat !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
+  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sChat').checked = s.chat !== false; $('sLive').checked = s.liveShare !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
 }
 
 // ---------------- voix de Max (réglages) ----------------
@@ -588,7 +589,7 @@ afv.on('voice:status', (v) => { S.voice = v; renderVoice(); renderMaxVoiceHint()
 $('btnSaveSettings').addEventListener('click', async () => {
   const h1 = Math.max(200, +$('sHard1').value || 600);
   const h2 = Math.max(h1 + 50, +$('sHard2').value || 900);
-  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, chat: $('sChat').checked, closeToTray: $('sTray').checked });
+  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, chat: $('sChat').checked, liveShare: $('sLive').checked, closeToTray: $('sTray').checked });
   $('setMsg').textContent = 'Réglages enregistrés.';
   if (!S.store.settings.maxVoice) maxStop();
   renderSettings(); renderFleet(); renderMaxVoiceHint();
@@ -1883,3 +1884,91 @@ function renderUa() {
 }
 afv.on('ua:status', (u) => { S.ua = u; renderUa(); renderSounds(); });
 setTimeout(loadUa, 3000);
+
+// ---------------- pilotes en vol (les autres pilotes de la compagnie, en direct) ----------------
+S.live = { list: [], error: '', ready: false, share: true, sel: null };
+let liveVB = null;
+const PH_LABEL = ['Embarquement', 'Roulage', 'Décollage', 'Montée', 'Croisière', 'Descente', 'Approche', 'Atterrissage', 'Au parking'];
+async function loadLive() {
+  try { Object.assign(S.live, await afv.liveGet()); } catch (e) { /* rien */ }
+  renderLive();
+}
+afv.on('live:list', (l) => { Object.assign(S.live, l); renderLive(); });
+function renderLive() {
+  const L = S.live.list || [];
+  const b = $('liveBadge'); if (b) { const n = L.filter((x) => !x.mine).length; b.hidden = !n; b.textContent = n; }
+  if (!$('tab-ligne').classList.contains('on')) return;
+  const others = L.filter((x) => !x.mine).length;
+  $('liveSub').textContent = S.live.error ? 'Connexion : ' + S.live.error
+    : !S.live.ready ? 'Connexion aux autres pilotes…'
+    : L.length ? L.length + ' pilote' + (L.length > 1 ? 's' : '') + ' en vol' + (L.some((x) => x.mine) ? ' (toi compris)' : '') : 'Aucun pilote de la compagnie en vol pour le moment';
+  const alt = (x) => x.alt == null ? '—' : x.alt >= 18000 ? 'FL' + Math.round(x.alt / 100) : fmt(x.alt) + ' ft';
+  $('liveList').innerHTML = L.length ? '<div class="live-grid">' + L.map((x) => '<button class="rt' + (x.id === S.live.sel ? ' on' : '') + '" data-livesel="' + esc(x.id) + '">' +
+    '<span class="n">' + esc(x.cs || '—') + (x.mine ? '<br><span class="pst arrive">toi</span>' : '') + '</span>' +
+    '<span><b>' + esc(x.pseudo) + '</b>' + (x.grade ? ' <span class="c">· ' + esc(x.grade) + '</span>' : '') + '<br><span class="c">' + (x.from ? esc(x.from) + ' → ' + esc(x.to || '?') : 'Route inconnue') + (x.ac ? ' · ' + esc(x.ac) : '') + (x.reg ? ' · ' + esc(x.reg) : '') + (x.ph != null ? ' · ' + esc(PH_LABEL[x.ph] || '') : '') + '</span></span>' +
+    '<span class="a">' + alt(x) + '<br>' + (x.gs != null ? x.gs + ' kt' : '') + '</span></button>').join('') + '</div>'
+    : '<div class="empty">' + (S.live.ready ? 'Personne ne vole en ce moment. Dès qu’un pilote lance un vol avec le tracker, il apparaît ici.' : 'Pour voir les autres pilotes, mets ton nom de pilote dans les Réglages.') + '</div>';
+  renderLiveMap();
+}
+function renderLiveMap() {
+  const svg = $('liveMap'); if (!svg || !$('tab-ligne').classList.contains('on')) return;
+  mapSkeleton(svg);
+  if (!liveVB) liveVB = VIEWS.europe.slice();
+  const [x, y, w, h] = liveVB;
+  const ratio = (svg.clientHeight || 420) / (svg.clientWidth || 1000);
+  const hh = w * ratio, yy = y + h / 2 - hh / 2;
+  liveVB = [x, yy, w, hh];
+  svg.setAttribute('viewBox', liveVB.join(' '));
+  const ppu = (svg.clientWidth || 1000) / w;
+  applyLayers(svg, 'ligne', [1, 0, 0, 1, 0, 0], [x, yy, x + w, yy + hh], ppu, () => renderLiveMap());
+  const k = Math.pow(w / 360, 0.6), sat = S.layers.ligne.sat;
+  const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
+  let h2 = '';
+  for (const p of S.live.list || []) {
+    const on = p.id === S.live.sel, sz = 0.42 * k * (on ? 1.5 : 1);
+    const col = p.mine ? '#C8102E' : (on ? '#E0A800' : (sat ? '#fff' : '#0A1E4A'));
+    h2 += '<g class="pl" data-livesel="' + esc(p.id) + '" transform="translate(' + MX(p.lon).toFixed(3) + ' ' + MY(p.lat).toFixed(3) + ')"><title>' + esc(p.pseudo + ' · ' + (p.cs || '') + (p.from ? ' · ' + p.from + ' → ' + p.to : '')) + '</title>' +
+      '<g transform="rotate(' + (p.hdg || 0) + ') scale(' + sz + ')"><circle r="7" fill="transparent"/><path d="' + PLANE + '" style="fill:' + col + ';stroke:' + halo + ';stroke-width:.6"/></g>' +
+      '<text x="' + (2.6 * k) + '" y="' + (-1.6 * k) + '" font-size="' + (2.6 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.7 * k) + '">' + esc(p.pseudo) + (p.cs ? ' · ' + esc(p.cs) : '') + '</text></g>';
+  }
+  svg.querySelector('.fg').innerHTML = h2;
+  const credit = ['Fond : Natural Earth'];
+  if (sat) credit.push('Satellite : NASA GIBS');
+  if (S.layers.ligne.radar) credit.push('Radar : RainViewer');
+  $('liveCredit').textContent = credit.join(' · ');
+}
+function setLiveView(vb) {
+  liveVB = vb;
+  document.querySelectorAll('[data-liveview]').forEach((b) => b.classList.toggle('on', VIEWS[b.dataset.liveview].join() === vb.join()));
+  renderLiveMap();
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-liveview]'); if (v) { setLiveView(VIEWS[v.dataset.liveview].slice()); return; }
+  const s = e.target.closest('[data-livesel]'); if (!s) return;
+  const p = (S.live.list || []).find((x) => x.id === s.dataset.livesel); if (!p) return;
+  S.live.sel = p.id;
+  // la carte se centre sur l'avion choisi
+  if (s.tagName === 'BUTTON') { const w = Math.min(liveVB[2], 40), h = w * (liveVB[3] / liveVB[2]); setLiveView([MX(p.lon) - w / 2, MY(p.lat) - h / 2, w, h]); }
+  renderLive();
+});
+(function liveMapControls() {
+  const svg = $('liveMap');
+  const toMap = (ev) => { const r = svg.getBoundingClientRect(); return [liveVB[0] + ((ev.clientX - r.left) / r.width) * liveVB[2], liveVB[1] + ((ev.clientY - r.top) / r.height) * liveVB[3]]; };
+  svg.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const [mx, my] = toMap(ev);
+    const f = ev.deltaY > 0 ? 1.25 : 0.8;
+    const w = Math.min(360, Math.max(2, liveVB[2] * f)); const h = w * (liveVB[3] / liveVB[2]);
+    setLiveView([mx - (mx - liveVB[0]) * (w / liveVB[2]), my - (my - liveVB[1]) * (h / liveVB[3]), w, h]);
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener('mousedown', (e) => e.preventDefault());
+  svg.addEventListener('pointerdown', (ev) => { if (ev.target.closest('.pl')) return; drag = { x: ev.clientX, y: ev.clientY, vb: liveVB.slice() }; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    const r = svg.getBoundingClientRect();
+    setLiveView([drag.vb[0] - ((ev.clientX - drag.x) / r.width) * drag.vb[2], drag.vb[1] - ((ev.clientY - drag.y) / r.height) * drag.vb[3], drag.vb[2], drag.vb[3]]);
+  });
+  svg.addEventListener('pointerup', () => { drag = null; });
+})();
+setTimeout(loadLive, 4000); // pastille du menu : nombre de pilotes en vol

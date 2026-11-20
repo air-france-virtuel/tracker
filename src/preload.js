@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('afv', {
   chatHide: (id) => ipcRenderer.invoke('chat:hide', id),
   chatBan: (uid) => ipcRenderer.invoke('chat:ban', uid),
   chatReports: () => ipcRenderer.invoke('chat:reports'),
+  liveGet: () => ipcRenderer.invoke('live:get'),
   fleetBookings: () => ipcRenderer.invoke('fleet:bookings'),
   fleetTake: (reg, until) => ipcRenderer.invoke('fleet:take', reg, until),
   fleetRelease: (reg) => ipcRenderer.invoke('fleet:release', reg),
@@ -66,7 +67,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

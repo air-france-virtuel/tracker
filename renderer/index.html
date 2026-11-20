@@ -24,7 +24,7 @@
     <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta" hidden>BÊTA</span></button>
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
     <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
-    <button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
+    <button class="nav" data-tab="ligne" title="Pilotes en vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span class="lb">Pilotes en vol</span><span class="nbadge" id="liveBadge" hidden></span></button><button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
     <div class="nsec">Carrière</div>
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
@@ -121,6 +121,23 @@
     </section>
 
     <!-- ===================== VOLS RÉELS ===================== -->
+    <section class="tab" id="tab-ligne">
+      <header class="top">
+        <div><h1>Pilotes en vol</h1><div class="sub" id="liveSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>
+      </header>
+      <div class="body">
+        <div class="card map-card">
+          <div class="row between wrap"><h2>Carte des pilotes en vol</h2>
+            <div class="row wrap"><button class="tag" data-liveview="monde">Monde</button><button class="tag on" data-liveview="europe">Europe</button><button class="tag" data-liveview="atlantique">Atlantique</button>
+            <span style="width:10px"></span><button class="tag on" data-layer="ligne:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="ligne:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="ligne:radar" aria-pressed="false">Radar météo</button></div></div>
+          <svg id="liveMap" viewBox="0 0 360 150" role="img" aria-label="Carte des pilotes de la compagnie en vol"></svg>
+          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="liveCredit">Fond : Natural Earth</span></div>
+        </div>
+        <div id="liveList"></div>
+        <p class="muted small">Ta position est partagée seulement pendant un vol suivi par le tracker (pas en démo), et disparaît dès que le vol s’arrête. Tu peux ne pas apparaître : Réglages › « Me montrer aux autres pilotes quand je vole ».</p>
+      </div>
+    </section>
+
     <section class="tab" id="tab-reels">
       <header class="top">
         <div><h1>Vols réels</h1><div class="sub" id="realSub">Vols Air France en cours dans le monde</div></div>
@@ -341,6 +358,7 @@
           <label class="check"><input type="checkbox" id="sMaxVoice"> Max parle à voix haute</label>
           <label class="field">Volume de Max <input type="range" id="sMaxVol" min="0" max="1" step="0.05"></label>
           <label class="check"><input type="checkbox" id="sChat"> Activer le chat entre pilotes</label>
+          <label class="check"><input type="checkbox" id="sLive"> Me montrer aux autres pilotes quand je vole (rubrique « Pilotes en vol »)</label>
           <label class="check"><input type="checkbox" id="sDiscord"> Afficher mon vol sur Discord (« Joue à Les Ailes Tricolores »)</label>
           <label class="check"><input type="checkbox" id="sTray"> Quand je ferme la fenêtre, garder le tracker près de l’horloge de Windows</label>
           <label class="field">Atterrissage dur à partir de (ft/min) <input type="number" id="sHard1" min="200" max="2000" step="50"></label>

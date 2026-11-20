@@ -36,7 +36,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '' },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, liveShare: true, community: '', uaDir: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -105,6 +105,11 @@ function handleTelemetry(t) {
     send('flight:event', e);
     if (e.type === 'phase' && e.phase === PHASES.length - 1) finishFlight();
   }
+  if (live && !flight.demo && flight.mode !== 'demo') {
+    const p = flight.plan || {};
+    live.update({ cs: p.callsign || '', from: (p.origin || {}).icao || '', to: (p.destination || {}).icao || '', ac: p.aircraft || '', reg: flight.aircraft || p.registration || '',
+      lat: t.lat, lon: t.lon, alt: Math.round(t.alt || 0), gs: Math.round(t.gs || 0), hdg: Math.round(t.hdg || 0), ph: flight.engine.phase });
+  }
   const now = Date.now();
   if (now - lastSent > 200) {
     lastSent = now;
@@ -128,6 +133,7 @@ function onLanding(e) {
 function finishFlight() {
   if (!flight || flight.finished) return;
   flight.finished = true;
+  if (live) live.update(null);
   const p = flight.plan;
   const rep = Object.assign({
     id: Date.now(),
@@ -164,6 +170,7 @@ function finishFlight() {
 
 function stopFlight() {
   if (flight && flight.timer) clearInterval(flight.timer);
+  if (live) live.update(null);
   flight = null;
 }
 
@@ -211,6 +218,7 @@ function setupUpdater() {
 let tray = null;
 let quitting = false;
 let chatUpdate = () => {};
+let live = null; // pilotes en vol (positions partagées entre pilotes de la compagnie)
 let trayState = { flying: false, callsign: '', route: '', phase: '', remaining: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
 app.on('before-quit', () => { quitting = true; });
 function showMain(tab, action) {
@@ -365,15 +373,23 @@ app.whenReady().then(() => {
     let grade = ''; try { grade = careerState().gradeName || ''; } catch (e) { /* rien */ }
     chat.setProfile({ pseudo: store.settings.pilot || '', grade, flight: trayState.flying ? [trayState.callsign, trayState.route].filter(Boolean).join(' · ') : '' });
   };
-  chatUpdate = () => { chatProfile(); if (chat.state === 'nopseudo' && (store.settings.pilot || '').trim().length >= 2) chat.start(); };
+  const { Live } = require('./live');
+  live = new Live(chat);
+  live.setShare(store.settings.liveShare !== false);
+  live.on('list', (l) => send('live:list', l));
+  const liveStart = () => { if ((store.settings.pilot || '').trim().length >= 2 && chatCfgOk()) live.start(); };
+  setInterval(() => { if (live.ready) live.sync(); }, 30000); // retire les vols sans nouvelles
+  chatUpdate = () => { chatProfile(); live.setShare(store.settings.liveShare !== false); liveStart(); if (chat.state === 'nopseudo' && (store.settings.pilot || '').trim().length >= 2) chat.start(); };
   chat.on('status', (st) => send('chat:status', st));
   chat.on('history', (list) => send('chat:history', list));
   chat.on('message', (m) => send('chat:message', m));
   chat.on('removed', (id) => send('chat:removed', id));
   const chatCfg = () => Object.assign({ rules: '' }, careerData.get('chat.json').data || {});
-  const chatInit = () => { chat.configure(chatCfg()); chatProfile(); if (store.settings.chat !== false) chat.start(); };
+  const chatCfgOk = () => !!chat.cfg;
+  const chatInit = () => { chat.configure(chatCfg()); chatProfile(); if (store.settings.chat !== false) chat.start(); liveStart(); };
   chatInit();
   careerData.refresh('chat.json').then(chatInit);
+  ipcMain.handle('live:get', () => { liveStart(); return live.status(); });
   ipcMain.handle('chat:get', () => ({ status: chat.status(), messages: chat.visible(), rules: chatCfg().rules || '' }));
   ipcMain.handle('chat:start', () => { chatProfile(); return chat.start(); });
   ipcMain.handle('chat:send', (_e, t) => chat.send(String(t || '')));

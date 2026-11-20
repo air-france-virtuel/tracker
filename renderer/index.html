@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://gibs.earthdata.nasa.gov https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://raw.githubusercontent.com https://gibs.earthdata.nasa.gov https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>Les Ailes Tricolores – Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -29,6 +29,7 @@
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
     <button class="nav" data-tab="hangar" title="Hangar &amp; flotte"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V10l9-6 9 6v10"/><path d="M7 20v-6h10v6"/></svg><span class="lb">Hangar &amp; flotte</span></button>
+    <button class="nav" data-tab="livrees" title="Livrées de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="lb">Livrées</span><span class="chip gold" id="chipLiv" hidden></span></button>
     <div class="nsec">Communauté</div>
     <button class="nav" data-tab="chat" title="Chat entre pilotes"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h12v8H8l-5 4z"/><path d="M15 9h6v8l-4-3h-6v-1"/></svg><span class="lb">Chat entre pilotes</span><span class="chip red" id="chipChat" hidden></span></button>
     <div class="nsec searchonly">Autres écrans</div>
@@ -282,6 +283,19 @@
         </div>
         <p class="muted small">Règles : atterrissage au-delà de <b id="r1"></b> ft/min = 2 jours au hangar ; au-delà de <b id="r2"></b> ft/min = 5 jours. Un avion au hangar ne peut pas être choisi pour un vol.</p>
         <div class="fleet" id="fleet"></div>
+      </div>
+    </section>
+
+    <!-- ===================== LIVRÉES ===================== -->
+    <section class="tab" id="tab-livrees">
+      <header class="top"><div><h1>Livrées</h1><div class="sub">Les couleurs de la compagnie, installées en un clic dans MSFS 2024</div></div><button class="btn ghost" id="btnLivRefresh">Actualiser</button></header>
+      <div class="body">
+        <div class="card row wrap between">
+          <div class="t"><b>Dossier Community</b><div class="muted small" id="livCom">Recherche…</div></div>
+          <div class="row"><button class="btn small ghost" id="btnLivOpen">Ouvrir</button><button class="btn small ghost" id="btnLivPick">Changer</button><button class="btn small ghost" id="btnLivAuto" hidden>Détection automatique</button></div>
+        </div>
+        <div class="livs" id="livList"></div>
+        <p class="muted small">Après l’installation, redémarre MSFS 2024 puis choisis la livrée dans la sélection de l’avion. Le simulateur peut rester ouvert pendant le téléchargement.</p>
       </div>
     </section>
 

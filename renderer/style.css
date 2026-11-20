@@ -300,3 +300,15 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .co .dot{width:8px;height:8px;border-radius:4px;background:#34D27B;margin-left:auto;flex-shrink:0}
 .crep{border-bottom:1px dashed var(--line);padding:6px 0;font-size:12.5px;color:var(--ink)}
 .crep .row{margin-top:4px}
+
+/* livrées */
+.livs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin:14px 0}
+.liv{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.liv img{display:block;width:100%;aspect-ratio:46/17;object-fit:cover;background:#E4EAF7}
+.liv .in{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.liv .nm{font-size:17px;font-weight:700;color:var(--navy)}
+.liv .tags{display:flex;flex-wrap:wrap;gap:6px}
+.liv .tg{font-size:12px;font-weight:600;border-radius:12px;padding:3px 10px;background:#E4EAF7;color:var(--navy)}
+.liv .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.liv .err{color:#8A1026;font-size:13px}
+.liv .badge{white-space:nowrap}

@@ -13,6 +13,7 @@ const { MaxVoice } = require('./voice');
 const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
+const { Liveries } = require('./liveries');
 { const { net } = require('electron'); if (net && typeof net.fetch === 'function') { real.setFetch((u, o) => net.fetch(u, o)); newsMod.setFetch((u, o) => net.fetch(u, o)); } }
 const CHANGELOG = require('./changelog.json');
 
@@ -24,7 +25,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -540,6 +541,26 @@ app.whenReady().then(() => {
     return store.feedback;
   });
   ipcMain.handle('reports:list', () => listReports());
+  // ---------- livrées de la compagnie ----------
+  const liv = new Liveries({
+    bundled: (() => { try { return require('./data/livrees.json').livrees || []; } catch (e) { return []; } })(),
+    tmpDir: path.join(dataDir(), 'telechargements'),
+    getCommunity: () => (store.settings.community && fs.existsSync(store.settings.community) ? store.settings.community : null),
+    fetch: (u, o) => require('electron').net.fetch(u, o)
+  });
+  liv.on('job', (j) => send('livrees:job', j));
+  ipcMain.handle('livrees:list', (_e, force) => liv.list(!!force));
+  ipcMain.handle('livrees:install', (_e, id) => { liv.install(String(id || '')); return true; });
+  ipcMain.handle('livrees:remove', async (_e, id) => liv.remove(String(id || ''), await liv.catalogue(false)));
+  ipcMain.handle('livrees:pickCommunity', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choisir le dossier Community de MSFS 2024', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    store.settings.community = r.filePaths[0]; saveStore();
+    return liv.list(false);
+  });
+  ipcMain.handle('livrees:resetCommunity', () => { store.settings.community = ''; saveStore(); return liv.list(false); });
+  ipcMain.handle('livrees:openCommunity', () => { const c = liv.community(); return c ? shell.openPath(c) : ''; });
+
   ipcMain.handle('folder:open', (_e, which) => {
     const dir = which === 'rapports' ? reportsDir() : dataDir();
     fs.mkdirSync(dir, { recursive: true });

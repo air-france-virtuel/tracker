@@ -36,7 +36,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, liveShare: true, community: '', uaDir: '' },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, liveShare: true, maxOverlay: true, maxPos: null, community: '', uaDir: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -423,6 +423,41 @@ app.whenReady().then(() => {
   ipcMain.handle('compact:close', () => { if (compact && !compact.isDestroyed()) compact.close(); return true; });
   ipcMain.handle('compact:pin', (_e, on) => { if (compact && !compact.isDestroyed()) compact.setAlwaysOnTop(!!on); return !!on; });
   ipcMain.on('compact:push', (_e, d) => { if (compact && !compact.isDestroyed()) compact.webContents.send('compact:data', d); });
+
+  // ---------- Max par-dessus le simulateur (petite fenêtre toujours au premier plan) ----------
+  let maxWin = null;
+  ipcMain.handle('max:open', () => {
+    if (maxWin && !maxWin.isDestroyed()) { maxWin.showInactive(); return true; }
+    const { screen } = require('electron');
+    const wa = screen.getPrimaryDisplay().workArea;
+    const p = store.settings.maxPos || {};
+    const w = 380, h = 470;
+    const inside = p.x != null && screen.getAllDisplays().some((d) => p.x >= d.bounds.x - 50 && p.x < d.bounds.x + d.bounds.width - 50 && p.y >= d.bounds.y - 10 && p.y < d.bounds.y + d.bounds.height - 50);
+    maxWin = new BrowserWindow({
+      width: w, height: h, x: inside ? p.x : wa.x + wa.width - w - 16, y: inside ? p.y : wa.y + 80,
+      frame: false, transparent: true, resizable: true, minWidth: 300, minHeight: 120, skipTaskbar: false, focusable: true,
+      alwaysOnTop: true, show: false, hasShadow: false, title: 'Max – copilote', icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
+    });
+    maxWin.setAlwaysOnTop(true, 'screen-saver'); // au-dessus du simulateur (plein écran fenêtré)
+    maxWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    maxWin.loadFile(path.join(__dirname, '..', 'renderer', 'max.html'));
+    maxWin.once('ready-to-show', () => maxWin && maxWin.showInactive()); // ne vole pas le focus au simulateur
+    maxWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    const savePos = () => { if (maxWin && !maxWin.isDestroyed()) { const b = maxWin.getBounds(); store.settings.maxPos = { x: b.x, y: b.y }; saveStore(); } };
+    maxWin.on('moved', savePos);
+    maxWin.on('closed', () => { maxWin = null; send('max:state', false); });
+    send('max:state', true);
+    return true;
+  });
+  ipcMain.handle('max:close', () => { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); return true; });
+  ipcMain.on('max:push', (_e, d) => { if (maxWin && !maxWin.isDestroyed()) maxWin.webContents.send('max:data', d); });
+  ipcMain.on('max:action', (_e, a) => {
+    if (!a || typeof a.type !== 'string') return;
+    if (a.type === 'close') { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); return; }
+    if (a.type === 'mini' && maxWin && !maxWin.isDestroyed()) { const b = maxWin.getBounds(); maxWin.setBounds({ x: b.x, y: b.y, width: b.width, height: a.on ? 132 : 470 }); }
+    send('max:action', a); // la check-list et la voix sont gérées par le tracker principal
+  });
 
   // ---------- radar météo (RainViewer, dernière image disponible) ----------
   let radarCache = null;

@@ -27,6 +27,11 @@ function buf(n, bytes) {
   assert.strictEqual(got.length, 2); assert.strictEqual(got[1].title, 'Fenix A320', 'on garde le nom précédent');
   assert.doesNotThrow(() => handle.emit('simObjectData', { requestID: 1, data: buf(3, 100) }));      // paquet très court : ignoré
   assert.strictEqual(got.length, 2);
+  // données des check-lists (demande à part) : ajoutées au paquet suivant
+  handle.emit('simObjectData', { requestID: 2, data: buf(1, 56) });
+  handle.emit('simObjectData', { requestID: 1, data: buf(1, 144 + 256) });
+  assert.strictEqual(got[got.length - 1].flapsIdx, 1); assert.strictEqual(got[got.length - 1].landLt, true);
+  assert.doesNotThrow(() => handle.emit('simObjectData', { requestID: 2, data: buf(1, 20) })); // paquet incomplet : ignoré
   s.stop();
   console.log('connexion simulateur : OK');
 })().catch((e) => { console.error(e); process.exit(1); });

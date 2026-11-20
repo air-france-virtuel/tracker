@@ -3,6 +3,9 @@
     "version": "1.1.0",
     "date": "2026-11-20",
     "added": [
+      "Max par-dessus le simulateur : une petite fenêtre toujours au premier plan s’ouvre au début du vol (déplaçable, réductible, voix coupable). Réglages › « Afficher Max par-dessus le simulateur » pour la désactiver",
+      "Check-list à chaque phase du vol (avant départ, roulage, décollage, montée, croisière, descente, approche, après atterrissage, parking) : Max la lit à voix haute et coche tout seul ce qu’il voit dans le simulateur (frein de parking, volets, train, phares, strobes, anticollision, pilote auto, altimètre, spoilers, moteurs). Le reste se coche d’un clic",
+      "Max t’informe pendant tout le vol : 10 000 ft en montée et en descente, mi-parcours avec l’heure d’arrivée, carburant inférieur au plan SimBrief, 50 NM avant l’arrivée (en plus du TOD, des paliers et des alertes)",
       "Nouvelle rubrique « Pilotes en vol » : carte et liste des pilotes des Ailes Tricolores en vol en ce moment (nom de pilote, indicatif, départ → arrivée, avion, altitude, vitesse, phase du vol), mise à jour en direct",
       "Ta position est partagée pendant les vols suivis par le tracker (pas en démo) et disparaît dès la fin du vol ; Réglages › « Me montrer aux autres pilotes quand je vole » pour ne pas apparaître",
       "Pastille dans le menu : nombre de pilotes en vol",

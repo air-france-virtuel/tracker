@@ -55,8 +55,66 @@ async function runQueue() {
 }
 function maxSays(text) {
   $('maxSay').textContent = text;
+  S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text }]).slice(-4);
   maxSpeak(text);
+  pushMax();
 }
+// ---------------- Max par-dessus le simulateur : check-list de chaque phase et infos du vol ----------------
+S.maxWin = false; S.ck = null;
+function pushMax() {
+  if (!S.maxWin) return;
+  const pl = S.plan;
+  afv.maxPush({
+    route: S.flight ? ((pl && pl.callsign) || 'Vol libre') + (pl ? ' · ' + pl.origin.icao + ' → ' + pl.destination.icao : '') : '',
+    phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '',
+    msg: $('maxSay').textContent, hist: (S.maxHist || []).slice(0, -1).reverse(), muted: !!S.maxMuted,
+    ck: S.ck ? { title: S.ck.title, complete: S.ck.complete, items: S.ck.items.map((i) => ({ id: i.id, text: i.text, done: i.done, by: i.by })) } : null
+  });
+}
+function ckContext(t) { return { t, plan: S.plan, fuelPlanKg: S.plan && S.plan.fuelPlanKg }; }
+function startChecklist(phase) {
+  S.ck = Checklists.create(phase);
+  if (S.lastT) Checklists.update(S.ck, ckContext(S.lastT));
+  S.ckDoneSaid = S.ck.complete;
+  // Max lit la check-list juste après son conseil de phase
+  setTimeout(() => { if (S.flight && S.ck && S.ck.phase === phase) { const a = Checklists.announce(S.ck); $('maxSay').textContent = a; S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: a }]).slice(-4); maxSpeak(a); pushMax(); } }, 2500);
+  pushMax();
+}
+function tickChecklist(t) {
+  if (!S.ck) return;
+  const newly = Checklists.update(S.ck, ckContext(t));
+  if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); return; }
+  if (newly.length) pushMax();
+}
+// Infos de Max pendant le vol (en plus du TOD, des paliers et des alertes)
+function flightInfos(t, d) {
+  const I = S.infos = S.infos || {};
+  if (!S.flight || t.onGround) { I.lastAlt = t.alt; return; }
+  const prev = I.lastAlt; I.lastAlt = t.alt;
+  if (prev != null) {
+    if (prev < 10000 && t.alt >= 10000 && !I.up10) { I.up10 = true; maxSays('On passe 10 000 pieds en montée : tu peux accélérer au-delà de 250 nœuds.'); }
+    if (prev > 10000 && t.alt <= 10000 && I.up10 && !I.dn10) { I.dn10 = true; maxSays('10 000 pieds en descente : 250 nœuds maximum, phares d’atterrissage allumés.'); }
+  }
+  const o = S.ops, R = S.route;
+  if (o && R && R.total > 150 && o.remaining != null && !I.half && o.remaining < R.total / 2 && S.phase >= 3) {
+    I.half = true;
+    const min = t.gs > 100 ? Math.round(o.remaining / t.gs * 60) : null;
+    const dur = min == null ? '' : min >= 60 ? Math.floor(min / 60) + ' h ' + String(min % 60).padStart(2, '0') : min + ' minutes';
+    maxSays('Mi-parcours : il reste ' + fmt(o.remaining) + ' nautiques' + (dur ? ', arrivée dans environ ' + dur : '') + '.');
+  }
+  if (o && o.fuelPlan != null && !I.fuelLow && S.phase >= 3 && t.fuelKg < o.fuelPlan - 1500) {
+    I.fuelLow = true;
+    maxSays('Attention, carburant : ' + fmt((o.fuelPlan - t.fuelKg) / 1000, 1) + ' tonne de moins que prévu sur SimBrief. Vérifie la consommation.');
+  }
+  if (o && o.remaining != null && !I.arr50 && S.phase >= 5 && o.remaining < 50) { I.arr50 = true; maxSays('Plus que 50 nautiques avant ' + (S.plan ? S.plan.destination.icao : 'l’arrivée') + '. Prépare l’approche et la ' + rwy('destination') + '.'); }
+}
+async function openMax() { await afv.maxOpen(); }
+afv.on('max:state', (on) => { S.maxWin = !!on; $('btnMaxOverlay').textContent = on ? 'Fermer Max par-dessus le simu' : 'Max par-dessus le simu'; if (on) pushMax(); });
+afv.on('max:action', (a) => {
+  if (a.type === 'ready') pushMax();
+  else if (a.type === 'check' && S.ck) { Checklists.toggle(S.ck, a.id); if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); } else pushMax(); }
+  else if (a.type === 'mute') $('btnMaxMute').click();
+});
 
 // Voix de Max : l'audio est fabriqué sur le PC (hors ligne) puis joué ici.
 const maxQueue = [];
@@ -375,7 +433,10 @@ async function startFlight(mode) {
   afv.voicePreload();
   renderMaxVoiceHint();
   $('maxPhase').textContent = 'Phase : Boarding';
+  S.maxHist = []; S.infos = {};
+  if (S.store && S.store.settings.maxOverlay !== false) await openMax();
   maxSays(adviceFor(0));
+  startChecklist(0);
   playPhaseAnnouncements(0);
 }
 $('btnStart').addEventListener('click', () => startFlight('sim'));
@@ -385,7 +446,8 @@ $('btnStop').addEventListener('click', async () => {
   if (curAudio) curAudio.pause();
   maxStop();
   queue.length = 0;
-  S.flight = null; S.phase = null;
+  S.flight = null; S.phase = null; S.ck = null;
+  afv.maxClose();
   $('prep').hidden = false; $('live').hidden = true; $('btnStop').hidden = true;
   $('flightSub').textContent = 'Prépare ton vol pour commencer';
   renderPlan(); renderAircraftSelect();
@@ -401,7 +463,9 @@ $('btnMaxMute').addEventListener('click', () => {
   if (S.maxMuted) maxStop();
   $('btnMaxMute').textContent = S.maxMuted ? 'Rendre la voix à Max' : 'Couper Max';
   $('btnMaxMute').setAttribute('aria-pressed', String(S.maxMuted));
+  pushMax();
 });
+$('btnMaxOverlay').addEventListener('click', () => { if (S.maxWin) afv.maxClose(); else openMax(); });
 function renderMaxVoiceHint() {
   const s = S.store ? S.store.settings : {};
   const show = !!s.maxVoice && !(S.voice && S.voice.installed);
@@ -427,6 +491,8 @@ afv.on('flight:tick', (d) => {
   renderTod(d.tod, d.phase);
   S.lastTod = d.tod;
   opsTick(t, d);
+  tickChecklist(t);
+  flightInfos(t, d);
 });
 afv.on('flight:event', (e) => {
   if (!S.flight) return;
@@ -436,6 +502,7 @@ afv.on('flight:event', (e) => {
     renderPhases(e.phase);
     $('maxPhase').textContent = 'Phase : ' + e.name;
     maxSays(adviceFor(e.phase));
+    startChecklist(e.phase);
     if (e.phase === 7) setTimeout(() => playPhaseAnnouncements(7), 12000); else playPhaseAnnouncements(e.phase);
   } else if (e.type === 'warning') {
     addAlert('Max', e.text);
@@ -563,7 +630,7 @@ function renderSettings() {
   const s = S.store.settings;
   $('sPilot').value = s.pilot; $('sSimbrief').value = s.simbrief; $('sAnn').checked = s.announcements;
   $('sVol').value = s.volume; $('sHard1').value = s.hard1; $('sHard2').value = s.hard2;
-  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sChat').checked = s.chat !== false; $('sLive').checked = s.liveShare !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
+  $('sMaxVoice').checked = s.maxVoice !== false; $('sDiscord').checked = s.discord !== false; $('sChat').checked = s.chat !== false; $('sMaxOverlay').checked = s.maxOverlay !== false; $('sLive').checked = s.liveShare !== false; $('sTray').checked = s.closeToTray !== false; $('sMaxVol').value = s.maxVolume != null ? s.maxVolume : 0.9;
 }
 
 // ---------------- voix de Max (réglages) ----------------
@@ -589,7 +656,7 @@ afv.on('voice:status', (v) => { S.voice = v; renderVoice(); renderMaxVoiceHint()
 $('btnSaveSettings').addEventListener('click', async () => {
   const h1 = Math.max(200, +$('sHard1').value || 600);
   const h2 = Math.max(h1 + 50, +$('sHard2').value || 900);
-  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, chat: $('sChat').checked, liveShare: $('sLive').checked, closeToTray: $('sTray').checked });
+  S.store.settings = await afv.setSettings({ pilot: $('sPilot').value.trim(), simbrief: $('sSimbrief').value.trim(), announcements: $('sAnn').checked, volume: +$('sVol').value, hard1: h1, hard2: h2, maxVoice: $('sMaxVoice').checked, maxVolume: +$('sMaxVol').value, discord: $('sDiscord').checked, chat: $('sChat').checked, maxOverlay: $('sMaxOverlay').checked, liveShare: $('sLive').checked, closeToTray: $('sTray').checked });
   $('setMsg').textContent = 'Réglages enregistrés.';
   if (!S.store.settings.maxVoice) maxStop();
   renderSettings(); renderFleet(); renderMaxVoiceHint();

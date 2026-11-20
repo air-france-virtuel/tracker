@@ -35,6 +35,10 @@ contextBridge.exposeInMainWorld('afv', {
   compactClose: () => ipcRenderer.invoke('compact:close'),
   compactPin: (on) => ipcRenderer.invoke('compact:pin', !!on),
   compactPush: (d) => ipcRenderer.send('compact:push', d),
+  maxOpen: () => ipcRenderer.invoke('max:open'),
+  maxClose: () => ipcRenderer.invoke('max:close'),
+  maxPush: (d) => ipcRenderer.send('max:push', d),
+  maxAction: (a) => ipcRenderer.send('max:action', a),
   getRadar: () => ipcRenderer.invoke('radar:get'),
   getNews: (force) => ipcRenderer.invoke('news:get', !!force),
   getPlanning: (refresh) => ipcRenderer.invoke('planning:get', !!refresh),
@@ -67,7 +71,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

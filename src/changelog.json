@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.7.1-beta",
+    "date": "2026-11-20",
+    "added": [],
+    "removed": [],
+    "fixed": [
+      "Le tracker ne plante plus quand on le lance alors que MSFS est déjà ouvert (paquet incomplet du simulateur)"
+    ]
+  },
+  {
     "version": "0.7.0-beta",
     "date": "2026-11-20",
     "added": [

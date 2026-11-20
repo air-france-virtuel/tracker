@@ -18,6 +18,16 @@ const { Liveries } = require('./liveries');
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
+
+// Filet de sécurité : une erreur imprévue (par exemple un paquet abîmé envoyé par le simulateur)
+// est notée dans « erreurs.log » au lieu d'afficher une fenêtre d'erreur et de bloquer le tracker.
+process.on('uncaughtException', (e) => {
+  try {
+    const f = path.join(app.getPath('userData'), 'erreurs.log');
+    fs.appendFileSync(f, new Date().toISOString() + ' v' + VERSION + ' ' + ((e && e.stack) || e) + '\n');
+  } catch (err) { /* rien */ }
+  console.error(e);
+});
 let win = null;
 const sim = new SimLink();
 
@@ -568,6 +578,7 @@ app.whenReady().then(() => {
   });
 
   sim.on('status', (s) => send('sim:status', s));
+  sim.on('log', (m) => console.warn(m));
   sim.on('data', (t) => { if (flight && flight.mode === 'demo') return; if (flight) flight.title = t.title; handleTelemetry(t); });
   sim.start();
 

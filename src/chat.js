@@ -119,9 +119,10 @@ class Chat extends EventEmitter {
   async aircraftList() {
     try {
       await this.session();
-      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until').gt('until', new Date().toISOString());
+      // nom affiché = nom de pilote actuel dans le tracker (table des pilotes), même s'il l'a changé depuis
+      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until,pilots(pseudo)').gt('until', new Date().toISOString());
       if (r.error) throw r.error;
-      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id })) };
+      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: (b.pilots && b.pilots.pseudo) || b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id })) };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
   async aircraftTake(reg, until) {

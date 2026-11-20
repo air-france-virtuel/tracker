@@ -55,6 +55,9 @@ function server() {
   assert.ok(lb.ok); assert.strictEqual(lb.list.length, 1);
   assert.deepStrictEqual([lb.list[0].reg, lb.list[0].pseudo, lb.list[0].mine], ['F-HLAT', 'Martin', false]);
   assert.strictEqual((await a.aircraftList()).list[0].mine, true);
+  // le nom affiché est celui du tracker, même changé après la prise de l'avion
+  srv.db.bookings[0].pilots = { pseudo: 'Cdt Martin' };
+  assert.strictEqual((await b.aircraftList()).list[0].pseudo, 'Cdt Martin');
   const r = await b.aircraftTake('F-HLAT', until);
   assert.strictEqual(r.ok, false); assert.ok(/autre pilote/.test(r.error));
   // Durand ne peut pas le rendre à la place de Martin

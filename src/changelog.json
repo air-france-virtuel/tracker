@@ -13,7 +13,8 @@
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0"
     ],
     "fixed": [
-      "Chat des pilotes : après une coupure de connexion, le message « cannot add postgres_changes callbacks… after subscribe() » restait affiché et « Réessayer » ne marchait pas. Le chat se reconnecte maintenant tout seul"
+      "Chat des pilotes : après une coupure de connexion, le message « cannot add postgres_changes callbacks… after subscribe() » restait affiché et « Réessayer » ne marchait pas. Le chat se reconnecte maintenant tout seul",
+      "Discord : dans la liste des membres, ton statut montre maintenant ton vol (« Vol LAT010 · LFPG → RJTT ») ou « Prépare son prochain vol », et plus seulement « Les Ailes Tricolores »"
     ]
   },
   {

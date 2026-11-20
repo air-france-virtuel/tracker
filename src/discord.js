@@ -85,12 +85,18 @@ class DiscordPresence {
     if (op === OP.PING) { if (this.sock) this.sock.write(encode(OP.PONG, d || {})); return; }
     if (op === OP.CLOSE) { this.log('Discord a refusé la connexion : ' + ((d && d.message) || '')); if (this.sock) this.sock.destroy(); return; }
     if (d && d.evt === 'READY') { this.ready = true; this.push(); }
-    else if (d && d.evt === 'ERROR') this.log('Discord : ' + ((d.data && d.data.message) || 'erreur'));
+    else if (d && d.evt === 'ERROR') {
+      this.log('Discord : ' + ((d.data && d.data.message) || 'erreur'));
+      // ancienne version de Discord qui ne connaît pas « status_display_type » : on renvoie le statut sans
+      if (!this.noDisplayType && this.activity && this.activity.status_display_type != null) { this.noDisplayType = true; this.push(); }
+    }
   }
 
   push() {
     if (!this.ready || !this.sock) return;
-    this.sock.write(encode(OP.FRAME, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity: this.activity || undefined }, nonce: String(++this.nonce) }));
+    let act = this.activity || undefined;
+    if (act && this.noDisplayType) { act = Object.assign({}, act); delete act.status_display_type; }
+    this.sock.write(encode(OP.FRAME, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity: act }, nonce: String(++this.nonce) }));
   }
 
   set(activity) { this.activity = activity; this.push(); }
@@ -110,7 +116,9 @@ class DiscordPresence {
 // st : { flying, callsign, route, phase, alt, aircraft, startedAt, grade }
 function buildActivity(st, cfg) {
   cfg = cfg || {};
-  const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Les Ailes Tricolores · Tracker' }, instance: false };
+  // status_display_type 2 : dans la liste des membres, Discord affiche la 1re ligne (« Vol LAT010 · LFPG → RJTT »)
+  // au lieu du seul nom de l'appli (« Les Ailes Tricolores »)
+  const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Les Ailes Tricolores · Tracker' }, instance: false, status_display_type: 2 };
   if (st && st.flying) {
     // « Vol AFR123 · LFPG → LFMN » puis « Croisière · FL350 · reste 1 h 12 » ; Discord ajoute le temps de vol (chrono)
     a.details = cut('Vol ' + ([st.callsign, st.route].filter(Boolean).join(' · ') || 'libre'), 128);

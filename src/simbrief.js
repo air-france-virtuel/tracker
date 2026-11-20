@@ -25,6 +25,8 @@ function parseOfp(j) {
     lon: num(f.pos_long),
     alt: num(f.altitude_feet),
     stage: str(f.stage),
+    via: str(f.via_airway),
+    sidStar: str(f.is_sid_star) === '1',
     fuelKg: f.fuel_plan_onboard != null ? Math.round(toKg(f.fuel_plan_onboard)) : null
   })).filter((f) => f.lat || f.lon);
 
@@ -40,6 +42,9 @@ function parseOfp(j) {
   }
   const tod = fixes.find((f) => f.ident === 'TOD') || null;
   const toc = fixes.find((f) => f.ident === 'TOC') || null;
+  // SID et STAR prévues (points de la procédure dans le navlog)
+  const sidFix = fixes.find((f) => f.sidStar && f.stage === 'CLB' && f.via && f.via !== 'DCT');
+  const starFix = fixes.slice().reverse().find((f) => f.sidStar && f.stage === 'DSC' && f.via && f.via !== 'DCT');
 
   return {
     callsign: str((j.atc || {}).callsign) || (str(g.icao_airline) + str(g.flight_number)),
@@ -58,6 +63,9 @@ function parseOfp(j) {
     metarArr: str((j.weather || {}).dest_metar),
     route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon, alt: f.alt, fuelKg: f.fuelKg })),
     toc, tod, steps,
+    sid: sidFix ? sidFix.via : '', star: starFix ? starFix.via : '',
+    climbProfile: str(g.climb_profile), cruiseProfile: str(g.cruise_profile), descentProfile: str(g.descent_profile),
+    transAlt: num(o.trans_alt) || null, transLevel: num(d.trans_level) || null,
     // pour le briefing de Max
     alternate: { icao: str((j.alternate || {}).icao_code), name: str((j.alternate || {}).name), rwy: str((j.alternate || {}).plan_rwy) },
     pax: num((j.weights || {}).pax_count),

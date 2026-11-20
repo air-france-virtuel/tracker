@@ -30,8 +30,8 @@
       { id: 'gear', text: 'Train rentré', ok: (c) => c.t.gearDown === false },
       { id: 'flaps0', text: 'Volets rentrés', ok: (c) => c.t.flapsIdx != null ? c.t.flapsIdx === 0 : null },
       { id: 'ap', text: 'Pilote automatique engagé', ok: (c) => c.t.ap },
-      { id: 'std', text: 'Altimètres sur 1013 (STD) au niveau de transition', ok: (c) => c.t.alt > 6000 && near(c.t.baroMb, 1013.25, 0.6) },
-      { id: 'spd', text: '250 kt maximum sous 10 000 ft', ok: (c) => c.t.alt >= 10000 || null } // plus rien à dire une fois 10 000 ft passés
+      { id: 'std', text: 'Altimètres sur STD à l’altitude de transition', ok: (c) => c.t.alt > ((c.plan && c.plan.transAlt) || 6000) && near(c.t.baroMb, 1013.25, 0.6) },
+      { id: 'prof', text: 'Vitesses du profil de montée SimBrief' }
     ] },
     { phase: 4, title: 'Croisière', say: 'croisière', items: [
       { id: 'fl', text: 'Niveau de croisière atteint', ok: (c) => c.plan && c.plan.cruiseAlt ? near(c.t.alt, c.plan.cruiseAlt, 400) : null },

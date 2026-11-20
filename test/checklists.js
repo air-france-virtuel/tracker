@@ -11,12 +11,13 @@ const ck = C.create(3);
 assert.ok(/train rentré, volets rentrés/.test(C.announce(ck)));
 let n = C.update(ck, { t: { gearDown: false, flapsIdx: 0, ap: true, alt: 9000, baroMb: 1013.25 } });
 assert.deepStrictEqual(n.map((i) => i.id), ['gear', 'flaps0', 'ap', 'std']);
-assert.strictEqual(ck.complete, false, '250 kt reste à cocher');
-C.toggle(ck, 'spd'); assert.strictEqual(ck.complete, true);
+assert.strictEqual(ck.complete, false, 'le profil SimBrief reste à cocher');
+C.toggle(ck, 'prof'); assert.strictEqual(ck.complete, true);
 // au-dessus de 10 000 ft, Max ne parle plus des 250 kt
 const hi = C.create(3);
-C.update(hi, { t: { gearDown: false, flapsIdx: 0, ap: true, alt: 12000, baroMb: 1013.25 } });
-assert.strictEqual(hi.complete, true); assert.ok(!/250/.test(C.announce(hi)));
+C.update(hi, { t: { gearDown: false, flapsIdx: 0, ap: true, alt: 4000, baroMb: 1013.25 }, plan: { transAlt: 5000 } });
+assert.ok(!hi.items.find((i) => i.id === 'std').done, 'altimètre STD seulement au-dessus de l’altitude de transition SimBrief');
+assert.ok(!/250/.test(C.announce(hi)));
 // une donnée absente (avion qui ne la donne pas) ne coche rien et ne plante pas
 const ap = C.create(6);
 C.update(ap, { t: { gearDown: true } });

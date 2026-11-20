@@ -91,9 +91,11 @@ function flightInfos(t, d) {
   const I = S.infos = S.infos || {};
   if (!S.flight || t.onGround) { I.lastAlt = t.alt; return; }
   const prev = I.lastAlt; I.lastAlt = t.alt;
-  if (prev != null) {
-    if (prev < 10000 && t.alt >= 10000 && !I.up10) { I.up10 = true; maxSays('On passe 10 000 pieds en montée : tu peux accélérer au-delà de 250 nœuds.'); }
-    if (prev > 10000 && t.alt <= 10000 && I.up10 && !I.dn10) { I.dn10 = true; maxSays('10 000 pieds en descente : 250 nœuds maximum, phares d’atterrissage allumés.'); }
+  // altitude / niveau de transition donnés par SimBrief
+  const pl = S.plan;
+  if (prev != null && pl) {
+    if (pl.transAlt && prev < pl.transAlt && t.alt >= pl.transAlt && !I.ta) { I.ta = true; maxSays('Altitude de transition, ' + fmt(pl.transAlt) + ' pieds : calage standard, 1013.'); }
+    if (pl.transLevel && prev > pl.transLevel && t.alt <= pl.transLevel && S.phase >= 5 && !I.tl) { I.tl = true; maxSays('Niveau de transition : calage QNH de ' + pl.destination.icao + '.'); }
   }
   const o = S.ops, R = S.route;
   if (o && R && R.total > 150 && o.remaining != null && !I.half && o.remaining < R.total / 2 && S.phase >= 3) {
@@ -187,6 +189,14 @@ function playPhaseAnnouncements(phase) {
 // ---------------- conseils de Max ----------------
 function rwy(side) { return S.plan && S.plan[side] && S.plan[side].rwy ? 'piste ' + S.plan[side].rwy : 'la piste en service'; }
 function windOf(metar) { const m = /\b(\d{3}|VRB)(\d{2,3})(G\d{2,3})?KT\b/.exec(metar || ''); return m ? (m[1] === 'VRB' ? 'vent variable ' : 'vent du ' + m[1] + '° ') + parseInt(m[2], 10) + ' kt' + (m[3] ? ', rafales ' + m[3].slice(1) + ' kt' : '') : ''; }
+// Profil de vitesses SimBrief « 250/300/78 » → « 250 nœuds, puis 300 nœuds, puis Mach 0,78 »
+function sayProfile(p) {
+  const raw = String(p || '').trim();
+  const parts = raw.split('/').map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 2 || parts.some((x) => !/^(\.\d+|\d+)$/.test(x))) return raw;
+  return parts.map((x) => x.startsWith('.') ? 'Mach 0,' + x.slice(1) : +x < 100 ? 'Mach 0,' + x : x + ' nœuds').join(', puis ');
+}
+// Ce que dit Max à chaque phase : uniquement ce qui vient du plan SimBrief (pistes, SID, STAR, niveaux, profils, carburant)
 function adviceFor(p) {
   const pl = S.plan;
   const dep = pl ? pl.origin.icao : 'le départ';
@@ -195,16 +205,23 @@ function adviceFor(p) {
   const steps = pl && pl.steps && pl.steps.length ? ' Paliers prévus : ' + pl.steps.map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + s.ident).join(', ') + '.' : '';
   const wDep = pl ? windOf(pl.metarDep) : '';
   const wArr = pl ? windOf(pl.metarArr) : '';
+  const ft = (n) => n >= 10000 ? 'FL' + Math.round(n / 100) : fmt(n) + ' pieds';
+  if (!pl) {
+    return ['Embarquement. Sans plan SimBrief, je ne peux pas te donner les infos du vol.', 'Roulage.', 'Décollage.', 'Montée.', 'Croisière.', 'Descente.', 'Approche.', 'Atterrissage.', 'Au parking : ton rapport de vol est enregistré.'][p] || 'Prêt quand tu l’es.';
+  }
   switch (p) {
-    case 0: return 'Embarquement à ' + dep + '. Je lance les annonces. Départ prévu ' + rwy('origin') + (wDep ? ', ' + wDep : '') + '. Prépare ton FMS puis lâche le frein de parking quand tu es prêt.';
-    case 1: return 'Roulage vers la ' + rwy('origin') + '. Reste sous 25 kt et vérifie volets et trim avant l’alignement.';
-    case 2: return 'Décollage : poussée réglée, garde l’axe. Train rentré après la montée positive.';
-    case 3: return 'Montée vers ' + fl + '.' + (S.lastT && S.lastT.alt >= 10000 ? '' : ' 250 kt maximum sous 10 000 ft.') + steps;
-    case 4: return 'Croisière à ' + fl + '. Surveille le carburant et prépare l’arrivée à ' + arr + '.' + (pl && pl.tod ? ' Je te préviens 10 minutes avant le TOD.' : '');
-    case 5: return 'Descente vers ' + arr + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '. Repasse le calage local à l’altitude de transition' + (S.lastT && S.lastT.alt <= 10000 ? '.' : ' et 250 kt sous 10 000 ft.');
-    case 6: return 'Approche : sors le train et les volets, sois stabilisé à 1 000 ft. Remets les gaz si ce n’est pas bon.';
-    case 7: return 'Atterrissage. Dégage la piste puis roule doucement jusqu’au parking.';
-    case 8: return 'Au parking. Frein de parking, moteurs coupés : ton rapport de vol est enregistré.';
+    case 0: return 'Embarquement à ' + dep + '. Départ ' + rwy('origin') + (pl.sid ? ', SID ' + pl.sid : '') + (wDep ? ', ' + wDep : '') + '.' +
+      (pl.fuelPlanKg ? ' Carburant prévu par SimBrief : ' + fmt(pl.fuelPlanKg / 1000, 1) + ' tonnes.' : '') + (pl.zfwKg ? ' Masse sans carburant : ' + fmt(pl.zfwKg / 1000, 1) + ' tonnes.' : '');
+    case 1: return 'Roulage vers la ' + rwy('origin') + (pl.sid ? ', départ ' + pl.sid : '') + '.';
+    case 2: return 'Décollage ' + rwy('origin') + (pl.sid ? ', SID ' + pl.sid : '') + '. Montée initiale vers ' + fl + '.';
+    case 3: return 'Montée vers ' + fl + '.' + (pl.climbProfile ? ' Profil de montée SimBrief : ' + sayProfile(pl.climbProfile) + '.' : '') +
+      (pl.transAlt ? ' Altitude de transition à ' + dep + ' : ' + ft(pl.transAlt) + ', passe en standard.' : '') + steps;
+    case 4: return 'Croisière à ' + fl + (pl.cruiseProfile ? ', ' + pl.cruiseProfile.replace(/^CI\s*/i, 'cost index ') : '') + '.' + (pl.tod ? ' Je te préviens 10 minutes avant le TOD.' : '');
+    case 5: return 'Descente vers ' + arr + (pl.star ? ', STAR ' + pl.star : '') + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '.' +
+      (pl.descentProfile ? ' Profil de descente SimBrief : ' + sayProfile(pl.descentProfile) + '.' : '') + (pl.transLevel ? ' Niveau de transition à ' + arr + ' : ' + ft(pl.transLevel) + ', passe au QNH.' : '');
+    case 6: return 'Approche ' + rwy('destination') + ' à ' + arr + '.' + (pl.alternate && pl.alternate.icao ? ' Dégagement prévu : ' + pl.alternate.icao + '.' : '');
+    case 7: return 'Atterrissage ' + rwy('destination') + ' à ' + arr + '.';
+    case 8: return 'Au parking à ' + arr + ' : ton rapport de vol est enregistré.';
     default: return 'Prêt quand tu l’es.';
   }
 }

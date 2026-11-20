@@ -205,11 +205,15 @@ function renderMap(t) {
     fg.innerHTML = '<rect x="120" y="128" width="360" height="34" rx="8" fill="rgba(255,255,255,.9)"/><text x="300" y="150" text-anchor="middle" fill="#5B667D" font-size="13">La carte suit l’avion dès le début du suivi</text>';
     return;
   }
-  const box = S.mapMode === 'avion' && t ? [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }] : (pts.length ? pts.concat(S.trail) : [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }]);
+  let box = S.mapMode === 'avion' && t ? [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }] : (pts.length ? pts.concat(S.trail) : [{ lat: t.lat - 2.2, lon: t.lon - 2.2 }, { lat: t.lat + 2.2, lon: t.lon + 2.2 }]);
   const xs = box.map((p) => MapLayers.LX(p.lon)), ys = box.map((p) => MapLayers.LY(p.lat));
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const sc = Math.min(540 / Math.max(0.3, x1 - x0), 240 / Math.max(0.3, y1 - y0));
-  const ox = 300 - ((x0 + x1) / 2) * sc, oy = 150 - ((y0 + y1) / 2) * sc;
+  let sc = Math.min(540 / Math.max(0.3, x1 - x0), 240 / Math.max(0.3, y1 - y0));
+  let cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  // vue libre : le pilote a déplacé ou zoomé la carte (molette, glisser, boutons + / −)
+  if (S.mapMode === 'libre' && S.mapView) ({ cx, cy, sc } = S.mapView);
+  S.mapCur = { cx, cy, sc };
+  const ox = 300 - cx * sc, oy = 150 - cy * sc;
   const X = (p) => (MapLayers.LX(p.lon) * sc + ox).toFixed(1), Y = (p) => (MapLayers.LY(p.lat) * sc + oy).toFixed(1);
   const line = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p) + ' ' + Y(p)).join(' ');
   const ppu = sc * ((svg.clientWidth || 600) / 600);
@@ -249,10 +253,56 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mapmode]'); if (!b) return;
-  S.mapMode = b.dataset.mapmode;
+  S.mapMode = b.dataset.mapmode; S.mapView = null;
   document.querySelectorAll('[data-mapmode]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
   renderMap(null);
 });
+// Carte du vol : zoom (molette, double-clic, boutons + / −) et déplacement (glisser). « Route entière » ou « Suivre l’avion » recentre.
+(function mapNav() {
+  const svg = $('map');
+  const MIN = 0.6, MAX = 1500;
+  let raf = 0;
+  const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderMap(null); }); };
+  const free = () => {
+    if (S.mapMode !== 'libre') {
+      S.mapMode = 'libre';
+      document.querySelectorAll('[data-mapmode]').forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+    }
+    if (!S.mapView) S.mapView = Object.assign({}, S.mapCur || { cx: 180, cy: 140, sc: 0.8 });
+    return S.mapView;
+  };
+  const toView = (e) => { const r = svg.getBoundingClientRect(); const k = Math.min(r.width / 600, r.height / 300) || 1; return { x: 300 + (e.clientX - (r.left + r.width / 2)) / k, y: 150 + (e.clientY - (r.top + r.height / 2)) / k }; };
+  const zoomAt = (f, vx, vy) => {
+    const v = free();
+    const sc2 = Math.min(MAX, Math.max(MIN, v.sc * f));
+    // le point sous la souris reste au même endroit
+    const wx = v.cx + (vx - 300) / v.sc, wy = v.cy + (vy - 150) / v.sc;
+    v.cx = wx - (vx - 300) / sc2; v.cy = wy - (vy - 150) / sc2; v.sc = sc2;
+    redraw();
+  };
+  svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = toView(e); zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y); }, { passive: false });
+  svg.addEventListener('dblclick', (e) => { const p = toView(e); zoomAt(2, p.x, p.y); });
+  let drag = null;
+  svg.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const v = free(); const p = toView(e);
+    drag = { x: p.x, y: p.y, cx: v.cx, cy: v.cy, id: e.pointerId, moved: false };
+    svg.setPointerCapture(e.pointerId); svg.classList.add('grab');
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const p = toView(e), v = S.mapView;
+    v.cx = drag.cx - (p.x - drag.x) / v.sc; v.cy = drag.cy - (p.y - drag.y) / v.sc;
+    redraw();
+  });
+  const end = (e) => { if (drag && e.pointerId === drag.id) { drag = null; svg.classList.remove('grab'); } };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+  document.addEventListener('click', (e) => {
+    const z = e.target.closest('[data-mapzoom]'); if (!z) return;
+    zoomAt(z.dataset.mapzoom === 'in' ? 1.6 : 1 / 1.6, 300, 150);
+  });
+})();
 function renderTod(tod, phase) {
   const el = $('todText');
   if (!S.plan || !S.plan.tod) { el.textContent = 'Charge un plan SimBrief pour que Max calcule le TOD.'; return; }

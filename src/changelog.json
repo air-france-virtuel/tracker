@@ -1,8 +1,11 @@
 [
   {
-    "version": "1.0.1",
+    "version": "1.1.0",
     "date": "2026-11-20",
-    "added": [],
+    "added": [
+      "Carte du vol : zoom avec la molette de la souris, un double-clic ou les boutons + / −, et déplacement en faisant glisser la carte (plan, satellite et radar)",
+      "« Route entière » ou « Suivre l’avion » recentre la carte"
+    ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0"
     ],

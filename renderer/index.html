@@ -235,7 +235,8 @@
             <div class="card map-card">
               <div class="row between" style="margin-bottom:8px"><h3 class="caps">Carte du vol</h3>
                 <div class="row wrap"><button class="tag on" data-mapmode="route">Route entière</button><button class="tag" data-mapmode="avion">Suivre l’avion</button><span style="width:6px"></span><button class="tag on" data-layer="vol:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="vol:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="vol:radar" aria-pressed="false">Radar</button></div></div>
-              <svg id="map" viewBox="0 0 600 300" role="img" aria-label="Carte du vol"></svg>
+              <div class="map-wrap"><svg id="map" viewBox="0 0 600 300" role="img" aria-label="Carte du vol : molette pour zoomer, glisser pour déplacer"></svg>
+                <div class="map-zoom"><button type="button" data-mapzoom="in" title="Zoomer" aria-label="Zoomer">+</button><button type="button" data-mapzoom="out" title="Dézoomer" aria-label="Dézoomer">−</button></div></div>
               <div class="map-legend"><span id="mapFrom"></span><span id="mapDist"></span><span id="mapTo"></span></div>
             </div>
             <div class="card"><h3 class="caps">Profil vertical</h3><svg id="profile" viewBox="0 0 640 160" role="img" aria-label="Profil vertical du vol"></svg></div>

@@ -1,8 +1,7 @@
 'use strict';
 // Lien avec Universal Announcer (logiciel gratuit d'annonces cabine pour MSFS) :
 //  1. le tracker peut jouer les sons rangés dans le dossier « Announcements » d'Universal Announcer ;
-//  2. le tracker peut copier les annonces importées par le pilote dans le dossier « LAT » d'Universal Announcer ;
-//  3. pas de doublon : quand Universal Announcer tourne, c'est lui qui joue les sons, le tracker affiche seulement le texte.
+//  2. pas de doublon : quand Universal Announcer tourne, c'est lui qui joue les sons, le tracker affiche seulement le texte.
 
 const fs = require('fs');
 const path = require('path');
@@ -66,28 +65,6 @@ function fileFor(root, uaName, aircraft) {
   return null;
 }
 
-// Copie les annonces importées par le pilote dans Announcements\LAT, sous les noms d'Universal Announcer.
-function exportPack(root, sounds) {
-  if (!root) throw new Error('Dossier Announcements d’Universal Announcer introuvable.');
-  const dest = path.join(root, AIRLINE);
-  fs.mkdirSync(dest, { recursive: true });
-  const done = []; const notOgg = [];
-  for (const [key, uaName] of Object.entries(MAP)) {
-    const s = sounds && sounds[key];
-    if (!s || !s.file || !fs.existsSync(s.file)) continue;
-    const ext = path.extname(s.file).toLowerCase();
-    // on remplace l'ancienne version de cette annonce, quel que soit son format
-    for (const f of fs.readdirSync(dest)) {
-      const e = path.extname(f).toLowerCase();
-      if (EXTS.includes(e) && f.slice(0, -e.length).toLowerCase() === uaName.toLowerCase()) fs.unlinkSync(path.join(dest, f));
-    }
-    fs.copyFileSync(s.file, path.join(dest, uaName + ext));
-    done.push(uaName);
-    if (ext !== '.ogg') notOgg.push(uaName);
-  }
-  return { folder: dest, copied: done, notOgg };
-}
-
 // Universal Announcer est-il lancé ? (Windows uniquement)
 function isRunning(exec) {
   if (process.platform !== 'win32' && !exec) return Promise.resolve(false);
@@ -99,4 +76,4 @@ function isRunning(exec) {
   });
 }
 
-module.exports = { MAP, AIRLINE, findAnnouncements, fileFor, exportPack, isRunning };
+module.exports = { MAP, AIRLINE, findAnnouncements, fileFor, isRunning };

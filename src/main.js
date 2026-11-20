@@ -36,7 +36,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '', uaUse: true },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -522,28 +522,6 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('flight:stop', () => { stopFlight(); return { ok: true }; });
 
-  ipcMain.handle('sound:pick', async (_e, key) => {
-    const r = await dialog.showOpenDialog(win, { title: 'Choisir un son', properties: ['openFile'], filters: [{ name: 'Sons', extensions: ['mp3', 'wav', 'ogg'] }] });
-    if (r.canceled || !r.filePaths[0]) return null;
-    const src = r.filePaths[0];
-    const size = fs.statSync(src).size;
-    if (size > 10 * 1024 * 1024) throw new Error('Fichier trop lourd (10 Mo maximum).');
-    fs.mkdirSync(soundsDir(), { recursive: true });
-    const dest = path.join(soundsDir(), key + path.extname(src).toLowerCase());
-    for (const f of fs.readdirSync(soundsDir())) if (f.startsWith(key + '.')) fs.unlinkSync(path.join(soundsDir(), f));
-    fs.copyFileSync(src, dest);
-    store.sounds[key] = { file: dest, name: path.basename(src) };
-    saveStore();
-    return store.sounds;
-  });
-  ipcMain.handle('sound:reset', (_e, key) => {
-    const s = store.sounds[key];
-    if (s && s.file) { try { fs.unlinkSync(s.file); } catch (e) { /* déjà supprimé */ } }
-    delete store.sounds[key];
-    saveStore();
-    return store.sounds;
-  });
-
   ipcMain.handle('feedback:save', (_e, f) => {
     const item = Object.assign({ date: new Date().toISOString(), version: VERSION, pilot: store.settings.pilot }, f);
     store.feedback.unshift(item);
@@ -553,12 +531,12 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('reports:list', () => listReports());
   // ---------- Universal Announcer ----------
-  const uaState = { dir: null, auto: false, running: false, use: true };
+  const uaState = { dir: null, auto: false, running: false };
   async function uaRefresh() {
     const manual = store.settings.uaDir && fs.existsSync(store.settings.uaDir) ? store.settings.uaDir : null;
     const auto = manual ? null : ua.findAnnouncements();
     const running = await ua.isRunning();
-    const next = { dir: manual || auto, auto: !!auto, running, use: store.settings.uaUse !== false };
+    const next = { dir: manual || auto, auto: !!auto, running };
     const changed = JSON.stringify(next) !== JSON.stringify(uaState);
     Object.assign(uaState, next);
     if (changed) send('ua:status', uaState);
@@ -572,9 +550,15 @@ app.whenReady().then(() => {
     store.settings.uaDir = r.filePaths[0]; saveStore(); return uaRefresh();
   });
   ipcMain.handle('ua:reset', () => { store.settings.uaDir = ''; saveStore(); return uaRefresh(); });
-  ipcMain.handle('ua:use', (_e, on) => { store.settings.uaUse = !!on; saveStore(); return uaRefresh(); });
-  ipcMain.handle('ua:export', () => { const r = ua.exportPack(uaState.dir, store.sounds); return r; });
-  ipcMain.handle('ua:file', (_e, key, aircraft) => (uaState.dir && store.settings.uaUse !== false ? ua.fileFor(uaState.dir, ua.MAP[String(key || '')], aircraft) : null));
+  ipcMain.handle('ua:file', (_e, key, aircraft) => (uaState.dir ? ua.fileFor(uaState.dir, ua.MAP[String(key || '')], aircraft) : null));
+  ipcMain.handle('ua:files', (_e, aircraft) => {
+    const out = {};
+    for (const [key, name] of Object.entries(ua.MAP)) {
+      const f = uaState.dir ? ua.fileFor(uaState.dir, name, aircraft) : null;
+      out[key] = { ua: name, file: f, name: f ? path.basename(f) : '', folder: f ? path.basename(path.dirname(f)) : '' };
+    }
+    return out;
+  });
   ipcMain.handle('ua:open', () => (uaState.dir ? shell.openPath(uaState.dir) : ''));
 
   // ---------- livrées de la compagnie ----------

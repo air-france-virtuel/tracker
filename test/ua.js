@@ -38,18 +38,7 @@ const ua = require('../src/ua');
   // chaque annonce du tracker a son équivalent
   assert.strictEqual(Object.keys(ua.MAP).length, 10);
 
-  // 3. envoi des annonces du pilote vers LAT (remplace l'ancienne version, signale ce qui n'est pas en OGG)
-  const mine = path.join(tmp, 'mine'); fs.mkdirSync(mine);
-  fs.writeFileSync(path.join(mine, 'a.mp3'), 'mp3'); fs.writeFileSync(path.join(mine, 'b.ogg'), 'ogg');
-  const r = ua.exportPack(ann, { boarding_welcome: { file: path.join(mine, 'a.mp3') }, landing_welcome: { file: path.join(mine, 'b.ogg') }, inconnu: { file: path.join(mine, 'b.ogg') } });
-  assert.deepStrictEqual(r.copied.sort(), ['AfterLanding', 'BoardingWelcome']);
-  assert.deepStrictEqual(r.notOgg, ['BoardingWelcome']);
-  assert.ok(!fs.existsSync(path.join(ann, 'LAT', 'BoardingWelcome.ogg')), 'ancienne version remplacée');
-  assert.strictEqual(fs.readFileSync(path.join(ann, 'LAT', 'BoardingWelcome.mp3'), 'utf8'), 'mp3');
-  assert.ok(fs.existsSync(path.join(ann, 'LAT', 'BoardingWelcome[A320].ogg')), 'les variantes du pilote ne sont pas touchées');
-  assert.throws(() => ua.exportPack(null, {}));
-
-  // 4. détection du logiciel lancé
+  // 3. détection du logiciel lancé
   const fake = (out) => (cmd, args, opts, cb) => cb(null, out);
   assert.strictEqual(await ua.isRunning(fake('UniversalAnnouncer.exe   1234 Console   1   80 000 K')), true);
   assert.strictEqual(await ua.isRunning(fake('INFO: No tasks are running which match the specified criteria.')), false);

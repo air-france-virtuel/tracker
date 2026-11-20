@@ -2,7 +2,7 @@
   "message": {
     "title": "Le mode carrière est arrivé",
     "text": "Accepte une mission, prépare-la dans SimBrief et vole-la avec le tracker : tes heures, tes points et ton grade avancent à chaque vol validé. Bons vols à tous !",
-    "author": "La direction des Ailes Françaises"
+    "author": "La direction des Ailes Tricolores"
   },
   "events": [
     { "title": "Vol du jour", "note": "La première mission proposée par Max chaque jour rapporte deux fois plus de points." }

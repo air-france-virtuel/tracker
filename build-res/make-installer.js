@@ -18,7 +18,7 @@ function findMakensis() {
 }
 const nsis = findMakensis();
 const out = path.join(root, 'dist');
-const name = 'LesAilesFrancaises-Tracker-Setup-' + v + '.exe';
+const name = 'LesAilesTricolores-Tracker-Setup-' + v + '.exe';
 execFileSync(nsis.bin, [
   '-V2', '-INPUTCHARSET', 'UTF8',
   '-DVERSION=' + v, '-DVERSION4=' + v4, '-DOUTFILE=' + path.join(out, name),

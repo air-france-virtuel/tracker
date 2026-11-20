@@ -10,7 +10,7 @@ const SOURCES = [
   { url: 'https://news.google.com/rss/search?q=%22Air+France%22+when:7d&hl=fr&gl=FR&ceid=FR:fr', name: 'Google Actualités' }
 ];
 const CACHE_MS = 30 * 60 * 1000;
-const UA = 'LAF-Tracker (+https://github.com/air-france-virtuel/tracker)';
+const UA = 'LAT-Tracker (+https://github.com/air-france-virtuel/tracker)';
 let http = (url, o) => fetch(url, o);
 function setFetch(fn) { if (typeof fn === 'function') http = fn; }
 let cache = null;

@@ -14,7 +14,7 @@ function demoPlan() {
   const tod = destinationPoint(ORIGIN.lat, ORIGIN.lon, brg, total - 112);
   const mid = destinationPoint(ORIGIN.lat, ORIGIN.lon, brg, (95 + total - 112) / 2);
   return {
-    callsign: 'LAF123', flightNumber: 'LAF123', aircraft: 'A320', registration: '',
+    callsign: 'LAT123', flightNumber: 'LAT123', aircraft: 'A320', registration: '',
     origin: ORIGIN, destination: DEST, cruiseAlt: CRUISE, stepString: '', route: 'Vol de démonstration',
     distanceNm: Math.round(total), eteSec: 80 * 60, fuelPlanKg: 6800,
     metarDep: 'LFPG 191030Z 07008KT CAVOK 09/03 Q1024 NOSIG',

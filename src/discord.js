@@ -1,5 +1,5 @@
 'use strict';
-// Discord Rich Presence : « Joue à Les Ailes Françaises » avec le vol en cours, sur le profil du pilote.
+// Discord Rich Presence : « Joue à Les Ailes Tricolores » avec le vol en cours, sur le profil du pilote.
 // Discord (appli de bureau) écoute sur un tuyau local ; on lui parle avec son protocole IPC, sans module externe.
 // Trame : opcode (uint32 LE) + longueur (uint32 LE) + JSON. 0 = poignée de main, 1 = commande, 2 = fin.
 const net = require('net');
@@ -110,12 +110,12 @@ class DiscordPresence {
 // st : { flying, callsign, route, phase, alt, aircraft, startedAt, grade }
 function buildActivity(st, cfg) {
   cfg = cfg || {};
-  const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Les Ailes Françaises · Tracker' }, instance: false };
+  const a = { assets: { large_image: cfg.largeImage || 'afv', large_text: 'Les Ailes Tricolores · Tracker' }, instance: false };
   if (st && st.flying) {
     // « Vol AFR123 · LFPG → LFMN » puis « Croisière · FL350 · reste 1 h 12 » ; Discord ajoute le temps de vol (chrono)
     a.details = cut('Vol ' + ([st.callsign, st.route].filter(Boolean).join(' · ') || 'libre'), 128);
     a.state = cut([st.phase, st.alt, st.remaining].filter(Boolean).join(' · ') || 'En vol', 128);
-    a.assets.large_text = 'Vol pour Les Ailes Françaises';
+    a.assets.large_text = 'Vol pour Les Ailes Tricolores';
     if (st.startedAt) a.timestamps = { start: Math.floor(st.startedAt) };
     if (cfg.smallImage) { a.assets.small_image = cfg.smallImage; a.assets.small_text = cut(st.phase || 'En vol', 128); }
   } else {

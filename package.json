@@ -64,7 +64,7 @@
       ],
       "icon": "build-res/icon.ico",
       "signAndEditExecutable": false,
-      "artifactName": "LesAilesFrancaises-Tracker-Setup-${version}.${ext}"
+      "artifactName": "LesAilesTricolores-Tracker-Setup-${version}.${ext}"
     },
     "asarUnpack": [
       "node_modules/onnxruntime-node/**",

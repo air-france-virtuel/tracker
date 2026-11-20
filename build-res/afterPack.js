@@ -23,8 +23,8 @@ exports.default = async function afterPack(ctx) {
   vi.setFileVersion(num[0], num[1], num[2], 0, 1033);
   vi.setProductVersion(num[0], num[1], num[2], 0, 1033);
   vi.setStringValues({ lang: 1033, codepage: 1200 }, {
-    FileDescription: 'Les Ailes Françaises – Tracker', ProductName: 'Les Ailes Françaises – Tracker',
-    CompanyName: 'Les Ailes Françaises', LegalCopyright: 'Les Ailes Françaises – projet de loisir non officiel, sans lien avec Air France',
+    FileDescription: 'Les Ailes Tricolores – Tracker', ProductName: 'Les Ailes Tricolores – Tracker',
+    CompanyName: 'Les Ailes Tricolores', LegalCopyright: 'Les Ailes Tricolores – projet de loisir non officiel, sans lien avec Air France',
     OriginalFilename: productFilename + '.exe', InternalName: 'AirFranceVirtuelTracker', FileVersion: version, ProductVersion: version
   });
   vi.outputToResourceEntries(res.entries);

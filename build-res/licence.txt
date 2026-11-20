@@ -1,8 +1,8 @@
-LES AILES FRANÇAISES - TRACKER DE VOL
+LES AILES TRICOLORES - TRACKER DE VOL
 Conditions d'utilisation (version bêta)
 
 1. Projet de loisir non officiel
-Les Ailes Françaises est une compagnie aérienne virtuelle créée par des passionnés de simulation de vol. Ce logiciel n'est ni affilié, ni approuvé, ni soutenu par Air France, par Air France Virtual ou par une autre compagnie aérienne réelle. Les noms de compagnies réelles affichés (vols réels, actualité) servent uniquement à informer.
+Les Ailes Tricolores est une compagnie aérienne virtuelle créée par des passionnés de simulation de vol. Ce logiciel n'est ni affilié, ni approuvé, ni soutenu par Air France, par Air France Virtual ou par une autre compagnie aérienne réelle. Les noms de compagnies réelles affichés (vols réels, actualité) servent uniquement à informer.
 
 2. Usage
 Ce logiciel est gratuit, pour un usage de loisir avec un simulateur de vol. Il ne doit jamais être utilisé pour la navigation aérienne réelle.

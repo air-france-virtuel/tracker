@@ -67,7 +67,7 @@ class SimLink extends EventEmitter {
   async tryConnect() {
     if (this.stopped || this.handle) return;
     try {
-      const { recvOpen, handle } = await open('Les Ailes Francaises Tracker', Protocol.KittyHawk);
+      const { recvOpen, handle } = await open('Les Ailes Tricolores Tracker', Protocol.KittyHawk);
       this.handle = handle;
       this.setConnected(true, recvOpen.applicationName);
       VARS.forEach(([name, unit]) => handle.addToDataDefinition(DEF, name, unit, SimConnectDataType.FLOAT64));

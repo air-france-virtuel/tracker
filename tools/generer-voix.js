@@ -22,7 +22,7 @@ const REGION = process.env.AZURE_SPEECH_REGION || 'francecentral';
 // Les parties variables (destination, altitude) deviennent des formulations générales,
 // car un fichier audio ne peut pas changer de texte selon le vol.
 const ANNONCES = [
-  { key: 'boarding_welcome', text: 'Mesdames et messieurs, bonjour et bienvenue à bord de ce vol Les Ailes Françaises à destination de votre aéroport d’arrivée. Merci de ranger vos bagages et de prendre place.' },
+  { key: 'boarding_welcome', text: 'Mesdames et messieurs, bonjour et bienvenue à bord de ce vol Les Ailes Tricolores à destination de votre aéroport d’arrivée. Merci de ranger vos bagages et de prendre place.' },
   { key: 'boarding_safety', text: 'Nous allons vous présenter les consignes de sécurité. Merci de bien vouloir suivre la démonstration de l’équipage.' },
   { key: 'taxi_crew', text: 'Personnel navigant, préparation pour le départ. Mesdames et messieurs, veuillez attacher votre ceinture.' },
   { key: 'takeoff_crew', text: 'Personnel navigant, à vos places pour le décollage.' },
@@ -31,7 +31,7 @@ const ANNONCES = [
   { key: 'descent_start', text: 'Mesdames et messieurs, nous avons commencé notre descente vers notre destination. Merci de regagner votre siège et de relever votre tablette.' },
   { key: 'approach_crew', text: 'Personnel navigant, à vos places pour l’atterrissage.' },
   { key: 'landing_welcome', text: 'Mesdames et messieurs, bienvenue à destination. Merci de rester assis, ceinture attachée, jusqu’à l’arrêt complet de l’appareil.' },
-  { key: 'parking_deplane', text: 'Nous sommes arrivés au parking. Merci d’avoir choisi Les Ailes Françaises. Nous vous souhaitons une excellente journée.' }
+  { key: 'parking_deplane', text: 'Nous sommes arrivés au parking. Merci d’avoir choisi Les Ailes Tricolores. Nous vous souhaitons une excellente journée.' }
 ];
 
 const echappe = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');

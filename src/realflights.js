@@ -18,7 +18,7 @@ const routeCache = new Map(); // callsign → route
 const typeCache = new Map(); // icao24 → { type, reg, model }
 
 const timeout = (ms) => AbortSignal.timeout(ms);
-const UA = 'LAF-Tracker (+https://github.com/air-france-virtuel/tracker)';
+const UA = 'LAT-Tracker (+https://github.com/air-france-virtuel/tracker)';
 // Dans l'appli, on passe par le réseau de Chromium (net.fetch d'Electron), plus proche d'un navigateur.
 let http = (url, o) => fetch(url, o);
 function setFetch(fn) { if (typeof fn === 'function') http = fn; }

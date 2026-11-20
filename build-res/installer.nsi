@@ -1,4 +1,4 @@
-; Assistant d'installation du tracker Les Ailes Françaises
+; Assistant d'installation du tracker Les Ailes Tricolores
 Unicode true
 !ifndef VERSION
   !define VERSION "0.0.0"
@@ -8,20 +8,20 @@ Unicode true
 !endif
 !define APP "Air France Virtuel Tracker"
 !define EXE "Air France Virtuel Tracker.exe" ; nom de fichier gardé pour les mises à jour
-!define SHORT "Les Ailes Françaises - Tracker"
-!define MENU "Les Ailes Françaises"
+!define SHORT "Les Ailes Tricolores - Tracker"
+!define MENU "Les Ailes Tricolores"
 !define UNINST "Désinstaller Air France Virtuel Tracker.exe"
 !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\fr.airfrancevirtuel.tracker"
 !define REGKEY "Software\Air France Virtuel\Tracker"
 
 Name "${APP}"
-Caption "Installation – Les Ailes Françaises · Tracker ${VERSION}"
+Caption "Installation – Les Ailes Tricolores · Tracker ${VERSION}"
 OutFile "${OUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\${APP}"
 InstallDirRegKey HKCU "${REGKEY}" "InstallLocation"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
-BrandingText "Les Ailes Françaises · Tracker de vol ${VERSION}"
+BrandingText "Les Ailes Tricolores · Tracker de vol ${VERSION}"
 ShowInstDetails nevershow
 ShowUninstDetails nevershow
 
@@ -39,10 +39,10 @@ ShowUninstDetails nevershow
 !define MUI_HEADERIMAGE_BITMAP "${RES}\header.bmp"
 !define MUI_HEADERIMAGE_UNBITMAP "${RES}\header.bmp"
 !define MUI_ABORTWARNING
-!define MUI_ABORTWARNING_TEXT "Veux-tu vraiment annuler l'installation du tracker Les Ailes Françaises ?"
+!define MUI_ABORTWARNING_TEXT "Veux-tu vraiment annuler l'installation du tracker Les Ailes Tricolores ?"
 
-!define MUI_WELCOMEPAGE_TITLE "Bienvenue dans l'installation du tracker Les Ailes Françaises"
-!define MUI_WELCOMEPAGE_TEXT "Cet assistant va installer le tracker de vol Les Ailes Françaises ${VERSION} (bêta) sur ton ordinateur.$\r$\n$\r$\nLe tracker suit tes vols dans Microsoft Flight Simulator 2020 et 2024 : phases du vol, Max ton copilote, annonces à bord, hangar et rapport de vol.$\r$\n$\r$\nLes prochaines versions s'installeront automatiquement.$\r$\n$\r$\nClique sur Suivant pour continuer."
+!define MUI_WELCOMEPAGE_TITLE "Bienvenue dans l'installation du tracker Les Ailes Tricolores"
+!define MUI_WELCOMEPAGE_TEXT "Cet assistant va installer le tracker de vol Les Ailes Tricolores ${VERSION} (bêta) sur ton ordinateur.$\r$\n$\r$\nLe tracker suit tes vols dans Microsoft Flight Simulator 2020 et 2024 : phases du vol, Max ton copilote, annonces à bord, hangar et rapport de vol.$\r$\n$\r$\nLes prochaines versions s'installeront automatiquement.$\r$\n$\r$\nClique sur Suivant pour continuer."
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_LICENSEPAGE_TEXT_TOP "Lis les conditions d'utilisation du tracker."
 !insertmacro MUI_PAGE_LICENSE "${RES}\licence.txt"
@@ -50,12 +50,12 @@ ShowUninstDetails nevershow
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW InstShow
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_TITLE "Le tracker est installé"
-!define MUI_FINISHPAGE_TEXT "Le tracker Les Ailes Françaises est prêt.$\r$\n$\r$\nTu le retrouves sur ton bureau et dans le menu Démarrer.$\r$\n$\r$\nBons vols !"
+!define MUI_FINISHPAGE_TEXT "Le tracker Les Ailes Tricolores est prêt.$\r$\n$\r$\nTu le retrouves sur ton bureau et dans le menu Démarrer.$\r$\n$\r$\nBons vols !"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${EXE}"
 !define MUI_FINISHPAGE_RUN_TEXT "Lancer le tracker maintenant"
 !insertmacro MUI_PAGE_FINISH
 
-!define MUI_WELCOMEPAGE_TITLE "Désinstallation du tracker Les Ailes Françaises"
+!define MUI_WELCOMEPAGE_TITLE "Désinstallation du tracker Les Ailes Tricolores"
 !define MUI_WELCOMEPAGE_TEXT "Cet assistant va retirer le tracker de ton ordinateur.$\r$\n$\r$\nTes réglages, ta flotte, tes sons et tes rapports de vol sont conservés : tu les retrouveras si tu réinstalles le tracker."
 !insertmacro MUI_UNPAGE_WELCOME
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -65,11 +65,11 @@ ShowUninstDetails nevershow
 
 VIProductVersion "${VERSION4}"
 VIAddVersionKey /LANG=${LANG_FRENCH} "ProductName" "${APP}"
-VIAddVersionKey /LANG=${LANG_FRENCH} "CompanyName" "Les Ailes Françaises"
-VIAddVersionKey /LANG=${LANG_FRENCH} "FileDescription" "Installation du tracker Les Ailes Françaises"
+VIAddVersionKey /LANG=${LANG_FRENCH} "CompanyName" "Les Ailes Tricolores"
+VIAddVersionKey /LANG=${LANG_FRENCH} "FileDescription" "Installation du tracker Les Ailes Tricolores"
 VIAddVersionKey /LANG=${LANG_FRENCH} "FileVersion" "${VERSION}"
 VIAddVersionKey /LANG=${LANG_FRENCH} "ProductVersion" "${VERSION}"
-VIAddVersionKey /LANG=${LANG_FRENCH} "LegalCopyright" "Les Ailes Françaises - projet de loisir non officiel, sans lien avec Air France"
+VIAddVersionKey /LANG=${LANG_FRENCH} "LegalCopyright" "Les Ailes Tricolores - projet de loisir non officiel, sans lien avec Air France"
 
 ; ---------- écran d'installation « premium » ----------
 ; La page standard d'installation est rhabillée : image à gauche, panneau bleu à droite,
@@ -244,7 +244,7 @@ Section "Tracker" SecMain
   WriteRegStr HKCU "${REGKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNKEY}" "DisplayName" "${SHORT}"
   WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "${UNKEY}" "Publisher" "Les Ailes Françaises"
+  WriteRegStr HKCU "${UNKEY}" "Publisher" "Les Ailes Tricolores"
   WriteRegStr HKCU "${UNKEY}" "DisplayIcon" "$INSTDIR\${EXE},0"
   WriteRegStr HKCU "${UNKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNKEY}" "UninstallString" '"$INSTDIR\${UNINST}"'

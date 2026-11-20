@@ -9,7 +9,7 @@ Une seule fois :
 2. Tag : v + numéro de version (ex. v0.1.0-beta). Titre : Version 0.1.0 bêta.
 3. Description : la liste Ajouté / Retiré / Corrigé (les pilotes la voient dans le tracker).
 4. Joins ces 3 fichiers :
-   - LesAilesFrancaises-Tracker-Setup-<version>.exe
+   - LesAilesTricolores-Tracker-Setup-<version>.exe
    - latest.yml
    - beta.yml
 5. Coche « Set as a pre-release », puis Publish release.

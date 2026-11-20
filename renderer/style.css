@@ -314,7 +314,8 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .liv .badge{white-space:nowrap}
 
 /* carte du vol : zoom et déplacement */
-.map-wrap{position:relative;user-select:none;-webkit-user-select:none}
+.map-wrap{position:relative}
+.map-card{user-select:none;-webkit-user-select:none}
 #map{cursor:grab;touch-action:none;user-select:none}
 #map.grab{cursor:grabbing}
 .map-zoom{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(10,30,74,.25)}

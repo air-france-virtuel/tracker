@@ -281,6 +281,7 @@ document.addEventListener('click', (e) => {
     redraw();
   };
   svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = toView(e); zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y); }, { passive: false });
+  svg.addEventListener('mousedown', (e) => e.preventDefault()); // pas de sélection de texte en faisant glisser
   svg.addEventListener('dblclick', (e) => { const p = toView(e); zoomAt(2, p.x, p.y); });
   let drag = null;
   svg.addEventListener('pointerdown', (e) => {

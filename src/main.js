@@ -381,6 +381,10 @@ app.whenReady().then(() => {
   ipcMain.handle('chat:hide', (_e, id) => chat.hide(+id));
   ipcMain.handle('chat:ban', (_e, uid) => chat.ban(String(uid || '')));
   ipcMain.handle('chat:reports', () => chat.reports());
+  // avions de la compagnie (réservation partagée entre pilotes)
+  ipcMain.handle('fleet:bookings', () => { chatProfile(); return chat.aircraftList(); });
+  ipcMain.handle('fleet:take', (_e, reg, until) => { chatProfile(); return chat.aircraftTake(String(reg || ''), +until || 0); });
+  ipcMain.handle('fleet:release', (_e, reg) => { chatProfile(); return chat.aircraftRelease(String(reg || '')); });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
 

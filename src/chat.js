@@ -29,6 +29,14 @@ const friendly = (e) => {
   return m.slice(0, 200) || 'Erreur inconnue.';
 };
 
+const friendlyFleet = (e) => {
+  const m = String((e && (e.message || e.error_description || e.msg)) || e || '');
+  if (/AVION_PRIS/.test(m)) return 'Trop tard : un autre pilote vient de prendre cet avion.';
+  if (/PILOTE_INCONNU/.test(m)) return 'Ton compte pilote n’est pas reconnu par le serveur.';
+  if (/aircraft_bookings|take_aircraft|release_aircraft|does not exist|schema cache/i.test(m)) return 'La réservation des avions n’est pas encore activée par la direction.';
+  return friendly(e);
+};
+
 class Chat extends EventEmitter {
   constructor(dir, opts) {
     super();
@@ -73,19 +81,7 @@ class Chat extends EventEmitter {
     this.starting = (async () => {
       try {
         this.setState('connecting');
-        if (!this.sb) {
-          this.sb = this.createClient(this.cfg.url, this.cfg.key, {
-            auth: { storage: fileStorage(path.join(this.dir, 'chat-session.json')), persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-          });
-        }
-        let { data: { session } } = await this.sb.auth.getSession();
-        if (!session) {
-          const r = await this.sb.auth.signInAnonymously();
-          if (r.error) throw r.error;
-          session = r.data.session;
-        }
-        this.me = { id: session.user.id, pseudo: this.profile.pseudo, grade: this.profile.grade, admin: false, banned: false };
-        await this.saveProfile();
+        await this.session();
         await this.loadHistory();
         this.subscribe();
         this.setState('ready');
@@ -96,6 +92,53 @@ class Chat extends EventEmitter {
       return this.status();
     })();
     return this.starting;
+  }
+
+  // Compte anonyme du pilote (créé une fois), sans forcément ouvrir le chat : sert aussi aux avions de la compagnie.
+  async session() {
+    if (!this.cfg) throw new Error('Serveur de la compagnie non configuré.');
+    if (this.profile.pseudo.length < 2) throw new Error('Indique ton nom de pilote dans les Réglages.');
+    if (this.me && this.sb) return this.me;
+    if (!this.sb) {
+      this.sb = this.createClient(this.cfg.url, this.cfg.key, {
+        auth: { storage: fileStorage(path.join(this.dir, 'chat-session.json')), persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      });
+    }
+    let { data: { session } } = await this.sb.auth.getSession();
+    if (!session) {
+      const r = await this.sb.auth.signInAnonymously();
+      if (r.error) throw r.error;
+      session = r.data.session;
+    }
+    this.me = { id: session.user.id, pseudo: this.profile.pseudo, grade: this.profile.grade, admin: false, banned: false };
+    await this.saveProfile();
+    return this.me;
+  }
+
+  // ---------- avions de la compagnie : un avion pris n'est plus disponible pour les autres pilotes ----------
+  async aircraftList() {
+    try {
+      await this.session();
+      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until').gt('until', new Date().toISOString());
+      if (r.error) throw r.error;
+      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id })) };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async aircraftTake(reg, until) {
+    try {
+      await this.session();
+      const r = await this.sb.rpc('take_aircraft', { p_reg: clean(reg, 10).toUpperCase(), p_until: new Date(+until || Date.now() + 12 * 3600000).toISOString() });
+      if (r.error) throw r.error;
+      return { ok: true, until: Date.parse(r.data.until) };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async aircraftRelease(reg) {
+    try {
+      await this.session();
+      const r = await this.sb.rpc('release_aircraft', { p_reg: clean(reg, 10).toUpperCase() });
+      if (r.error) throw r.error;
+      return { ok: true };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
 
   async saveProfile() {

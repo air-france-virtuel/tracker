@@ -76,9 +76,15 @@ class SimLink extends EventEmitter {
       handle.requestDataOnSimObject(REQ, DEF, SimConnectConstants.OBJECT_ID_USER, SimConnectPeriod.SIM_FRAME, 0, 0, 5, 0);
       handle.on('simObjectData', (r) => {
         if (r.requestID !== REQ) return;
-        const d = r.data;
-        const v = VARS.map(() => d.readFloat64());
-        const title = d.readString256();
+        // Un paquet incomplet du simulateur (fréquent pendant le chargement d'un vol avec MSFS 2024)
+        // ne doit jamais faire planter le tracker : on l'ignore et on attend le suivant.
+        let v, title;
+        try {
+          const d = r.data;
+          v = VARS.map(() => d.readFloat64());
+          try { title = d.readString256(); this.title = title; } catch (e) { title = this.title; } // nom de l'avion tronqué : on garde le précédent
+        } catch (e) { return; }
+        if (v.some((x) => typeof x !== 'number' || Number.isNaN(x))) return;
         this.emit('data', {
           lat: v[0], lon: v[1], alt: v[2], agl: v[3], ias: v[4], gs: v[5], vs: v[6], hdg: v[7],
           onGround: v[8] > 0.5, fuelKg: v[9] * 0.4536, engOn: v[10] > 0.5 || v[11] > 0.5,

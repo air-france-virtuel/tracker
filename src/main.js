@@ -14,10 +14,21 @@ const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
 const { Liveries } = require('./liveries');
+const ua = require('./ua');
 { const { net } = require('electron'); if (net && typeof net.fetch === 'function') { real.setFetch((u, o) => net.fetch(u, o)); newsMod.setFetch((u, o) => net.fetch(u, o)); } }
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
+
+// Filet de sécurité : une erreur imprévue (par exemple un paquet abîmé envoyé par le simulateur)
+// est notée dans « erreurs.log » au lieu d'afficher une fenêtre d'erreur et de bloquer le tracker.
+process.on('uncaughtException', (e) => {
+  try {
+    const f = path.join(app.getPath('userData'), 'erreurs.log');
+    fs.appendFileSync(f, new Date().toISOString() + ' v' + VERSION + ' ' + ((e && e.stack) || e) + '\n');
+  } catch (err) { /* rien */ }
+  console.error(e);
+});
 let win = null;
 const sim = new SimLink();
 
@@ -25,7 +36,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '' },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -511,28 +522,6 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('flight:stop', () => { stopFlight(); return { ok: true }; });
 
-  ipcMain.handle('sound:pick', async (_e, key) => {
-    const r = await dialog.showOpenDialog(win, { title: 'Choisir un son', properties: ['openFile'], filters: [{ name: 'Sons', extensions: ['mp3', 'wav', 'ogg'] }] });
-    if (r.canceled || !r.filePaths[0]) return null;
-    const src = r.filePaths[0];
-    const size = fs.statSync(src).size;
-    if (size > 10 * 1024 * 1024) throw new Error('Fichier trop lourd (10 Mo maximum).');
-    fs.mkdirSync(soundsDir(), { recursive: true });
-    const dest = path.join(soundsDir(), key + path.extname(src).toLowerCase());
-    for (const f of fs.readdirSync(soundsDir())) if (f.startsWith(key + '.')) fs.unlinkSync(path.join(soundsDir(), f));
-    fs.copyFileSync(src, dest);
-    store.sounds[key] = { file: dest, name: path.basename(src) };
-    saveStore();
-    return store.sounds;
-  });
-  ipcMain.handle('sound:reset', (_e, key) => {
-    const s = store.sounds[key];
-    if (s && s.file) { try { fs.unlinkSync(s.file); } catch (e) { /* déjà supprimé */ } }
-    delete store.sounds[key];
-    saveStore();
-    return store.sounds;
-  });
-
   ipcMain.handle('feedback:save', (_e, f) => {
     const item = Object.assign({ date: new Date().toISOString(), version: VERSION, pilot: store.settings.pilot }, f);
     store.feedback.unshift(item);
@@ -541,6 +530,37 @@ app.whenReady().then(() => {
     return store.feedback;
   });
   ipcMain.handle('reports:list', () => listReports());
+  // ---------- Universal Announcer ----------
+  const uaState = { dir: null, auto: false, running: false };
+  async function uaRefresh() {
+    const manual = store.settings.uaDir && fs.existsSync(store.settings.uaDir) ? store.settings.uaDir : null;
+    const auto = manual ? null : ua.findAnnouncements();
+    const running = await ua.isRunning();
+    const next = { dir: manual || auto, auto: !!auto, running };
+    const changed = JSON.stringify(next) !== JSON.stringify(uaState);
+    Object.assign(uaState, next);
+    if (changed) send('ua:status', uaState);
+    return uaState;
+  }
+  uaRefresh(); setInterval(uaRefresh, 30000);
+  ipcMain.handle('ua:get', () => uaRefresh());
+  ipcMain.handle('ua:pick', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choisir le dossier « Announcements » d’Universal Announcer', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return uaRefresh();
+    store.settings.uaDir = r.filePaths[0]; saveStore(); return uaRefresh();
+  });
+  ipcMain.handle('ua:reset', () => { store.settings.uaDir = ''; saveStore(); return uaRefresh(); });
+  ipcMain.handle('ua:file', (_e, key, aircraft) => (uaState.dir ? ua.fileFor(uaState.dir, ua.MAP[String(key || '')], aircraft) : null));
+  ipcMain.handle('ua:files', (_e, aircraft) => {
+    const out = {};
+    for (const [key, name] of Object.entries(ua.MAP)) {
+      const f = uaState.dir ? ua.fileFor(uaState.dir, name, aircraft) : null;
+      out[key] = { ua: name, file: f, name: f ? path.basename(f) : '', folder: f ? path.basename(path.dirname(f)) : '' };
+    }
+    return out;
+  });
+  ipcMain.handle('ua:open', () => (uaState.dir ? shell.openPath(uaState.dir) : ''));
+
   // ---------- livrées de la compagnie ----------
   const liv = new Liveries({
     bundled: (() => { try { return require('./data/livrees.json').livrees || []; } catch (e) { return []; } })(),
@@ -568,6 +588,7 @@ app.whenReady().then(() => {
   });
 
   sim.on('status', (s) => send('sim:status', s));
+  sim.on('log', (m) => console.warn(m));
   sim.on('data', (t) => { if (flight && flight.mode === 'demo') return; if (flight) flight.title = t.title; handleTelemetry(t); });
   sim.start();
 

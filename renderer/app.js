@@ -13,6 +13,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
   if (name === 'livrees') loadLiveries(false);
+  if (name === 'sons') loadUa();
   if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
   if (name === 'infos' && !S.metarAt) loadMetar();
 }
@@ -38,8 +39,14 @@ async function runQueue() {
     if (item.kind === 'ann') {
       if (S.muted || !S.store.settings.announcements) continue;
       $('annNow').innerHTML = '<b>' + esc(item.title) + '</b><br>' + esc(item.text);
-      const custom = S.store.sounds[item.key];
-      if (custom && custom.file) await playFile(custom.file); // sans fichier : texte affiché, aucun son
+      if (S.ua && S.ua.running) {
+        // pas de doublon : Universal Announcer joue déjà les annonces cabine
+        $('annNow').innerHTML += '<div class="muted small">Son joué par Universal Announcer</div>';
+        await new Promise((r) => setTimeout(r, 6000));
+      } else {
+        const f = await afv.uaFile(item.key, S.plan && S.plan.aircraft).catch(() => null);
+        if (f) await playFile(f); // son du dossier Universal Announcer (LAT, sinon Default) ; sinon texte seulement
+      }
       $('annNow').textContent = 'Dernière annonce : ' + item.title;
     }
   }
@@ -463,33 +470,29 @@ async function renderReports() {
 }
 $('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
 
-// ---------------- sons ----------------
-function renderSounds() {
+// ---------------- sons (Universal Announcer) ----------------
+async function renderSounds() {
   const list = ANNOUNCEMENTS();
-  $('sounds').innerHTML = list.map((a) => {
-    const c = S.store.sounds[a.key];
-    return '<div class="snd"><div class="t"><b>' + PHASES[a.phase] + ' · ' + esc(a.title) + '</b><div class="muted small">' + (c ? 'Ton fichier : ' + esc(c.name) : 'Aucun son : le texte s\u2019affiche dans le tracker. « ' + esc(a.text) + ' »') + '</div></div>' +
-      (c ? '<button class="btn small ghost" data-play="' + a.key + '">Écouter</button>' : '') +
-      '<button class="btn small red" data-pick="' + a.key + '">' + (c ? 'Remplacer' : 'Importer un fichier') + '</button>' +
-      (c ? '<button class="btn small ghost" data-reset="' + a.key + '">Retirer le son</button>' : '') + '</div>';
-  }).join('') + '<p class="muted small">Formats acceptés : MP3, WAV ou OGG, 10 Mo maximum. Utilise tes propres enregistrements.</p>';
-}
-$('sounds').addEventListener('click', async (ev) => {
-  const b = ev.target.closest('button');
-  if (!b) return;
-  try {
-    if (b.dataset.pick) { const s = await afv.pickSound(b.dataset.pick); if (s) S.store.sounds = s; }
-    if (b.dataset.reset) S.store.sounds = await afv.resetSound(b.dataset.reset);
-    if (b.dataset.play) {
-      const a = ANNOUNCEMENTS().find((x) => x.key === b.dataset.play);
-      const c = S.store.sounds[a.key];
-      if (curAudio) curAudio.pause();
-      if (c) playFile(c.file);
-    }
-  } catch (e) { alertBox(e); }
-  renderSounds();
+  let files = {};
+  try { files = await afv.uaFiles(S.plan && S.plan.aircraft); } catch (e) { files = {}; }
+  S.uaFound = Object.values(files).some((f) => f && f.file);
   renderAnnHint();
+  $('sounds').innerHTML = list.map((a) => {
+    const f = files[a.key] || {};
+    return '<div class="snd"><div class="t"><b>' + PHASES[a.phase] + ' · ' + esc(a.title) + '</b><div class="muted small">' +
+      (f.file ? 'Son Universal Announcer : ' + esc(f.folder + ' › ' + f.name) : 'Pas de son « ' + esc(f.ua || '') + ' » dans Universal Announcer : le texte s’affiche dans le tracker.') + '</div></div>' +
+      (f.file ? '<button class="btn small ghost" data-play="' + a.key + '">Écouter</button>' : '') + '</div>';
+  }).join('');
+  S.uaFiles = files;
+}
+$('sounds').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (!b || !b.dataset.play) return;
+  const f = (S.uaFiles || {})[b.dataset.play];
+  if (curAudio) curAudio.pause();
+  if (f && f.file) playFile(f.file);
 });
+$('btnSndRefresh').addEventListener('click', () => { loadUa(); renderSounds(); });
 function alertBox(e) { console.error(e); }
 
 // ---------------- avis ----------------
@@ -641,7 +644,7 @@ async function renderChangelog() {
 $('btnNewsOk').addEventListener('click', () => { $('newsModal').hidden = true; afv.changelogSeen(); });
 
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-goto]'); if (b) showTab(b.dataset.goto); });
-function renderAnnHint() { $('annHint').hidden = Object.keys((S.store && S.store.sounds) || {}).length > 0; }
+function renderAnnHint() { $('annHint').hidden = !!S.uaFound; }
 
 // ---------------- démarrage ----------------
 (async function init() {
@@ -1695,3 +1698,24 @@ $('btnLivPick').addEventListener('click', async () => { const r = await afv.pick
 $('btnLivAuto').addEventListener('click', async () => { LV.data = await afv.resetCommunity(); renderLiveries(); });
 $('btnLivOpen').addEventListener('click', () => afv.openCommunity());
 setTimeout(() => loadLiveries(false), 4000); // pastille « MAJ » si une nouvelle version de livrée est sortie
+
+// ---------------- Universal Announcer ----------------
+async function loadUa() { try { S.ua = await afv.uaGet(); } catch (e) { S.ua = null; } renderUa(); }
+function renderUa() {
+  const u = S.ua; if (!u || !$('uaCard')) return;
+  const st = u.running ? '<span class="badge">Lancé</span>' : '<span class="badge red">Pas lancé</span>';
+  $('uaCard').innerHTML =
+    '<div class="row between wrap"><h2 style="margin:0">Universal Announcer</h2>' + st + '</div>' +
+    '<p class="muted">Le logiciel gratuit d’annonces cabine. Le tracker travaille avec lui, sans jamais jouer deux fois la même annonce.</p>' +
+    '<div class="row between wrap"><div class="t"><b>Dossier « Announcements »</b><div class="muted small">' + (u.dir ? esc(u.dir) + (u.auto ? ' (trouvé automatiquement)' : '') : 'Introuvable : clique sur « Choisir » et sélectionne le dossier Announcements d’Universal Announcer.') + '</div></div>' +
+    '<div class="row">' + (u.dir ? '<button class="btn small ghost" id="uaOpen">Ouvrir</button>' : '') + '<button class="btn small ghost" id="uaPick">Choisir</button>' + (u.dir && !u.auto ? '<button class="btn small ghost" id="uaAuto">Détection automatique</button>' : '') + '</div></div>' +
+    '<ul class="muted small" style="margin:6px 0 0 18px;padding:0"><li><b>Universal Announcer lancé</b> : c’est lui qui joue les annonces, le tracker affiche seulement leur texte (jamais deux fois la même annonce).</li>' +
+    '<li><b>Universal Announcer fermé</b> : le tracker joue lui-même les sons rangés dans son dossier (LAT, sinon Default), au bon moment du vol.</li>' +
+    '<li>Les sons de la compagnie vont dans le dossier <b>LAT</b> d’Universal Announcer (indicatif LAT dans SimBrief).</li></ul>';
+  const on = (id, fn) => { const e = $(id); if (e) e.addEventListener('click', fn); };
+  on('uaPick', async () => { S.ua = await afv.uaPick(); renderUa(); renderSounds(); });
+  on('uaAuto', async () => { S.ua = await afv.uaReset(); renderUa(); renderSounds(); });
+  on('uaOpen', () => afv.uaOpen());
+}
+afv.on('ua:status', (u) => { S.ua = u; renderUa(); renderSounds(); });
+setTimeout(loadUa, 3000);

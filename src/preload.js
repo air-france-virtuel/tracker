@@ -10,8 +10,6 @@ contextBridge.exposeInMainWorld('afv', {
   demoPlan: () => ipcRenderer.invoke('demo:plan'),
   startFlight: (o) => ipcRenderer.invoke('flight:start', o),
   stopFlight: () => ipcRenderer.invoke('flight:stop'),
-  pickSound: (key) => ipcRenderer.invoke('sound:pick', key),
-  resetSound: (key) => ipcRenderer.invoke('sound:reset', key),
   saveFeedback: (f) => ipcRenderer.invoke('feedback:save', f),
   listReports: () => ipcRenderer.invoke('reports:list'),
   openFolder: (w) => ipcRenderer.invoke('folder:open', w),
@@ -50,6 +48,12 @@ contextBridge.exposeInMainWorld('afv', {
   chatHide: (id) => ipcRenderer.invoke('chat:hide', id),
   chatBan: (uid) => ipcRenderer.invoke('chat:ban', uid),
   chatReports: () => ipcRenderer.invoke('chat:reports'),
+  uaGet: () => ipcRenderer.invoke('ua:get'),
+  uaPick: () => ipcRenderer.invoke('ua:pick'),
+  uaReset: () => ipcRenderer.invoke('ua:reset'),
+  uaFile: (key, ac) => ipcRenderer.invoke('ua:file', key, ac),
+  uaFiles: (ac) => ipcRenderer.invoke('ua:files', ac),
+  uaOpen: () => ipcRenderer.invoke('ua:open'),
   listLiveries: (force) => ipcRenderer.invoke('livrees:list', !!force),
   installLivery: (id) => ipcRenderer.invoke('livrees:install', id),
   removeLivery: (id) => ipcRenderer.invoke('livrees:remove', id),
@@ -59,7 +63,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

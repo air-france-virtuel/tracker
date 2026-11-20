@@ -77,7 +77,7 @@ function startChecklist(phase) {
   if (S.lastT) Checklists.update(S.ck, ckContext(S.lastT));
   S.ckDoneSaid = S.ck.complete;
   // Max lit la check-list juste après son conseil de phase
-  setTimeout(() => { if (S.flight && S.ck && S.ck.phase === phase) { const a = Checklists.announce(S.ck); $('maxSay').textContent = a; S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: a }]).slice(-4); maxSpeak(a); pushMax(); } }, 2500);
+  setTimeout(() => { if (S.flight && S.ck && S.ck.phase === phase && !S.ck.complete) { const a = Checklists.announce(S.ck); $('maxSay').textContent = a; S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: a }]).slice(-4); maxSpeak(a); pushMax(); } }, 2500);
   pushMax();
 }
 function tickChecklist(t) {
@@ -199,9 +199,9 @@ function adviceFor(p) {
     case 0: return 'Embarquement à ' + dep + '. Je lance les annonces. Départ prévu ' + rwy('origin') + (wDep ? ', ' + wDep : '') + '. Prépare ton FMS puis lâche le frein de parking quand tu es prêt.';
     case 1: return 'Roulage vers la ' + rwy('origin') + '. Reste sous 25 kt et vérifie volets et trim avant l’alignement.';
     case 2: return 'Décollage : poussée réglée, garde l’axe. Train rentré après la montée positive.';
-    case 3: return 'Montée vers ' + fl + '. 250 kt maximum sous 10 000 ft.' + steps;
+    case 3: return 'Montée vers ' + fl + '.' + (S.lastT && S.lastT.alt >= 10000 ? '' : ' 250 kt maximum sous 10 000 ft.') + steps;
     case 4: return 'Croisière à ' + fl + '. Surveille le carburant et prépare l’arrivée à ' + arr + '.' + (pl && pl.tod ? ' Je te préviens 10 minutes avant le TOD.' : '');
-    case 5: return 'Descente vers ' + arr + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '. Repasse le calage local à l’altitude de transition et 250 kt sous 10 000 ft.';
+    case 5: return 'Descente vers ' + arr + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '. Repasse le calage local à l’altitude de transition' + (S.lastT && S.lastT.alt <= 10000 ? '.' : ' et 250 kt sous 10 000 ft.');
     case 6: return 'Approche : sors le train et les volets, sois stabilisé à 1 000 ft. Remets les gaz si ce n’est pas bon.';
     case 7: return 'Atterrissage. Dégage la piste puis roule doucement jusqu’au parking.';
     case 8: return 'Au parking. Frein de parking, moteurs coupés : ton rapport de vol est enregistré.';

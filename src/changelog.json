@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.8.1-beta",
+    "date": "2026-11-20",
+    "added": [],
+    "removed": [
+      "Liste des annonces (et boutons « Écouter ») dans la rubrique « Annonces sonores » : il ne reste que le réglage d’Universal Announcer"
+    ],
+    "fixed": []
+  },
+  {
     "version": "0.8.0-beta",
     "date": "2026-11-20",
     "added": [

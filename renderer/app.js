@@ -471,27 +471,13 @@ async function renderReports() {
 $('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
 
 // ---------------- sons (Universal Announcer) ----------------
+// plus de liste des annonces à l'écran : on vérifie seulement s'il existe des sons, pour le message du tracker de vol
 async function renderSounds() {
-  const list = ANNOUNCEMENTS();
   let files = {};
   try { files = await afv.uaFiles(S.plan && S.plan.aircraft); } catch (e) { files = {}; }
   S.uaFound = Object.values(files).some((f) => f && f.file);
   renderAnnHint();
-  $('sounds').innerHTML = list.map((a) => {
-    const f = files[a.key] || {};
-    return '<div class="snd"><div class="t"><b>' + PHASES[a.phase] + ' · ' + esc(a.title) + '</b><div class="muted small">' +
-      (f.file ? 'Son Universal Announcer : ' + esc(f.folder + ' › ' + f.name) : 'Pas de son « ' + esc(f.ua || '') + ' » dans Universal Announcer : le texte s’affiche dans le tracker.') + '</div></div>' +
-      (f.file ? '<button class="btn small ghost" data-play="' + a.key + '">Écouter</button>' : '') + '</div>';
-  }).join('');
-  S.uaFiles = files;
 }
-$('sounds').addEventListener('click', (ev) => {
-  const b = ev.target.closest('button');
-  if (!b || !b.dataset.play) return;
-  const f = (S.uaFiles || {})[b.dataset.play];
-  if (curAudio) curAudio.pause();
-  if (f && f.file) playFile(f.file);
-});
 $('btnSndRefresh').addEventListener('click', () => { loadUa(); renderSounds(); });
 function alertBox(e) { console.error(e); }
 

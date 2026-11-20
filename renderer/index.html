@@ -267,7 +267,7 @@
                   <svg viewBox="0 0 200 220" width="64" height="70"><circle cx="100" cy="120" r="92" fill="#E4EAF7"/><path d="M30 210 C30 160 60 148 100 148 C140 148 170 160 170 210 Z" fill="#0A1E4A"/><path d="M84 150 L100 176 L116 150 Z" fill="#fff"/><path d="M96 160 L104 160 L106 188 L100 196 L94 188 Z" fill="#C8102E"/><circle cx="100" cy="96" r="42" fill="#F6D3B3"/><path d="M58 88 C58 50 142 50 142 88 Z" fill="#0A1E4A"/><rect x="54" y="84" width="92" height="12" rx="6" fill="#C8102E"/><circle cx="100" cy="70" r="7" fill="#fff"/><path d="M58 104 C54 52 146 52 142 104" fill="none" stroke="#5B667D" stroke-width="5"/><rect x="50" y="98" width="13" height="24" rx="6" fill="#1A3A7C"/><rect x="137" y="98" width="13" height="24" rx="6" fill="#1A3A7C"/><circle class="blink" cx="86" cy="106" r="4" fill="#0B1B3D"/><circle class="blink" cx="114" cy="106" r="4" fill="#0B1B3D"/><path d="M88 119 C96 128 108 128 116 119" fill="none" stroke="#0B1B3D" stroke-width="3" stroke-linecap="round"/></svg>
                 </div>
                 <div><div class="max-name">Max, ton copilote</div><div class="muted small" id="maxPhase"></div></div>
-                <button class="btn small ghost" id="btnMaxMute" aria-pressed="false" hidden>Couper Max</button><button class="btn small red" id="btnMaxOverlay" title="Max reste au premier plan, par-dessus le simulateur">Max par-dessus le simu</button>
+                <button class="btn small ghost" id="btnMaxMute" aria-pressed="false" hidden>Couper Max</button><button class="btn small red" id="btnMaxOverlay" title="Max reste au premier plan, par-dessus le simulateur (raccourci Ctrl + Maj + M)">Max par-dessus le simu</button>
               </div>
               <div class="max-say" id="maxSay">Prêt quand tu l’es.</div>
               <p class="muted small" id="maxVoiceHint" hidden>Max peut parler à voix haute : installe sa voix dans <button class="linkbtn" data-goto="reglages">Réglages</button>.</p>
@@ -356,7 +356,7 @@
           <label class="check"><input type="checkbox" id="sAnn"> Jouer les annonces à bord</label>
           <label class="field">Volume des annonces <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
           <label class="check"><input type="checkbox" id="sMaxVoice"> Max parle à voix haute</label>
-          <label class="check"><input type="checkbox" id="sMaxOverlay"> Afficher Max par-dessus le simulateur pendant le vol (check-lists à chaque phase)</label>
+          <label class="check"><input type="checkbox" id="sMaxOverlay"> Afficher Max par-dessus le simulateur au début de chaque vol (check-lists et annonces). Raccourci pour l’afficher ou le masquer pendant le vol : <b>Ctrl + Maj + M</b></label>
           <label class="field">Volume de Max <input type="range" id="sMaxVol" min="0" max="1" step="0.05"></label>
           <label class="check"><input type="checkbox" id="sChat"> Activer le chat entre pilotes</label>
           <label class="check"><input type="checkbox" id="sLive"> Me montrer aux autres pilotes quand je vole (rubrique « Pilotes en vol »)</label>

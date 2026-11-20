@@ -3,7 +3,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, globalShortcut } = require('electron');
 const { SimLink } = require('./sim');
 const { FlightEngine, PHASES } = require('./flight');
 const { fetchOfp } = require('./simbrief');
@@ -426,7 +426,7 @@ app.whenReady().then(() => {
 
   // ---------- Max par-dessus le simulateur (petite fenêtre toujours au premier plan) ----------
   let maxWin = null;
-  ipcMain.handle('max:open', () => {
+  const openMaxWin = () => {
     if (maxWin && !maxWin.isDestroyed()) { maxWin.showInactive(); return true; }
     const { screen } = require('electron');
     const wa = screen.getPrimaryDisplay().workArea;
@@ -449,7 +449,12 @@ app.whenReady().then(() => {
     maxWin.on('closed', () => { maxWin = null; send('max:state', false); });
     send('max:state', true);
     return true;
-  });
+  };
+  ipcMain.handle('max:open', () => openMaxWin());
+  // Raccourci Ctrl+Maj+M : afficher / masquer Max par-dessus le simulateur, même quand le simulateur a la main
+  const MAX_KEY = 'CommandOrControl+Shift+M';
+  try { globalShortcut.register(MAX_KEY, () => { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); else openMaxWin(); }); } catch (e) { /* raccourci déjà pris par un autre logiciel */ }
+  app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch (e) { /* rien */ } });
   ipcMain.handle('max:close', () => { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); return true; });
   ipcMain.on('max:push', (_e, d) => { if (maxWin && !maxWin.isDestroyed()) maxWin.webContents.send('max:data', d); });
   ipcMain.on('max:action', (_e, a) => {

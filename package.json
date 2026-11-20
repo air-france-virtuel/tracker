@@ -1,11 +1,11 @@
 {
   "name": "air-france-virtuel-tracker",
-  "version": "0.7.0-beta",
+  "version": "0.8.0-beta",
   "description": "Tracker de vol (ACARS) Air France Virtuel pour Microsoft Flight Simulator - version bêta",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js && node test/chat.js && node test/liveries.js",
+    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js && node test/chat.js && node test/liveries.js && node test/ua.js && node test/sim.js",
     "dist": "electron-builder --win dir --x64 --publish never && node build-res/make-installer.js"
   },
   "author": "Air France Virtuel",

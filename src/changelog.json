@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.8.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Lien avec Universal Announcer (rubrique « Mes annonces sonores ») : le tracker trouve tout seul son dossier « Announcements »",
+      "Quand tu n’as pas importé de son, le tracker joue celui d’Universal Announcer (dossier LAT, sinon Default)",
+      "Bouton « Envoyer mes annonces vers Universal Announcer » : tes sons sont copiés dans son dossier LAT pour tes vols Les Ailes Tricolores",
+      "Pas de doublon : quand Universal Announcer est lancé, c’est lui qui joue les sons et le tracker affiche seulement le texte"
+    ],
+    "removed": [],
+    "fixed": [
+      "Le tracker ne plante plus quand on le lance alors que MSFS est déjà ouvert (paquet incomplet du simulateur)"
+    ]
+  },
+  {
     "version": "0.7.0-beta",
     "date": "2026-11-20",
     "added": [

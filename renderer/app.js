@@ -13,6 +13,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
   if (name === 'livrees') loadLiveries(false);
+  if (name === 'sons') loadUa();
   if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
   if (name === 'infos' && !S.metarAt) loadMetar();
 }
@@ -39,7 +40,15 @@ async function runQueue() {
       if (S.muted || !S.store.settings.announcements) continue;
       $('annNow').innerHTML = '<b>' + esc(item.title) + '</b><br>' + esc(item.text);
       const custom = S.store.sounds[item.key];
-      if (custom && custom.file) await playFile(custom.file); // sans fichier : texte affiché, aucun son
+      if (S.ua && S.ua.running) {
+        // pas de doublon : Universal Announcer joue déjà les annonces cabine
+        $('annNow').innerHTML += '<div class="muted small">Son joué par Universal Announcer</div>';
+        await new Promise((r) => setTimeout(r, 6000));
+      } else if (custom && custom.file) await playFile(custom.file);
+      else {
+        const f = await afv.uaFile(item.key, S.plan && S.plan.aircraft).catch(() => null);
+        if (f) await playFile(f); // son du dossier Universal Announcer (LAT, sinon Default)
+      } // sans fichier : texte affiché, aucun son
       $('annNow').textContent = 'Dernière annonce : ' + item.title;
     }
   }
@@ -1695,3 +1704,33 @@ $('btnLivPick').addEventListener('click', async () => { const r = await afv.pick
 $('btnLivAuto').addEventListener('click', async () => { LV.data = await afv.resetCommunity(); renderLiveries(); });
 $('btnLivOpen').addEventListener('click', () => afv.openCommunity());
 setTimeout(() => loadLiveries(false), 4000); // pastille « MAJ » si une nouvelle version de livrée est sortie
+
+// ---------------- Universal Announcer ----------------
+async function loadUa() { try { S.ua = await afv.uaGet(); } catch (e) { S.ua = null; } renderUa(); }
+function renderUa() {
+  const u = S.ua; if (!u || !$('uaCard')) return;
+  const st = u.running ? '<span class="badge">Lancé</span>' : '<span class="badge red">Pas lancé</span>';
+  $('uaCard').innerHTML =
+    '<div class="row between wrap"><h2 style="margin:0">Universal Announcer</h2>' + st + '</div>' +
+    '<p class="muted">Le logiciel gratuit d’annonces cabine. Le tracker travaille avec lui, sans jamais jouer deux fois la même annonce.</p>' +
+    '<div class="row between wrap"><div class="t"><b>Dossier « Announcements »</b><div class="muted small">' + (u.dir ? esc(u.dir) + (u.auto ? ' (trouvé automatiquement)' : '') : 'Introuvable : clique sur « Choisir » et sélectionne le dossier Announcements d’Universal Announcer.') + '</div></div>' +
+    '<div class="row">' + (u.dir ? '<button class="btn small ghost" id="uaOpen">Ouvrir</button>' : '') + '<button class="btn small ghost" id="uaPick">Choisir</button>' + (u.dir && !u.auto ? '<button class="btn small ghost" id="uaAuto">Détection automatique</button>' : '') + '</div></div>' +
+    '<label class="check"><input type="checkbox" id="uaUseBox"' + (u.use ? ' checked' : '') + '> Quand je n’ai pas importé de son, jouer celui d’Universal Announcer (dossier LAT, sinon Default)</label>' +
+    '<div class="row wrap"><button class="btn red" id="uaExport"' + (u.dir ? '' : ' disabled') + '>Envoyer mes annonces vers Universal Announcer</button><span class="muted small" id="uaMsg"></span></div>' +
+    '<ul class="muted small" style="margin:6px 0 0 18px;padding:0"><li><b>Universal Announcer lancé</b> : c’est lui qui joue les sons, le tracker affiche seulement le texte de l’annonce.</li>' +
+    '<li><b>Universal Announcer fermé</b> : le tracker joue ton son importé, sinon celui du dossier d’Universal Announcer.</li>' +
+    '<li>« Envoyer mes annonces » copie tes sons dans le dossier <b>LAT</b> d’Universal Announcer : il les joue pour tes vols Les Ailes Tricolores (indicatif LAT dans SimBrief). Format conseillé : OGG.</li></ul>';
+  const on = (id, fn) => { const e = $(id); if (e) e.addEventListener('click', fn); };
+  on('uaPick', async () => { S.ua = await afv.uaPick(); renderUa(); });
+  on('uaAuto', async () => { S.ua = await afv.uaReset(); renderUa(); });
+  on('uaOpen', () => afv.uaOpen());
+  const box = $('uaUseBox'); if (box) box.addEventListener('change', async () => { S.ua = await afv.uaUse(box.checked); renderUa(); });
+  on('uaExport', async () => {
+    try {
+      const r = await afv.uaExport();
+      $('uaMsg').textContent = r.copied.length ? r.copied.length + ' annonce(s) copiée(s) dans ' + r.folder + (r.notOgg.length ? ' · ' + r.notOgg.length + ' ne sont pas en OGG : Universal Announcer pourrait ne pas les lire.' : '') : 'Importe d’abord tes sons ci-dessous, puis recommence.';
+    } catch (e) { $('uaMsg').textContent = String(e.message || e); }
+  });
+}
+afv.on('ua:status', (u) => { S.ua = u; renderUa(); });
+setTimeout(loadUa, 3000);

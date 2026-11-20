@@ -14,10 +14,21 @@ const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
 const { Liveries } = require('./liveries');
+const ua = require('./ua');
 { const { net } = require('electron'); if (net && typeof net.fetch === 'function') { real.setFetch((u, o) => net.fetch(u, o)); newsMod.setFetch((u, o) => net.fetch(u, o)); } }
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
+
+// Filet de sécurité : une erreur imprévue (par exemple un paquet abîmé envoyé par le simulateur)
+// est notée dans « erreurs.log » au lieu d'afficher une fenêtre d'erreur et de bloquer le tracker.
+process.on('uncaughtException', (e) => {
+  try {
+    const f = path.join(app.getPath('userData'), 'erreurs.log');
+    fs.appendFileSync(f, new Date().toISOString() + ' v' + VERSION + ' ' + ((e && e.stack) || e) + '\n');
+  } catch (err) { /* rien */ }
+  console.error(e);
+});
 let win = null;
 const sim = new SimLink();
 
@@ -25,7 +36,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '' },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '', uaUse: true },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -541,6 +552,31 @@ app.whenReady().then(() => {
     return store.feedback;
   });
   ipcMain.handle('reports:list', () => listReports());
+  // ---------- Universal Announcer ----------
+  const uaState = { dir: null, auto: false, running: false, use: true };
+  async function uaRefresh() {
+    const manual = store.settings.uaDir && fs.existsSync(store.settings.uaDir) ? store.settings.uaDir : null;
+    const auto = manual ? null : ua.findAnnouncements();
+    const running = await ua.isRunning();
+    const next = { dir: manual || auto, auto: !!auto, running, use: store.settings.uaUse !== false };
+    const changed = JSON.stringify(next) !== JSON.stringify(uaState);
+    Object.assign(uaState, next);
+    if (changed) send('ua:status', uaState);
+    return uaState;
+  }
+  uaRefresh(); setInterval(uaRefresh, 30000);
+  ipcMain.handle('ua:get', () => uaRefresh());
+  ipcMain.handle('ua:pick', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choisir le dossier « Announcements » d’Universal Announcer', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return uaRefresh();
+    store.settings.uaDir = r.filePaths[0]; saveStore(); return uaRefresh();
+  });
+  ipcMain.handle('ua:reset', () => { store.settings.uaDir = ''; saveStore(); return uaRefresh(); });
+  ipcMain.handle('ua:use', (_e, on) => { store.settings.uaUse = !!on; saveStore(); return uaRefresh(); });
+  ipcMain.handle('ua:export', () => { const r = ua.exportPack(uaState.dir, store.sounds); return r; });
+  ipcMain.handle('ua:file', (_e, key, aircraft) => (uaState.dir && store.settings.uaUse !== false ? ua.fileFor(uaState.dir, ua.MAP[String(key || '')], aircraft) : null));
+  ipcMain.handle('ua:open', () => (uaState.dir ? shell.openPath(uaState.dir) : ''));
+
   // ---------- livrées de la compagnie ----------
   const liv = new Liveries({
     bundled: (() => { try { return require('./data/livrees.json').livrees || []; } catch (e) { return []; } })(),
@@ -568,6 +604,7 @@ app.whenReady().then(() => {
   });
 
   sim.on('status', (s) => send('sim:status', s));
+  sim.on('log', (m) => console.warn(m));
   sim.on('data', (t) => { if (flight && flight.mode === 'demo') return; if (flight) flight.title = t.title; handleTelemetry(t); });
   sim.start();
 

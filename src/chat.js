@@ -83,7 +83,7 @@ class Chat extends EventEmitter {
         this.setState('connecting');
         await this.session();
         await this.loadHistory();
-        this.subscribe();
+        await this.subscribe();
         this.setState('ready');
       } catch (e) {
         this.setState('error', friendly(e));
@@ -95,7 +95,12 @@ class Chat extends EventEmitter {
   }
 
   // Compte anonyme du pilote (créé une fois), sans forcément ouvrir le chat : sert aussi aux avions de la compagnie.
-  async session() {
+  session() {
+    if (this.me && this.sb) return Promise.resolve(this.me);
+    if (!this.sessionP) this.sessionP = this.openSession().finally(() => { this.sessionP = null; });
+    return this.sessionP;
+  }
+  async openSession() {
     if (!this.cfg) throw new Error('Serveur de la compagnie non configuré.');
     if (this.profile.pseudo.length < 2) throw new Error('Indique ton nom de pilote dans les Réglages.');
     if (this.me && this.sb) return this.me;
@@ -158,7 +163,12 @@ class Chat extends EventEmitter {
     this.emit('history', this.messages.filter((m) => !m.deleted));
   }
 
-  subscribe() {
+  async subscribe() {
+    // Supabase réutilise un canal du même nom : après une coupure, on enlève l'ancien avant d'en ouvrir un neuf
+    // (sinon : « cannot add postgres_changes callbacks … after subscribe() »).
+    const old = [this.channel].concat(typeof this.sb.getChannels === 'function' ? this.sb.getChannels().filter((c) => /chat-pilotes$/.test(c.topic || '')) : []);
+    this.channel = null;
+    for (const c of new Set(old.filter(Boolean))) { try { await this.sb.removeChannel(c); } catch (e) { /* déjà fermé */ } }
     const ch = this.sb.channel('chat-pilotes', { config: { presence: { key: this.me.id } } });
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
       const m = p.new; if (!m || this.messages.some((x) => x.id === m.id)) return;
@@ -179,7 +189,10 @@ class Chat extends EventEmitter {
     });
     ch.subscribe((s) => {
       if (s === 'SUBSCRIBED') this.track();
-      else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') this.setState('error', 'Connexion au chat perdue, nouvelle tentative…');
+      else if ((s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') && this.channel === ch) {
+        this.setState('error', 'Connexion au chat perdue, nouvelle tentative…');
+        clearTimeout(this.retry); this.retry = setTimeout(() => { if (this.state === 'error') this.start(); }, 15000);
+      }
     });
     this.channel = ch;
   }

@@ -8,6 +8,6 @@
     { "title": "Vol du jour", "note": "La première mission proposée par Max chaque jour rapporte deux fois plus de points." }
   ],
   "alerts": [
-    { "kind": "Info", "text": "Le tracker est en bêta : signale tout souci dans « Donner mon avis »." }
+    { "kind": "Info", "text": "Un souci ou une idée ? Dis-le dans « Donner mon avis »." }
   ]
 }

@@ -10,9 +10,24 @@
       "folder": "les-ailes-tricolores-a320-iae",
       "url": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/les-ailes-tricolores-a320-iae.zip",
       "image": "assets/livrees/lat-a320-iae-fhlat.jpg",
-      "description": "Livrée officielle de la compagnie : fuselage blanc, ventre et dérive bleu marine, ruban tricolore, titre « Les Ailes Tricolores » et emblème des trois plumes sur les moteurs.",
+      "description": "Livrée officielle de la compagnie Les Ailes Tricolores.",
       "requires": "Fenix A320 (MSFS 2024), motorisation IAE",
       "size": 47808992
+    },
+    {
+      "id": "lat-b77w-fhlau",
+      "name": "Les Ailes Tricolores – Ruban",
+      "aircraft": "PMDG 777-300ER",
+      "type": "B77W",
+      "engine": "GE90",
+      "reg": "F-HLAU",
+      "version": "1.0",
+      "folder": "lat-livery-pmdg-777-300er",
+      "url": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/les-ailes-tricolores-777-300er.zip",
+      "image": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/lat-b77w-fhlau.jpg",
+      "description": "Livrée officielle de la compagnie Les Ailes Tricolores.",
+      "requires": "PMDG 777-300ER (MSFS 2024)",
+      "size": 39054996
     }
   ]
 }

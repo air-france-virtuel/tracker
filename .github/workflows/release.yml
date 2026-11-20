@@ -1,4 +1,4 @@
-# Fabrique l'installateur sur GitHub et publie la version (bêta).
+# Fabrique l'installateur sur GitHub et publie la version.
 # Se lance quand on pousse un tag « v0.1.0-beta », ou à la main (onglet Actions).
 name: Publier une version du tracker
 on:

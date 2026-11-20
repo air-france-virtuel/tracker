@@ -181,7 +181,7 @@ function checkPendingUpdate() {
 function updSend() { send('update:status', upd); }
 function setupUpdater() {
   if (!app.isPackaged) { upd.state = 'dev'; return; }
-  autoUpdater.allowPrerelease = true; // canal bêta
+  autoUpdater.allowPrerelease = true; // les trackers bêta (0.x-beta) passent ainsi à la 1.0.0 et aux suivantes
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   const notesOf = (info) => {
@@ -381,6 +381,10 @@ app.whenReady().then(() => {
   ipcMain.handle('chat:hide', (_e, id) => chat.hide(+id));
   ipcMain.handle('chat:ban', (_e, uid) => chat.ban(String(uid || '')));
   ipcMain.handle('chat:reports', () => chat.reports());
+  // avions de la compagnie (réservation partagée entre pilotes)
+  ipcMain.handle('fleet:bookings', () => { chatProfile(); return chat.aircraftList(); });
+  ipcMain.handle('fleet:take', (_e, reg, until) => { chatProfile(); return chat.aircraftTake(String(reg || ''), +until || 0); });
+  ipcMain.handle('fleet:release', (_e, reg) => { chatProfile(); return chat.aircraftRelease(String(reg || '')); });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
 

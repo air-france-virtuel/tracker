@@ -1,0 +1,3 @@
+Fichiers des livrées de la compagnie Les Ailes Tricolores.
+Le tracker (rubrique « Livrées ») les télécharge et les installe dans le dossier Community de MSFS 2024.
+Ne pas modifier à la main : chaque livrée est un dossier de paquet MSFS 2024 compressé en .zip.

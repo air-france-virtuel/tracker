@@ -1,8 +1,9 @@
 [
   {
-    "version": "0.10.0-beta",
+    "version": "1.0.0",
     "date": "2026-11-20",
     "added": [
+      "Version 1.0.0 : le tracker sort de la bêta (plus de mention « BÊTA » dans l’appli)",
       "Rubrique « Livrées » : le 777-300ER de la compagnie (F-HLAU, PMDG 777-300ER, livrée « Ruban ») à télécharger et installer en un clic",
       "Planning du jour : F-HLAU apparaît avec F-HLAT dans « Max : quel avion prends-tu ? » ; avec le 777, Max propose un vol long-courrier 777-300ER au départ de l’aéroport choisi (l’avion reste à destination, le retour se fait à la session suivante)",
       "Avions de la compagnie réservés : quand un pilote prend F-HLAT ou F-HLAU, aucun autre pilote ne peut le prendre. Les autres voient « piloté par » suivi du nom de pilote du tracker et jusqu’à quelle heure",

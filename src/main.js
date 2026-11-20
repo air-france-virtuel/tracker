@@ -181,7 +181,7 @@ function checkPendingUpdate() {
 function updSend() { send('update:status', upd); }
 function setupUpdater() {
   if (!app.isPackaged) { upd.state = 'dev'; return; }
-  autoUpdater.allowPrerelease = true; // canal bêta
+  autoUpdater.allowPrerelease = true; // les trackers bêta (0.x-beta) passent ainsi à la 1.0.0 et aux suivantes
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   const notesOf = (info) => {

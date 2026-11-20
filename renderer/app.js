@@ -493,7 +493,7 @@ $('stars').addEventListener('click', (e) => { const b = e.target.closest('[data-
 $('tags').addEventListener('click', (e) => { const b = e.target.closest('[data-tag]'); if (b) { S.tags[b.dataset.tag] = !S.tags[b.dataset.tag]; renderFb(); } });
 function fbText() {
   const tags = Object.keys(S.tags).filter((k) => S.tags[k]);
-  return 'Avis bêta tracker Les Ailes Tricolores v' + $('ver').textContent + '\nNote : ' + S.stars + '/5\nPoints à améliorer : ' + (tags.join(', ') || '—') + '\n' + $('fbText').value.trim();
+  return 'Avis tracker Les Ailes Tricolores v' + $('ver').textContent + '\nNote : ' + S.stars + '/5\nPoints à améliorer : ' + (tags.join(', ') || '—') + '\n' + $('fbText').value.trim();
 }
 $('btnSendFb').addEventListener('click', async () => {
   if (!S.stars && !$('fbText').value.trim()) { $('fbMsg').textContent = 'Mets au moins une note ou un commentaire.'; return; }
@@ -1567,7 +1567,7 @@ const sideCache = {};
 const setTxt = (id, v) => { if (sideCache[id] !== v) { sideCache[id] = v; $(id).textContent = v; } };
 function sideRefresh() {
   const flying = !!S.flight;
-  $('chipFly').hidden = !flying; $('chipBeta').hidden = flying;
+  $('chipFly').hidden = !flying; $('chipBeta').hidden = true; // plus de mention « bêta » depuis la 1.0.0
   $('btnGoFly').classList.toggle('live', flying);
   setTxt('goFlyText', flying ? 'Revenir à mon vol' : 'Démarrer un vol');
   $('navBrief').disabled = !S.plan;

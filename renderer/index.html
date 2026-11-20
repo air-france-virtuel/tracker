@@ -21,7 +21,7 @@
     <button class="nav on" data-tab="infos" title="Infos du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg><span class="lb">Infos du jour</span></button>
     <button class="nav" data-tab="planning" title="Planning du jour"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lb">Planning du jour</span></button>
     <div class="nsec">Voler</div>
-    <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta">BÊTA</span></button>
+    <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta" hidden>BÊTA</span></button>
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
     <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
     <button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
@@ -189,7 +189,7 @@
     <!-- ===================== TRACKER ===================== -->
     <section class="tab" id="tab-vol">
       <header class="top">
-        <div><h1>Tracker de vol <span class="beta">BÊTA</span></h1><div class="sub" id="flightSub">Prépare ton vol pour commencer</div></div>
+        <div><h1>Tracker de vol</h1><div class="sub" id="flightSub">Prépare ton vol pour commencer</div></div>
         <div class="top-actions row"><button class="btn ghost" id="btnCompact" title="Ouvre une petite fenêtre à garder à côté du simulateur ou sur un deuxième écran">Panneau compact</button><button class="btn ghost" id="btnStop" hidden>Arrêter le suivi</button></div>
       </header>
 
@@ -315,7 +315,7 @@
 
     <!-- ===================== AVIS ===================== -->
     <section class="tab" id="tab-avis">
-      <header class="top"><div><h1>Ton avis sur la bêta</h1><div class="sub">Ce qui marche, ce qu’on doit améliorer</div></div></header>
+      <header class="top"><div><h1>Ton avis sur le tracker</h1><div class="sub">Ce qui marche, ce qu’on doit améliorer</div></div></header>
       <div class="body">
         <div class="card">
           <div class="field">Ta note <div id="stars" class="row"></div></div>
@@ -355,7 +355,7 @@
     </section>
     <!-- ===================== MISES À JOUR ===================== -->
     <section class="tab" id="tab-maj">
-      <header class="top"><div><h1>Mises à jour</h1><div class="sub">Canal bêta · les nouvelles versions s’installent toutes seules</div></div><button class="btn ghost" id="btnCheckUpd">Rechercher une mise à jour</button></header>
+      <header class="top"><div><h1>Mises à jour</h1><div class="sub">Les nouvelles versions s’installent toutes seules</div></div><button class="btn ghost" id="btnCheckUpd">Rechercher une mise à jour</button></header>
       <div class="body">
         <div class="card" id="updCard"></div>
         <h3>Historique des versions</h3>

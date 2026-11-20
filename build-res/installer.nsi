@@ -10,6 +10,7 @@ Unicode true
 !define EXE "Air France Virtuel Tracker.exe" ; nom de fichier gardé pour les mises à jour
 !define SHORT "Les Ailes Tricolores - Tracker"
 !define MENU "Les Ailes Tricolores"
+!define ICOFILE "logo-lat.ico"
 !define UNINST "Désinstaller Air France Virtuel Tracker.exe"
 !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\fr.airfrancevirtuel.tracker"
 !define REGKEY "Software\Air France Virtuel\Tracker"
@@ -227,16 +228,28 @@ Section "Tracker" SecMain
   !insertmacro AFV_STEP $S3 0 "Raccourcis bureau et menu Démarrer" 88
   !insertmacro AFV_ETA "Presque terminé…"
 
+  ; icône des raccourcis dans un fichier à part : Windows garde en cache l'icône de l'ancien
+  ; logo pour le même .exe ; un nouveau fichier d'icône force l'affichage du logo actuel.
+  File "/oname=${ICOFILE}" "${RES}\icon.ico"
   ; anciens raccourcis (nom d'avant 0.6.0)
   Delete "$SMPROGRAMS\Air France Virtuel\${APP}.lnk"
   RMDir "$SMPROGRAMS\Air France Virtuel"
-  IfFileExists "$DESKTOP\${APP}.lnk" 0 +3
-    Delete "$DESKTOP\${APP}.lnk"
-    CreateShortcut "$DESKTOP\${SHORT}.lnk" "$INSTDIR\${EXE}"
-  CreateDirectory "$SMPROGRAMS\${MENU}"
-  CreateShortcut "$SMPROGRAMS\${MENU}\${SHORT}.lnk" "$INSTDIR\${EXE}"
+  StrCpy $R9 "0"
+  IfFileExists "$DESKTOP\${APP}.lnk" 0 +2
+    StrCpy $R9 "1"
+  IfFileExists "$DESKTOP\${SHORT}.lnk" 0 +2
+    StrCpy $R9 "1"
   IfSilent +2
-    CreateShortcut "$DESKTOP\${SHORT}.lnk" "$INSTDIR\${EXE}"
+    StrCpy $R9 "1"
+  Delete "$DESKTOP\${APP}.lnk"
+  Delete "$DESKTOP\${SHORT}.lnk"
+  Delete "$SMPROGRAMS\${MENU}\${SHORT}.lnk"
+  CreateDirectory "$SMPROGRAMS\${MENU}"
+  CreateShortcut "$SMPROGRAMS\${MENU}\${SHORT}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\${ICOFILE}" 0
+  StrCmp $R9 "1" 0 +2
+    CreateShortcut "$DESKTOP\${SHORT}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\${ICOFILE}" 0
+  ; demande à Windows de rafraîchir ses icônes
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   !insertmacro AFV_STEP $S3 1 "Raccourcis bureau et menu Démarrer" 92
   !insertmacro AFV_STEP $S4 0 "Inscription dans Windows" 94
   WriteUninstaller "$INSTDIR\${UNINST}"

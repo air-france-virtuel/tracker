@@ -1,5 +1,14 @@
 [
   {
+    "version": "0.6.1-beta",
+    "date": "2026-11-20",
+    "added": [],
+    "removed": [],
+    "fixed": [
+      "Le raccourci du bureau et du menu Démarrer affiche bien le nouveau logo LAT (Windows gardait l’ancien logo AFV en mémoire)"
+    ]
+  },
+  {
     "version": "0.6.0-beta",
     "date": "2026-11-20",
     "added": [

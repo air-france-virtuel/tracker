@@ -1537,7 +1537,8 @@ function maxDayHtml(all, mine) {
           ? 'Je te propose ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's qui s’enchaînent' : '') + ', ' + hm(day.block) + ' de vol' + (day.legs.length > 1 ? ', avec 40 min à 3 h d’escale' : '') + ' :<ol class="mday">' + day.legs.map(leg).join('') + '</ol>' +
             (day.long ? '<span class="muted small">Long-courrier : l’avion reste à ' + esc(day.end) + ', tu feras le retour à ta prochaine session. </span>' : day.end && !/^LFP[GO]$/.test(day.end) && day.end !== S.plan2.base ? '<span class="muted small">L’avion finit la journée à ' + esc(day.end) + ' : je n’ai pas trouvé de vol retour assez tôt. </span>' : '<span class="muted small">L’avion revient à ' + esc(day.end) + ' en fin de journée. </span>') +
             '<span class="muted small">SimBrief prépare chaque vol avec l’indicatif LAT et l’immatriculation ' + esc(own.reg) + '.</span>'
-          : 'Je ne trouve plus de vol ' + esc(own.label) + ' au départ de ' + esc(S.plan2.base) + ' aujourd’hui. Choisis un autre aéroport ou actualise le planning.') +
+          : planStale() ? 'Le programme des vols n’est pas encore celui d’aujourd’hui (' + esc(planStale()) + ') : il est mis à jour chaque matin. Clique sur « Actualiser » en haut du planning ; s’il ne change pas, réessaie un peu plus tard.'
+          : 'Je ne trouve plus de vol ' + esc(own.label) + ' au départ de ' + esc(S.plan2.base) + ' aujourd’hui. ' + (where && where.location ? 'L’avion est à ' + esc(where.location) + ' : reviens plus tard ou demande à la direction de le déplacer.' : 'Choisis un autre aéroport ou actualise le planning.')) +
         (own.installed ? '' : '<br><span class="muted small">La livrée n’est pas encore installée : rubrique « Livrées ».</span>'),
       say: day.legs.length ? 'Voici ta journée avec ' + own.reg + ' : ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's' : '') + '. Tu pars de ' + day.legs[0].from + (day.legs[0].depEst ? ' à ' + sayTime(day.legs[0].depEst) : '') + ', puis ' + day.legs.map((f) => f.to).join(', puis ') + '. ' + hm(day.block).replace(' h ', ' heures ') + ' de vol au total. Bonne journée !' : ''
     };
@@ -2108,6 +2109,12 @@ setTimeout(loadLive, 4000); // pastille du menu : nombre de pilotes en vol
 
 // ---------------- hangar : la flotte de la compagnie (état, aéroport, usure, maintenance, historique) ----------------
 S.hg = { fleet: [], log: [], bookings: [], admin: false, error: '', at: 0, sel: null, filter: 'tous', msg: '' };
+// Programme des vols d'un autre jour (mise à jour du matin pas encore faite) : renvoie sa date, sinon ''
+function planStale() {
+  const d = S.plan2.data; if (!d || !d.day) return '';
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  return d.day === today ? '' : new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
 async function loadHangar(force) {
   if (!force && Date.now() - S.hg.at < 60000) return;
   S.hg.at = Date.now();

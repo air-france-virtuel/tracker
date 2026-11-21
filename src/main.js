@@ -400,6 +400,9 @@ app.whenReady().then(() => {
   // avions de la compagnie (réservation partagée entre pilotes)
   ipcMain.handle('fleet:bookings', () => { chatProfile(); return chat.aircraftList(); });
   ipcMain.handle('fleet:take', (_e, reg, until) => { chatProfile(); return chat.aircraftTake(String(reg || ''), +until || 0); });
+  ipcMain.handle('hangar:get', () => { chatProfile(); return chat.hangarGet(); });
+  ipcMain.handle('hangar:finish', (_e, o) => { chatProfile(); return chat.finishFlight(o || {}); });
+  ipcMain.handle('hangar:admin', (_e, a, reg, v, t) => { chatProfile(); return chat.hangarAdmin(String(a || ''), String(reg || ''), v, t); });
   ipcMain.handle('fleet:release', (_e, reg, maint) => { chatProfile(); return chat.aircraftRelease(String(reg || ''), +maint || 0); });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });

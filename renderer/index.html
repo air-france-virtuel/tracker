@@ -29,7 +29,7 @@
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
     <button class="nav" data-tab="hangar" title="Hangar &amp; flotte"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V10l9-6 9 6v10"/><path d="M7 20v-6h10v6"/></svg><span class="lb">Hangar &amp; flotte</span></button>
-    <button class="nav" data-tab="livrees" title="Livrées de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="lb">Livrées</span><span class="chip gold" id="chipLiv" hidden></span></button>
+    <button class="nav" data-tab="hgc" title="Hangar de la compagnie : la flotte des Ailes Tricolores"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-5 9 5v12"/><path d="M7 21v-7h10v7"/><path d="M7 17h10"/></svg><span class="lb">Hangar de la compagnie</span><span class="nbadge" id="hangarBadge" style="background:#E0A800" hidden></span></button><button class="nav" data-tab="livrees" title="Livrées de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="lb">Livrées</span><span class="chip gold" id="chipLiv" hidden></span></button>
     <div class="nsec">Communauté</div>
     <button class="nav" data-tab="chat" title="Chat entre pilotes"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h12v8H8l-5 4z"/><path d="M15 9h6v8l-4-3h-6v-1"/></svg><span class="lb">Chat entre pilotes</span><span class="chip red" id="chipChat" hidden></span></button>
     <div class="nsec searchonly">Autres écrans</div>
@@ -121,6 +121,29 @@
     </section>
 
     <!-- ===================== VOLS RÉELS ===================== -->
+    <section class="tab" id="tab-hgc">
+      <header class="top">
+        <div><h1>Hangar de la compagnie</h1><div class="sub" id="hgSub">La flotte des Ailes Tricolores</div></div>
+        <div class="row"><button class="tag on" data-hgf="tous" aria-pressed="true">Toute la flotte</button><button class="tag" data-hgf="dispo" aria-pressed="false">Disponibles</button><button class="tag" data-hgf="maint" aria-pressed="false">En maintenance</button></div>
+      </header>
+      <div class="body">
+        <div class="hg-kpis" id="hgKpis"></div>
+        <div class="hg-fleet" id="hgFleet"><div class="empty">Chargement du hangar…</div></div>
+        <div class="hg-two"><div class="card" id="hgHist"></div><div class="card hg-rules">
+          <h2>Règles du hangar</h2>
+          <div class="r">Après chaque vol <span>30 min + 10 min / h de vol</span></div>
+          <div class="r">Atterrissage dur (plus de 600 ft/min) <span>+30 min, −5 % d’état</span></div>
+          <div class="r">Usure <span>1 % par heure de vol</span></div>
+          <div class="r">Chaque maintenance <span>+8 % d’état</span></div>
+          <div class="r">État sous 60 % <span>cloué au sol, 3 h</span></div>
+          <div class="r">Grande visite <span>toutes les 150 h · 3 h</span></div>
+          <div class="r">Départ <span>de l’aéroport où est l’avion</span></div>
+          <p class="muted small" style="margin:8px 0 0">Max en tient compte dans « Quel avion prends-tu ? » : la journée part de l’aéroport de l’avion, et un avion en maintenance ne peut pas être pris.</p>
+        </div></div>
+        <div class="hg-dir" id="hgDir" hidden></div>
+      </div>
+    </section>
+
     <section class="tab" id="tab-ligne">
       <header class="top">
         <div><h1>Pilotes en vol</h1><div class="sub" id="liveSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>

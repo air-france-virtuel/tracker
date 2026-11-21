@@ -34,6 +34,10 @@ function server() {
           const r = { reg: a.p_reg, user_id: p.id, pseudo: p.pseudo, taken_at: now, until: a.p_until, kind: 'vol' };
           db.bookings.push(r); return { data: r, error: null };
         }
+        if (fn === 'finish_flight') {
+          if (!db.bookings.find((y) => y.reg === a.p_reg && y.user_id === p.id && y.kind === 'vol')) return { data: null, error: { message: 'AVION_PAS_A_TOI' } };
+          return { data: { kept: a.p_keep, state: { reg: a.p_reg, location: a.p_arr }, maintenance: a.p_keep ? undefined : { minutes: 30 + 10 * Math.round(a.p_minutes / 60), reason: 'Visite après vol' } }, error: null };
+        }
         if (fn === 'release_aircraft' && a.p_maint_minutes > 0) {
           const x = db.bookings.find((y) => y.reg === a.p_reg && y.user_id === p.id && y.kind === 'vol');
           if (x) { x.kind = 'maintenance'; x.until = new Date(Date.now() + a.p_maint_minutes * 60000).toISOString(); }
@@ -71,6 +75,11 @@ function server() {
   // Martin le rend : Durand peut le prendre
   assert.ok((await a.aircraftRelease('F-HLAT')).ok);
   assert.ok((await b.aircraftTake('F-HLAT', until)).ok);
+  // carnet de l'avion : seul le pilote qui l'a pris peut enregistrer le vol
+  const f1 = await a.finishFlight({ reg: 'F-HLAT', callsign: 'LAT1', dep: 'LFPG', arr: 'LFMN', minutes: 82, rate: -300 });
+  assert.strictEqual(f1.ok, false); assert.ok(/pas pris cet avion/.test(f1.error));
+  const f2 = await b.finishFlight({ reg: 'f-hlat', callsign: 'LAT1', dep: 'LFPG', arr: 'LFMN', minutes: 82, rate: -300, keep: true });
+  assert.ok(f2.ok && f2.kept && f2.state.location === 'LFMN');
   // fin du vol : Durand rend F-HLAT en maintenance 45 min ; personne ne peut le prendre, même lui
   assert.ok((await b.aircraftRelease('F-HLAT', 45)).ok);
   const lm = (await a.aircraftList()).list.find((x) => x.reg === 'F-HLAT');

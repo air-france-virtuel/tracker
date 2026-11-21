@@ -12,6 +12,7 @@ function showTab(name) {
   document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
+  if (name === 'vol') renderDayNext(true);
   if (name === 'livrees') loadLiveries(false);
   if (name === 'ligne') loadLive();
   if (name === 'hgc') loadHangar(true);
@@ -425,7 +426,7 @@ $('btnSimbrief').addEventListener('click', async () => {
   try {
     S.plan = await afv.loadSimbrief();
     $('sbMsg').textContent = 'Plan chargé.';
-    renderPlan();
+    renderPlan(); renderDayNext(false);
     renderMissionHint();
     showBriefing(S.plan, true);
   } catch (e) {
@@ -1349,6 +1350,31 @@ const sameFamily = (type, ours) => String(type || '').toUpperCase() === String(o
 function legDone(f) {
   const today = new Date().toDateString();
   return (S.reports || []).some((r) => r.mode !== 'demo' && r.from === f.from && r.to === f.to && new Date(r.date).toDateString() === today && (!f.depEst || Date.parse(r.date) > f.depEst - 3 * 3600000));
+}
+// Prochain vol de « Ma journée » (premier vol pas encore fait)
+function nextDayLeg() {
+  const d = S.plan2.data; if (!d) return null;
+  const byKey = Object.fromEntries(d.flights.map((f) => [f.key, f]));
+  const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
+  const i = mine.findIndex((f) => !legDone(f));
+  return i < 0 ? null : { f: mine[i], i, n: mine.length };
+}
+// Tracker de vol : rappel du prochain vol de la journée, et vérification que le plan SimBrief chargé est le bon
+async function renderDayNext(load) {
+  const box = $('dayNext'); if (!box) return;
+  if (load && !S.plan2.data) { try { S.plan2.data = await afv.getPlanning(false); } catch (e) { /* hors ligne */ } }
+  const nx = nextDayLeg();
+  if (!nx || S.flight) { box.hidden = true; return; }
+  const f = nx.f, own = companyPlane(S.plan2.myReg);
+  const num = own ? esc(f.number || f.callsign).replace(/^AF\s?/, 'LAT') : esc(f.number || f.callsign);
+  const ok = S.plan && S.plan.origin && S.plan.origin.icao === f.from && S.plan.destination && S.plan.destination.icao === f.to;
+  box.hidden = false;
+  box.className = 'day-next ' + (ok ? 'ok' : 'todo');
+  box.innerHTML = '<div><b>▶ Vol ' + (nx.i + 1) + '/' + nx.n + ' de ta journée : ' + num + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ ' + hhZ(f.depEst) : '') +
+    '<div class="small">' + (ok ? '✓ Le plan SimBrief chargé correspond à ce vol : tu peux démarrer.'
+      : S.plan && S.plan.origin ? '⚠ Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + '. Prépare ' + esc(f.from) + ' → ' + esc(f.to) + ' dans SimBrief, puis « Charger mon plan SimBrief ».'
+      : 'Prépare-le dans SimBrief (« Generate Flight »), puis clique sur « Charger mon plan SimBrief ».') + '</div></div>' +
+    (ok ? '' : '<a class="btn small red" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Ouvrir SimBrief</a>');
 }
 function myDayHtml(mine) {
   if (!mine.length) return '<h3 class="caps">Ma journée</h3><p class="muted">Ajoute des vols avec l’étoile ☆, ou laisse Max te proposer une journée avec l’avion de la compagnie.</p>';

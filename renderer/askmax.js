@@ -29,7 +29,7 @@
     const pts = (plan && plan.route_points) || []; if (!pts.length) return null;
     const apts = new Set([plan.origin && plan.origin.icao, plan.destination && plan.destination.icao, plan.alternate && plan.alternate.icao].filter(Boolean));
     const words = q.toUpperCase().split(/[^A-Z0-9]+/).filter((w) => w.length >= 2 && !COMMON.has(w) && !apts.has(w));
-    for (const w of words) { const p = pts.find((x) => x.ident.toUpperCase() === w); if (p) return p; }
+    for (const w of words) { const p = pts.find((x) => x && x.ident && String(x.ident).toUpperCase() === w); if (p) return p; }
     if (/\btoc\b/.test(q)) return pts.find((x) => x.ident === 'TOC') || null;
     if (/\btod\b/.test(q) && /(carburant|fuel|altitude|vent|passe|heure)/.test(q)) return pts.find((x) => x.ident === 'TOD') || null;
     return null;

@@ -51,4 +51,6 @@ t('blabla incompréhensible', 'inconnu', /pas compris/);
 // sans données : pas de plantage, réponse claire
 assert.ok(/plan SimBrief|données/.test(answer('carburant', {}).text + answer('temps restant', {}).text));
 assert.ok(!/undefined|NaN/.test(['flaps', 'piste', 'météo', 'transition', 'masse', 'passagers'].map((q) => answer(q, {}).text).join(' ')));
+// points de route sans nom (vol de démonstration) : pas de plantage
+assert.ok(answer('carburant', { plan: { origin: { icao: 'LFPG' }, destination: { icao: 'LFMN' }, route_points: [{ lat: 1, lon: 2 }, {}] } }).text);
 console.log('QUESTIONS À MAX : TOUS LES TESTS PASSENT');

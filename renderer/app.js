@@ -70,7 +70,7 @@ function pushMax() {
     route: S.flight ? ((pl && pl.callsign) || 'Vol libre') + (pl ? ' · ' + pl.origin.icao + ' → ' + pl.destination.icao : '') : '',
     phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '',
     msg: $('maxSay').textContent, hist: (S.maxHist || []).slice(0, -1).reverse(), muted: !!S.maxMuted,
-    ck: S.ck ? { title: S.ck.title, complete: S.ck.complete, items: S.ck.items.map((i) => ({ id: i.id, text: i.text, done: i.done, by: i.by })) } : null
+    ck: S.ck ? { title: S.ck.title, complete: S.ck.complete, items: S.ck.items.map((i) => ({ id: i.id, text: i.text, help: i.help, done: i.done, by: i.by })) } : null
   });
 }
 function ckContext(t) { return { t, plan: S.plan, fuelPlanKg: S.plan && S.plan.fuelPlanKg }; }

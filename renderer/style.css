@@ -412,3 +412,6 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 
 .max-ask{display:flex;gap:8px;margin-top:8px}
 .max-ask input{flex:1;min-width:0;height:36px;border-radius:8px;border:1px solid #C3CBDB;padding:0 10px;font:inherit;font-size:13px}
+
+.max-prompt{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(200,16,46,.12);font-weight:600}
+.max-prompt .row{display:flex;gap:6px}

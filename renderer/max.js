@@ -12,6 +12,9 @@ afv.on('max:data', (d) => {
   $('say').classList.toggle('talk', !!d.talking);
   $('hist').innerHTML = (d.hist || []).map((h) => '<div>' + esc(h.time) + ' · ' + esc(h.text) + '</div>').join('');
   $('mute').setAttribute('aria-pressed', String(!!d.muted)); $('mute').textContent = d.muted ? '🔇' : '🔈';
+  const pr = d.prompt;
+  $('pr').hidden = !pr;
+  if (pr) { $('prT').textContent = pr.text; $('prY').textContent = pr.yes; $('prN').textContent = pr.no; }
   const ck = d.ck;
   if (ck) {
     const n = ck.items.filter((i) => i.done).length;
@@ -24,6 +27,8 @@ afv.on('max:data', (d) => {
 });
 $('ck').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) afv.maxAction({ type: 'check', id: b.dataset.id }); });
 $('ask').addEventListener('submit', (e) => { e.preventDefault(); const q = $('askIn').value.trim(); if (q) { afv.maxAction({ type: 'ask', q: q.slice(0, 160) }); $('askIn').value = ''; } });
+$('prY').addEventListener('click', () => afv.maxAction({ type: 'prompt', answer: 'yes' }));
+$('prN').addEventListener('click', () => afv.maxAction({ type: 'prompt', answer: 'no' }));
 $('mute').addEventListener('click', () => afv.maxAction({ type: 'mute' }));
 $('close').addEventListener('click', () => afv.maxAction({ type: 'close' }));
 $('mini').addEventListener('click', () => { mini = !mini; document.body.classList.toggle('mini', mini); $('mini').setAttribute('aria-pressed', String(mini)); afv.maxAction({ type: 'mini', on: mini }); });

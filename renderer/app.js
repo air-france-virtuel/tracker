@@ -82,6 +82,7 @@ function pushMax() {
     route: S.flight ? ((pl && pl.callsign) || 'Vol libre') + (pl ? ' · ' + pl.origin.icao + ' → ' + pl.destination.icao : '') : '',
     phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '',
     msg: $('maxSay').textContent, hist: (S.maxHist || []).slice(0, -1).reverse(), muted: !!S.maxMuted,
+    prompt: S.maxPrompt ? { text: S.maxPrompt.text, yes: S.maxPrompt.yes, no: S.maxPrompt.no } : null,
     ck: S.ck ? { title: S.ck.title, complete: S.ck.complete, items: S.ck.items.map((i) => ({ id: i.id, text: i.text, help: i.help, done: i.done, by: i.by })) } : null
   });
 }
@@ -139,7 +140,9 @@ afv.on('max:action', (a) => {
   if (a.type === 'ready') pushMax();
   else if (a.type === 'check' && S.ck) { Checklists.toggle(S.ck, a.id); if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); } else pushMax(); }
   else if (a.type === 'mute') $('btnMaxMute').click();
+  else if (a.type === 'prompt') answerPrompt(a.answer === 'yes');
   else if (a.type === 'listen') maxStop();
+  else if (a.type === 'ask' && S.maxPrompt && /^\s*(oui|ouais|ok|okay|d.accord|vas-y|go|volontiers|non|pas maintenant|plus tard|non merci)\b/i.test(AskMax.norm(a.q))) answerPrompt(!/^\s*(non|pas maintenant|plus tard)/i.test(AskMax.norm(a.q)));
   else if (a.type === 'ask' && a.voice) { const q = AskMax.fromSpeech(a.q); if (q) askMax(q); else maxSays('Je n’ai pas bien entendu. Tu peux répéter ?'); }
   else if (a.type === 'ask') askMax(a.q);
 });
@@ -606,8 +609,53 @@ afv.on('flight:report', (r) => {
   showReport(r);
   S.reports = [r].concat(S.reports || []);
   if (r.mode !== 'demo') setTimeout(() => autoHangar(r), 6000);
+  if (r.mode !== 'demo') setTimeout(() => offerNextLeg(r), 14000); // après le message du hangar
   if (r.mission) maxSays(r.mission.validated ? 'Bravo commandant ! Mission validée, ' + r.mission.points + ' points de plus pour ta carrière.' : 'Mission non validée cette fois. ' + (r.mission.reason || ''));
 });
+// ---------- Arrivé à la gate : Max propose de préparer le vol suivant de « Ma journée » ----------
+const samePlan = (p, f) => p && p.origin && p.destination && p.origin.icao === f.from && p.destination.icao === f.to;
+function setPrompt(p) { S.maxPrompt = p; renderPrompt(); pushMax(); }
+function renderPrompt() {
+  const box = $('maxPrompt'); if (!box) return;
+  const p = S.maxPrompt;
+  box.hidden = !p;
+  if (p) box.innerHTML = '<span>' + esc(p.text) + '</span><span class="row"><button class="btn small red" data-mprompt="yes">' + esc(p.yes) + '</button><button class="btn small ghost" data-mprompt="no">' + esc(p.no) + '</button></span>';
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-mprompt]'); if (b) answerPrompt(b.dataset.mprompt === 'yes'); });
+function answerPrompt(yes) {
+  const p = S.maxPrompt; if (!p) return;
+  setPrompt(null);
+  if (yes) p.onYes(); else if (p.onNo) p.onNo();
+}
+async function offerNextLeg(rep) {
+  try { S.plan2.data = await afv.getPlanning(false); } catch (e) { /* hors ligne : on garde la dernière journée connue */ }
+  const d = S.plan2.data; if (!d || !d.mine || !d.mine.length || S.flight) return;
+  const byKey = Object.fromEntries(d.flights.map((f) => [f.key, f]));
+  const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
+  if (!mine.some((f) => f.from === rep.from && f.to === rep.to)) return; // ce vol n'était pas dans la journée
+  const nx = nextDayLeg();
+  if (!nx) { maxSays('C’était le dernier vol de ta journée. Bravo commandant, bon repos !'); return; }
+  const f = nx.f, own = companyPlane(S.plan2.myReg);
+  const num = own ? String(f.number || f.callsign).replace(/^AF\s?/, 'LAT') : (f.number || f.callsign);
+  const text = 'Bien arrivé à ' + rep.to + ' ! Prochain vol de ta journée : ' + num + ', ' + f.from + ' vers ' + f.to + (f.depEst ? ', départ prévu ' + hhZ(f.depEst) : '') + '. Je prépare le plan de vol sur SimBrief ?';
+  maxSays(text);
+  setPrompt({ text: 'Préparer ' + num + ' ' + f.from + ' → ' + f.to + ' sur SimBrief ?', yes: 'Oui, prépare-le', no: 'Plus tard', onYes: () => loadNextPlan(f, num), onNo: () => maxSays('D’accord. Tu le retrouves dans « Ma journée » quand tu veux.') });
+}
+// Prépare le vol suivant : si le plan est déjà fait sur SimBrief, Max le charge tout de suite ; sinon il ouvre
+// SimBrief déjà rempli et charge le plan tout seul dès que le pilote a cliqué sur « Generate Flight ».
+async function loadNextPlan(f, num) {
+  clearInterval(S.nextPoll);
+  const tryLoad = async () => { try { const p = await afv.loadSimbrief(); if (samePlan(p, f)) { S.plan = p; renderPlan(); renderMissionHint(); renderDayNext(); return true; } } catch (e) { /* pas encore de plan ou SimBrief injoignable */ } return false; };
+  const done = () => maxSays('Plan ' + num + ' ' + f.from + ' → ' + f.to + ' chargé dans le tracker' + (S.plan.fuelPlanKg ? ', carburant prévu ' + Math.round(S.plan.fuelPlanKg).toLocaleString('fr-FR') + ' kilos' : '') + '. Place l’avion à ' + f.from + ' et démarre le suivi quand tu es prêt.');
+  if (await tryLoad()) { done(); return; }
+  window.open(planSimbrief(f), '_blank');
+  maxSays('J’ouvre SimBrief avec le vol ' + num + ' déjà rempli. Clique sur « Generate Flight » en bas de la page : je charge le plan tout seul dès qu’il est prêt.');
+  const until = Date.now() + 20 * 60000;
+  S.nextPoll = setInterval(async () => {
+    if (S.flight || Date.now() > until) { clearInterval(S.nextPoll); return; }
+    if (await tryLoad()) { clearInterval(S.nextPoll); done(); }
+  }, 15000);
+}
 afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });
 
 function showReport(r) {

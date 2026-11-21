@@ -47,6 +47,7 @@ body.mini .hist,body.mini .ck,body.mini .ask{display:none}
 .micbt{display:flex;gap:6px;margin-top:6px}.micbt button{border:0;border-radius:7px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#C8102E;color:#fff}.micbt button+button{background:rgba(255,255,255,.12);color:#C9D4EE}
 body.mini .micset{display:none}
 @media (prefers-reduced-motion:reduce){.ask .mic.rec{animation:none}}
+.pr{margin:0 10px 8px;background:rgba(200,16,46,.18);border:1px solid rgba(240,55,78,.45);border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:600;line-height:1.4;-webkit-app-region:no-drag}
 .blink{animation:bl 4s infinite}@keyframes bl{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 .talk .bub{box-shadow:0 0 0 2px #F0374E}
 </style>
@@ -59,6 +60,7 @@ body.mini .micset{display:none}
     <div class="bt"><button id="mute" title="Couper la voix de Max" aria-pressed="false">🔈</button><button id="mini" title="Réduire / agrandir" aria-pressed="false">▁</button><button id="close" title="Fermer (Max reste dans le tracker)">✕</button></div>
   </div>
   <div class="say" id="say"><div class="bub" id="msg">Salut commandant ! Je reste par-dessus le simulateur pendant tout le vol.</div></div>
+  <div class="pr" id="pr" hidden><div id="prT"></div><div class="micbt"><button type="button" id="prY">Oui</button><button type="button" id="prN">Plus tard</button></div></div>
   <div class="hist" id="hist"></div>
   <form class="ask" id="ask" autocomplete="off"><button type="button" class="mic" id="mic" title="Parler à Max au micro" aria-label="Parler à Max au micro" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><input id="askIn" maxlength="160" placeholder="Demande à Max : temps restant, carburant, météo…" aria-label="Question à Max"><button type="submit" aria-label="Envoyer">➤</button></form>
   <div class="micset" id="micSet" hidden><span id="micSetTx">Pour t’écouter, je dois télécharger la reconnaissance vocale (environ 640 Mo, une seule fois). Elle fonctionne ensuite sans Internet.</span><div class="micbt"><button type="button" id="micDl">Télécharger</button><button type="button" id="micNo">Plus tard</button></div></div>

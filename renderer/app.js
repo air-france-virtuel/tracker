@@ -547,8 +547,24 @@ afv.on('flight:event', (e) => {
     addAlert('Hangar', e.reg + ' part en maintenance pour ' + e.days + ' jours.', 'red');
   }
 });
+// Fin du vol : l'avion de la compagnie rentre au hangar (il redevient libre pour les autres pilotes),
+// sauf si un autre vol de « Ma journée » part de l'aéroport d'arrivée : on le garde pour ce vol.
+async function autoHangar() {
+  try {
+    await loadBookings(true);
+    const b = (S.plan2.book.list || []).find((x) => x.mine && x.until > Date.now());
+    if (!b) return;
+    const d = S.plan2.data, arr = S.plan && S.plan.destination && S.plan.destination.icao;
+    const next = d && arr ? d.flights.filter((f) => d.mine.includes(f.key) && f.from === arr && (f.depEst || 0) > Date.now() - 30 * 60000).sort((x, y) => x.depEst - y.depEst) : [];
+    if (next.length) { maxSays('Je garde ' + b.reg + ' pour ton prochain vol, ' + (next[0].number || next[0].callsign) + ' au départ de ' + arr + '.'); return; }
+    const r = await afv.fleetRelease(b.reg);
+    await loadBookings(true);
+    if (r && r.ok) maxSays(b.reg + ' rentre au hangar : il est de nouveau disponible pour les autres pilotes.');
+  } catch (e) { /* l'avion se libérera tout seul à l'heure prévue */ }
+}
 afv.on('flight:report', (r) => {
   showReport(r);
+  if (r.mode !== 'demo') setTimeout(autoHangar, 6000);
   if (r.mission) maxSays(r.mission.validated ? 'Bravo commandant ! Mission validée, ' + r.mission.points + ' points de plus pour ta carrière.' : 'Mission non validée cette fois. ' + (r.mission.reason || ''));
 });
 afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });

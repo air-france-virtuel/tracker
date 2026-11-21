@@ -13,7 +13,8 @@
       "Ta position est partagée pendant les vols suivis par le tracker (pas en démo) et disparaît dès la fin du vol ; Réglages › « Me montrer aux autres pilotes quand je vole » pour ne pas apparaître",
       "Pastille dans le menu : nombre de pilotes en vol",
       "Carte du vol : zoom avec la molette de la souris, un double-clic ou les boutons + / −, et déplacement en faisant glisser la carte (plan, satellite et radar)",
-      "« Route entière » ou « Suivre l’avion » recentre la carte"
+      "« Route entière » ou « Suivre l’avion » recentre la carte",
+      "Fin du vol : l’avion de la compagnie rentre au hangar tout seul et redevient disponible pour les autres pilotes, sauf si un autre vol de « Ma journée » part de l’aéroport d’arrivée (Max le garde alors pour ce vol)"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0"

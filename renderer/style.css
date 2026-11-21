@@ -82,6 +82,10 @@ th{background:#F7F8FB;color:var(--muted);font-weight:600}
 .modal{position:fixed;inset:0;background:rgba(10,30,74,.55);display:flex;align-items:center;justify-content:center;z-index:50}
 .modal[hidden]{display:none}
 .modal-box{background:#fff;border-radius:14px;padding:24px 28px;width:520px;max-width:calc(100% - 32px)}
+/* fenêtre trop haute (longue liste de nouveautés) : le contenu défile, le bouton reste visible */
+.modal-box{max-height:calc(100vh - 48px);display:flex;flex-direction:column}
+.modal-box>#newsBody,.modal-box>.modal-scroll{overflow:auto;min-height:0;flex:1 1 auto;padding-right:6px}
+.modal-box>.row{flex-shrink:0;margin-top:12px}
 .rep{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin:12px 0 18px}
 .rep .k{font-size:12px;color:var(--muted)}.rep .v{font-size:18px;font-weight:700;color:var(--navy)}
 [hidden]{display:none!important}

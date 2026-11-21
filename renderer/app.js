@@ -799,6 +799,9 @@ async function renderChangelog() {
   return cl;
 }
 $('btnNewsOk').addEventListener('click', () => { $('newsModal').hidden = true; afv.changelogSeen(); });
+// la fenêtre des nouveautés se ferme aussi avec Échap ou en cliquant à côté
+$('newsModal').addEventListener('click', (e) => { if (e.target === $('newsModal')) $('btnNewsOk').click(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('newsModal').hidden) $('btnNewsOk').click(); });
 
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-goto]'); if (b) showTab(b.dataset.goto); });
 function renderAnnHint() { $('annHint').hidden = !!S.uaFound; }

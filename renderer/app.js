@@ -114,11 +114,20 @@ function flightInfos(t, d) {
   if (o && o.remaining != null && !I.arr50 && S.phase >= 5 && o.remaining < 50) { I.arr50 = true; maxSays('Plus que 50 nautiques avant ' + (S.plan ? S.plan.destination.icao : 'l’arrivée') + '. Prépare l’approche et la ' + rwy('destination') + '.'); }
 }
 async function openMax() { await afv.maxOpen(); }
+// Question posée à Max (panneau par-dessus le simu ou tracker) : réponse à voix haute avec les données du vol
+function askMax(q) {
+  q = String(q || '').slice(0, 160);
+  const r = AskMax.answer(q, { t: S.lastT, plan: S.plan, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '', ck: S.ck, now: Date.now() });
+  S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: 'Toi : ' + q }]).slice(-4);
+  maxStop(); maxSays(r.text);
+}
+$('maxAskForm').addEventListener('submit', (e) => { e.preventDefault(); const q = $('maxAsk').value.trim(); if (q) { askMax(q); $('maxAsk').value = ''; } });
 afv.on('max:state', (on) => { S.maxWin = !!on; $('btnMaxOverlay').textContent = on ? 'Fermer Max par-dessus le simu' : 'Max par-dessus le simu'; if (on) pushMax(); });
 afv.on('max:action', (a) => {
   if (a.type === 'ready') pushMax();
   else if (a.type === 'check' && S.ck) { Checklists.toggle(S.ck, a.id); if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); } else pushMax(); }
   else if (a.type === 'mute') $('btnMaxMute').click();
+  else if (a.type === 'ask') askMax(a.q);
 });
 
 // Voix de Max : l'audio est fabriqué sur le PC (hors ligne) puis joué ici.

@@ -32,7 +32,11 @@ button.on .box::after{content:"✓"}
 button.on .tx{color:#9FB2DD;text-decoration:line-through;text-decoration-color:rgba(159,178,221,.5)}
 .sim{display:inline-block;text-decoration:none;font-size:10px;color:#3DDC84;font-weight:700;margin-left:6px;white-space:nowrap}
 .done{margin-top:6px;font-size:12.5px;font-weight:700;color:#3DDC84}
-body.mini .hist,body.mini .ck{display:none}
+body.mini .hist,body.mini .ck,body.mini .ask{display:none}
+.ask{display:flex;gap:6px;margin:0 10px 6px;-webkit-app-region:no-drag}
+.ask input{flex:1;min-width:0;height:32px;border-radius:9px;border:1px solid rgba(143,163,211,.4);background:rgba(255,255,255,.08);color:#fff;padding:0 10px;font:inherit;font-size:13px;user-select:text}
+.ask input::placeholder{color:#8FA3D3}
+.ask button{width:34px;border:0;border-radius:9px;background:#C8102E;color:#fff;cursor:pointer;font-size:13px}
 .blink{animation:bl 4s infinite}@keyframes bl{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 .talk .bub{box-shadow:0 0 0 2px #F0374E}
 </style>
@@ -46,6 +50,7 @@ body.mini .hist,body.mini .ck{display:none}
   </div>
   <div class="say" id="say"><div class="bub" id="msg">Salut commandant ! Je reste par-dessus le simulateur pendant tout le vol.</div></div>
   <div class="hist" id="hist"></div>
+  <form class="ask" id="ask" autocomplete="off"><input id="askIn" maxlength="160" placeholder="Demande à Max : temps restant, carburant, météo…" aria-label="Question à Max"><button type="submit" aria-label="Envoyer">➤</button></form>
   <div class="ck"><div class="k"><span id="ckT">CHECK-LIST</span><i id="ckN"></i></div><ul id="ck"></ul><div class="done" id="ckDone" hidden>✓ Check-list terminée</div></div>
 </div>
 <script src="max.js"></script>

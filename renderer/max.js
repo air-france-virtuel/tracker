@@ -23,6 +23,7 @@ afv.on('max:data', (d) => {
   }
 });
 $('ck').addEventListener('click', (e) => { const b = e.target.closest('button[data-id]'); if (b) afv.maxAction({ type: 'check', id: b.dataset.id }); });
+$('ask').addEventListener('submit', (e) => { e.preventDefault(); const q = $('askIn').value.trim(); if (q) { afv.maxAction({ type: 'ask', q: q.slice(0, 160) }); $('askIn').value = ''; } });
 $('mute').addEventListener('click', () => afv.maxAction({ type: 'mute' }));
 $('close').addEventListener('click', () => afv.maxAction({ type: 'close' }));
 $('mini').addEventListener('click', () => { mini = !mini; document.body.classList.toggle('mini', mini); $('mini').setAttribute('aria-pressed', String(mini)); afv.maxAction({ type: 'mini', on: mini }); });

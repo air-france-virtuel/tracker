@@ -409,3 +409,6 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .day-next.ok{background:#E3F3E8;border:1px solid #BFE3CB;color:#1B5E32}
 .day-next .small{margin-top:3px}
 .day-next .btn{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+
+.max-ask{display:flex;gap:8px;margin-top:8px}
+.max-ask input{flex:1;min-width:0;height:36px;border-radius:8px;border:1px solid #C3CBDB;padding:0 10px;font:inherit;font-size:13px}

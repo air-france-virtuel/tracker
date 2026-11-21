@@ -24,7 +24,8 @@
       "Infos du jour : petite carte « Pilotes en vol » avec les pilotes de la compagnie en l’air en ce moment ; un clic l’ouvre en grand",
       "Pilotes en vol : bouton « Copier dans SimBrief » sous chaque pilote, qui ouvre SimBrief avec le même départ, la même arrivée et le même avion (indicatif LAT)",
       "Planning : le tracker se souvient de l’avion choisi dans « Max : quel avion prends-tu ? », même après un redémarrage (ou reprend l’avion de la compagnie que tu pilotes), et bouton « Vider ma journée »",
-      "Tracker de vol : en haut de la préparation, le prochain vol de « Ma journée » (ex. « Vol 2/4 de ta journée : LAT1649 LEBL → LFPG ») avec un bouton SimBrief, et une vérification que le plan chargé est bien celui de ce vol"
+      "Tracker de vol : en haut de la préparation, le prochain vol de « Ma journée » (ex. « Vol 2/4 de ta journée : LAT1649 LEBL → LFPG ») avec un bouton SimBrief, et une vérification que le plan chargé est bien celui de ce vol",
+      "Pose tes questions à Max pendant le vol (sur son panneau par-dessus le simu ou dans le tracker) : temps restant, heure d’arrivée, distance, carburant par rapport au plan, TOD, altitude, vitesse, météo, vent et QNH au départ ou à l’arrivée, pistes, SID, STAR, dégagement, prochain point, paliers, transition, check-list. Il répond à voix haute avec les données du vol"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

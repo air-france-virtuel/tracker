@@ -18,6 +18,10 @@ const { extract, MaxEcoute } = require('../src/ecoute.js');
   assert.strictEqual(AskMax.fromSpeech('Sous-titres réalisés par la communauté d’Amara.org'), '');
   assert.strictEqual(AskMax.fromSpeech('   '), '');
   assert.strictEqual(AskMax.fromSpeech('mettre la météo'), 'mettre la météo');
+  // mots d'aviation mal entendus
+  for (const said of ['Donne-moi le cosse standard', 'Donne-moi le code index.', 'Quel est le Coste index ?', 'Le costindex']) assert.ok(/cost index/.test(AskMax.fromSpeech(said)), said);
+  assert.strictEqual(AskMax.fromSpeech('combien de temps avant le T O D'), 'combien de temps avant le TOD');
+  assert.strictEqual(AskMax.fromSpeech('donne moi le Q N H'), 'donne moi le QNH');
 
   // la phrase dictée trouve la bonne réponse
   const plan = { origin: { icao: 'LFPG', name: 'Paris Charles de Gaulle', rwy: '27L' }, destination: { icao: 'LEBL', name: 'Barcelona', rwy: '24R' }, metarDep: 'LFPG 211200Z 25010KT 9999 09/04 Q1017', metarArr: 'LEBL 211200Z 32005KT CAVOK 16/08 Q1020', costIndex: 35 };

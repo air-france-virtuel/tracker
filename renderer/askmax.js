@@ -134,6 +134,13 @@
     if (!s || /sous-titr|amara\.org|merci d.avoir regard|abonnez-vous/i.test(s)) return '';
     s = s.replace(/\bm[ée]t[ée]?[iy]?o\b/gi, 'météo');
     s = s.replace(/x-ray/gi, 'xray');
+    // mots d'aviation souvent mal entendus par la reconnaissance vocale
+    s = s.replace(/\b(?:co[sz]{1,2}t?e?s?|coast|costa|code|cause|caus|kost|cos)\s*(?:-\s*)?(?:in\s*)?(?:dex|index|indexe|indice|standard|d[ée]x)\b/gi, 'cost index')
+      .replace(/\bcostindex\b/gi, 'cost index')
+      .replace(/\b(?:t\.?\s?o\.?\s?d\.?|todd|taud|t[ôo]d)\b/gi, 'TOD')
+      .replace(/\b(?:q\.?\s?n\.?\s?h\.?|cu[ée]\s?n\s?ache|k[uy]\s?n\s?ache)\b/gi, 'QNH')
+      .replace(/\bm[ée]tar(?:d|re)?\b/gi, 'METAR')
+      .replace(/\b(?:e\.?\s?t\.?\s?a\.?)\b/gi, 'ETA');
     const words = s.split(' ');
     const out = [];
     let run = [];

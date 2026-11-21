@@ -52,7 +52,8 @@
       "Max : « combien de temps avant mon TOD ? » donne bien le temps jusqu’au début de descente, et non plus le temps jusqu’à l’arrivée",
       "Le tracker prend beaucoup moins de mémoire en vol : la voix et l’écoute de Max tournent à part et se ferment toutes seules quand Max ne parle plus depuis quelques minutes (la phrase suivante met une à deux secondes de plus à venir)",
       "Suivi démarré avec l’avion déjà en vol : le tracker rejoint directement la bonne phase (montée, croisière, descente ou approche) au lieu de rester bloqué en « Boarding »",
-      "Navlog : l’aéroport d’arrivée affiche son altitude réelle (et non une altitude de procédure comme 2 500 ft)"
+      "Navlog : l’aéroport d’arrivée affiche son altitude réelle (et non une altitude de procédure comme 2 500 ft)",
+      "Micro : Max comprend mieux les mots d’aviation mal entendus (« cosse standard » ou « code index » → cost index, « T O D » → TOD, « Q N H » → QNH, « métar » → METAR)"
     ]
   },
   {

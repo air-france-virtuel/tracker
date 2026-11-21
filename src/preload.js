@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('afv', {
   voiceRemove: () => ipcRenderer.invoke('voice:remove'),
   voiceSpeak: (text, force) => ipcRenderer.invoke('voice:speak', text, !!force),
   voicePreload: () => ipcRenderer.invoke('voice:preload'),
+  ecouteStatus: () => ipcRenderer.invoke('ecoute:status'),
+  ecouteDownload: () => ipcRenderer.invoke('ecoute:download'),
+  ecouteRemove: () => ipcRenderer.invoke('ecoute:remove'),
+  ecouteWarm: () => ipcRenderer.invoke('ecoute:warm'),
+  ecouteText: (samples, rate) => ipcRenderer.invoke('ecoute:text', samples, rate),
   getCareer: () => ipcRenderer.invoke('career:get'),
   acceptMission: (id) => ipcRenderer.invoke('career:accept', id),
   dropMission: (id) => ipcRenderer.invoke('career:drop', id),
@@ -74,7 +79,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

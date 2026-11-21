@@ -125,6 +125,35 @@
     }
     return { id: 'inconnu', text: 'Je n’ai pas compris. Demande-moi par exemple : temps restant, carburant, TOD, météo à l’arrivée, piste, prochain point ou check-list.' };
   }
-  const api = { answer, TOPICS, norm };
+  // Phrase dictée au micro → texte que Max comprend : alphabet aéronautique (Lima Fox Papa Golf → LFPG),
+  // mots mal entendus, et phrases que la reconnaissance invente parfois sur un silence.
+  const NATO = { alpha: 'A', alfa: 'A', bravo: 'B', charlie: 'C', delta: 'D', echo: 'E', fox: 'F', foxtrot: 'F', golf: 'G', hotel: 'H', india: 'I', juliet: 'J', juliett: 'J', kilo: 'K', lima: 'L', mike: 'M', november: 'N', oscar: 'O', papa: 'P', quebec: 'Q', romeo: 'R', sierra: 'S', tango: 'T', uniform: 'U', victor: 'V', whisky: 'W', whiskey: 'W', xray: 'X', yankee: 'Y', zulu: 'Z' };
+  function fromSpeech(text) {
+    let s = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!s || /sous-titr|amara\.org|merci d.avoir regard|abonnez-vous/i.test(s)) return '';
+    s = s.replace(/\bm[ée]t[ée]?[iy]?o\b/gi, 'météo');
+    s = s.replace(/x-ray/gi, 'xray');
+    const words = s.split(' ');
+    const out = [];
+    let run = [];
+    const flush = () => {
+      if (!run.length) return;
+      const letters = run.every((r) => /^[A-Z]$/.test(r));
+      if (letters && run.length === 4) out.push(run.join('')); else out.push(...run);
+      run = [];
+    };
+    for (const w of words) {
+      const bare = w.replace(/[.,;:!?…]+$/, '');
+      const key = bare.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (NATO[key]) { run.push(NATO[key]); continue; }
+      if (/^[A-Za-z]$/.test(bare) && (run.length || /^[A-Z]$/.test(bare))) { run.push(bare.toUpperCase()); continue; }
+      if (/^\d{1,2}$/.test(bare) && run.length && /^[A-Z]$/.test(run[run.length - 1])) { run[run.length - 1] += bare; continue; }
+      flush();
+      out.push(w);
+    }
+    flush();
+    return out.join(' ').replace(/[.!…]+$/, '').trim();
+  }
+  const api = { answer, TOPICS, norm, fromSpeech };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.AskMax = api;
 })(typeof window !== 'undefined' ? window : this);

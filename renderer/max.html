@@ -38,6 +38,15 @@ body.mini .hist,body.mini .ck,body.mini .ask{display:none}
 .ask input{flex:1;min-width:0;height:32px;border-radius:9px;border:1px solid rgba(143,163,211,.4);background:rgba(255,255,255,.08);color:#fff;padding:0 10px;font:inherit;font-size:13px;user-select:text}
 .ask input::placeholder{color:#8FA3D3}
 .ask button{width:34px;border:0;border-radius:9px;background:#C8102E;color:#fff;cursor:pointer;font-size:13px}
+.ask .mic{width:34px;flex:none;background:rgba(255,255,255,.1);color:#C9D4EE;display:flex;align-items:center;justify-content:center}
+.ask .mic:hover{background:rgba(255,255,255,.2);color:#fff}
+.ask .mic.rec{background:#C8102E;color:#fff;animation:rec 1.2s infinite}
+.ask .mic.busy{background:rgba(255,255,255,.1);color:#FFB547}
+@keyframes rec{0%,100%{box-shadow:0 0 0 0 rgba(240,55,78,.7)}50%{box-shadow:0 0 0 5px rgba(240,55,78,0)}}
+.micset{margin:0 10px 8px;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.4;color:#DCE4F5;-webkit-app-region:no-drag}
+.micbt{display:flex;gap:6px;margin-top:6px}.micbt button{border:0;border-radius:7px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#C8102E;color:#fff}.micbt button+button{background:rgba(255,255,255,.12);color:#C9D4EE}
+body.mini .micset{display:none}
+@media (prefers-reduced-motion:reduce){.ask .mic.rec{animation:none}}
 .blink{animation:bl 4s infinite}@keyframes bl{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 .talk .bub{box-shadow:0 0 0 2px #F0374E}
 </style>
@@ -51,9 +60,11 @@ body.mini .hist,body.mini .ck,body.mini .ask{display:none}
   </div>
   <div class="say" id="say"><div class="bub" id="msg">Salut commandant ! Je reste par-dessus le simulateur pendant tout le vol.</div></div>
   <div class="hist" id="hist"></div>
-  <form class="ask" id="ask" autocomplete="off"><input id="askIn" maxlength="160" placeholder="Demande à Max : temps restant, carburant, météo…" aria-label="Question à Max"><button type="submit" aria-label="Envoyer">➤</button></form>
+  <form class="ask" id="ask" autocomplete="off"><button type="button" class="mic" id="mic" title="Parler à Max au micro" aria-label="Parler à Max au micro" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><input id="askIn" maxlength="160" placeholder="Demande à Max : temps restant, carburant, météo…" aria-label="Question à Max"><button type="submit" aria-label="Envoyer">➤</button></form>
+  <div class="micset" id="micSet" hidden><span id="micSetTx">Pour t’écouter, je dois télécharger la reconnaissance vocale (environ 640 Mo, une seule fois). Elle fonctionne ensuite sans Internet.</span><div class="micbt"><button type="button" id="micDl">Télécharger</button><button type="button" id="micNo">Plus tard</button></div></div>
   <div class="ck"><div class="k"><span id="ckT">CHECK-LIST</span><i id="ckN"></i></div><ul id="ck"></ul><div class="done" id="ckDone" hidden>✓ Check-list terminée</div></div>
 </div>
+<script src="micro.js"></script>
 <script src="max.js"></script>
 </body>
 </html>

@@ -10,6 +10,7 @@ const { fetchOfp } = require('./simbrief');
 const { DemoFlight, demoPlan } = require('./demo');
 const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
+const { MaxEcoute } = require('./ecoute');
 const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
@@ -534,6 +535,18 @@ app.whenReady().then(() => {
     try { return await voice.speak(text); } catch (e) { console.error('voix de Max :', e); return null; }
   });
   ipcMain.handle('voice:preload', () => { if (store.settings.maxVoice && voice.status().installed) voice.load().catch(() => {}); return true; });
+
+  // ---------- écoute de Max (micro) ----------
+  const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));
+  ecoute.on('status', (s) => send('ecoute:status', s));
+  ipcMain.handle('ecoute:status', () => ecoute.status());
+  ipcMain.handle('ecoute:download', () => ecoute.download());
+  ipcMain.handle('ecoute:remove', () => ecoute.remove());
+  ipcMain.handle('ecoute:warm', () => { ecoute.warm(); return true; });
+  ipcMain.handle('ecoute:text', async (_e, samples, rate) => {
+    try { return { text: await ecoute.recognize(samples, rate) }; } catch (e) { return { error: String((e && e.message) || e) }; }
+  });
+  app.on('will-quit', () => ecoute.stop());
 
   ipcMain.handle('app:init', () => {
     refreshFleet();

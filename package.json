@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js && node test/chat.js && node test/liveries.js && node test/avions.js && node test/live.js && node test/checklists.js && node test/callouts.js && node test/askmax.js && node test/ua.js && node test/sim.js",
+    "test": "node test/run-demo.js && node test/career.js && node test/realflights.js && node test/news.js && node test/planning.js && node test/discord.js && node test/chat.js && node test/liveries.js && node test/avions.js && node test/live.js && node test/checklists.js && node test/callouts.js && node test/askmax.js && node test/ua.js && node test/sim.js && node test/ecoute.js",
     "dist": "electron-builder --win dir --x64 --publish never && node build-res/make-installer.js"
   },
   "author": "Air France Virtuel",
@@ -15,7 +15,10 @@
     "electron-updater": "^6.8.11",
     "espeak-ng": "^1.0.2",
     "node-simconnect": "^4.2.1",
-    "onnxruntime-node": "^1.31.1"
+    "onnxruntime-node": "^1.31.1",
+    "sherpa-onnx-node": "2.0.1",
+    "tar-stream": "3.1.7",
+    "unbzip2-stream": "1.4.3"
   },
   "productName": "Air France Virtuel Tracker",
   "private": true,
@@ -69,7 +72,8 @@
     "asarUnpack": [
       "node_modules/onnxruntime-node/**",
       "node_modules/espeak-ng/**",
-      "src/voix-max/**"
+      "src/voix-max/**",
+      "node_modules/sherpa-onnx-*/**"
     ]
   }
 }

@@ -139,6 +139,8 @@ afv.on('max:action', (a) => {
   if (a.type === 'ready') pushMax();
   else if (a.type === 'check' && S.ck) { Checklists.toggle(S.ck, a.id); if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); } else pushMax(); }
   else if (a.type === 'mute') $('btnMaxMute').click();
+  else if (a.type === 'listen') maxStop();
+  else if (a.type === 'ask' && a.voice) { const q = AskMax.fromSpeech(a.q); if (q) askMax(q); else maxSays('Je n’ai pas bien entendu. Tu peux répéter ?'); }
   else if (a.type === 'ask') askMax(a.q);
 });
 

@@ -494,6 +494,7 @@ $('btnSimbrief').addEventListener('click', async () => {
 });
 
 async function startFlight(mode) {
+  S.waitStart = null;
   if (mode === 'sim' && !S.simOk) { $('startMsg').textContent = 'Lance d’abord Microsoft Flight Simulator.'; return; }
   if (mode === 'demo') S.plan = await afv.demoPlan();
   const aircraft = $('selAircraft').value;
@@ -550,7 +551,7 @@ function resumeWhere() {
   if (S.phase != null && S.phase < 5 && S.lastTod && S.lastTod.distNm != null) parts.push(AskMax.answer('tod', ctx).text);
   maxSays(parts.join(' '));
 }
-$('btnStart').addEventListener('click', async () => { if (!S.simOk) { startFlight('sim'); return; } $('btnStart').disabled = true; try { await loadPlanForStart(); await startFlight('sim'); } finally { $('btnStart').disabled = false; } });
+$('btnStart').addEventListener('click', async () => { if (!S.simOk) { await loadPlanForStart(); waitForSim(); return; } $('btnStart').disabled = true; try { await loadPlanForStart(); await startFlight('sim'); } finally { $('btnStart').disabled = false; } });
 $('btnDemo').addEventListener('click', () => startFlight('demo'));
 $('btnStop').addEventListener('click', async () => {
   await afv.stopFlight();
@@ -592,6 +593,7 @@ function setSim(ok, name) {
   $('simText').textContent = ok ? 'Simulateur connecté' + (name ? ' (' + name + ')' : '') : 'Simulateur non connecté';
 }
 afv.on('flight:tick', (d) => {
+  if (!S.flight && S.waitStart && d.t) { waitTick(d.t); return; }
   if (!S.flight || !d.t) return;
   const t = d.t;
   S.lastT = t;
@@ -1967,7 +1969,7 @@ async function goFly() {
   goFlyBusy = true;
   try {
     await loadPlanForStart();
-    if (!S.simOk) { $('startMsg').textContent = 'Plan prêt. Lance Microsoft Flight Simulator : le suivi démarrera quand tu cliqueras à nouveau sur « Démarrer un vol ».'; return; }
+    if (!S.simOk) { waitForSim(); return; }
     await startFlight('sim');
   } finally { goFlyBusy = false; }
 }
@@ -1988,6 +1990,26 @@ async function loadPlanForStart() {
   }
 }
 $('btnGoFly').addEventListener('click', goFly);
+// Clic avant d'être dans le simu : le suivi démarre tout seul dès que l'avion est prêt dans MSFS
+// (simulateur connecté, avion posé au départ du plan ; sans plan, avion posé quelque part depuis quelques secondes).
+function waitForSim() {
+  S.waitStart = { since: 0 };
+  $('startMsg').innerHTML = 'En attente du simulateur… Le suivi démarrera tout seul dès que ton avion sera prêt' + (S.plan ? ' à ' + esc(S.plan.origin.icao) : '') + ' dans MSFS. <button class="linkbtn" data-waitcancel>Annuler</button>';
+  maxSays('Plan prêt. Je démarre le suivi tout seul dès que tu es dans le cockpit' + (S.plan ? ' à ' + S.plan.origin.icao : '') + '.');
+}
+function waitTick(t) {
+  const w = S.waitStart;
+  if (S.plan && S.plan.origin.lat && Number.isFinite(t.lat) && t.onGround && hav(t, S.plan.origin) > 10 && !w.told && Math.abs(t.lat) + Math.abs(t.lon) > 0.5) {
+    w.told = true; $('startMsg').innerHTML = 'En attente : ton avion n’est pas à ' + esc(S.plan.origin.icao) + ' (départ du plan). Place-le à ' + esc(S.plan.origin.icao) + ' ou clique sur « Démarrer le suivi » pour démarrer quand même. <button class="linkbtn" data-waitcancel>Annuler</button>';
+  }
+  if (!S.simOk || !Number.isFinite(t.lat) || Math.abs(t.lat) + Math.abs(t.lon) < 0.5 || !t.onGround) { w.since = 0; return; } // menu de MSFS : pas encore d'avion
+  if (!w.since) w.since = Date.now();
+  const near = S.plan && S.plan.origin.lat ? hav(t, S.plan.origin) <= 10 : true;
+  const held = Date.now() - w.since;
+  // avec un plan : avion posé à l'aéroport de départ depuis 5 s (le menu de MSFS n'y est pas) ; sans plan : posé depuis 20 s
+  if (S.plan ? near && held >= 5000 : held >= 20000) { S.waitStart = null; $('startMsg').textContent = ''; startFlight('sim'); }
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-waitcancel]')) { S.waitStart = null; $('startMsg').textContent = 'Démarrage automatique annulé.'; } });
 $('navBrief').addEventListener('click', () => { if (S.plan) showBriefing(S.plan, false); });
 $('liveCard').addEventListener('click', () => showTab('vol'));
 const sideCache = {};

@@ -27,7 +27,8 @@
       "Tracker de vol : en haut de la préparation, le prochain vol de « Ma journée » (ex. « Vol 2/4 de ta journée : LAT1649 LEBL → LFPG ») avec un bouton SimBrief, et une vérification que le plan chargé est bien celui de ce vol",
       "Pose tes questions à Max pendant le vol (sur son panneau par-dessus le simu ou dans le tracker) : temps restant, heure d’arrivée, distance, carburant par rapport au plan, TOD, altitude, vitesse, météo, vent et QNH au départ ou à l’arrivée, pistes, SID, STAR, dégagement, prochain point, paliers, transition, check-list. Il répond à voix haute avec les données du vol",
       "Max lit tout ton plan SimBrief : route complète, détail du carburant (bloc, roulage, délestage, contingence, dégagement, réserve finale, extra, à l’atterrissage), TAF, temps de vol prévu, cost index, vent moyen, avion et immatriculation. Cite un point de la route (« carburant à BAXOD », « on passe MTL quand ? ») et il te donne l’altitude, le carburant, le vent et la température prévus à ce point",
-      "Check-lists plus claires : les points techniques ont une petite explication sous leur nom (ex. « Météo (ATIS) et autorisation de départ (clairance) » : quoi écouter et quoi demander au contrôleur)"
+      "Check-lists plus claires : les points techniques ont une petite explication sous leur nom (ex. « Météo (ATIS) et autorisation de départ (clairance) » : quoi écouter et quoi demander au contrôleur)",
+      "Check-lists : « Annonce d’embarquement » et « Annonce de descente » se cochent toutes seules quand l’annonce passe (jouée par le tracker ou par Universal Announcer)"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

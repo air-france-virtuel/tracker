@@ -18,7 +18,7 @@ afv.on('max:data', (d) => {
     $('ckT').textContent = 'CHECK-LIST · ' + ck.title.toUpperCase();
     $('ckN').textContent = n + ' / ' + ck.items.length;
     $('ck').innerHTML = ck.items.map((i) => '<li><button class="' + (i.done ? 'on' : '') + '" data-id="' + esc(i.id) + '" aria-pressed="' + i.done + '"><span class="box"></span><span title="' + esc(i.help || '') + '"><span class="tx">' + esc(i.text) + '</span>' + (i.help && !i.done ? '<span class="hp">' + esc(i.help) + '</span>' : '') +
-      (i.done && i.by === 'sim' ? '<span class="sim">vu dans le simu</span>' : '') + '</span></button></li>').join('');
+      (i.done && i.by === 'sim' ? '<span class="sim">vu dans le simu</span>' : i.done && i.by === 'ann' ? '<span class="sim">annonce passée</span>' : '') + '</span></button></li>').join('');
     $('ckDone').hidden = !ck.complete;
   }
 });

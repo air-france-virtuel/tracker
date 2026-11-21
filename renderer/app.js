@@ -34,6 +34,17 @@ function playFile(file) {
 }
 const queue = [];
 let playing = false;
+// Annonce passée (par le tracker ou par Universal Announcer) : la case correspondante de la check-list se coche toute seule
+const ANN_CHECK = { boarding_welcome: [0, 'pax'], descent_start: [5, 'pax'] };
+function annDone(key) {
+  const m = ANN_CHECK[key];
+  if (!m || !S.ck || S.ck.phase !== m[0]) return;
+  const it = S.ck.items.find((i) => i.id === m[1]);
+  if (!it || it.done) return;
+  it.done = true; it.by = 'ann';
+  S.ck.complete = S.ck.items.every((i) => i.done);
+  if (S.ck.complete && !S.ckDoneSaid) { S.ckDoneSaid = true; maxSays('Check-list ' + S.ck.say + ' terminée.'); } else pushMax();
+}
 async function runQueue() {
   if (playing) return;
   playing = true;
@@ -51,6 +62,7 @@ async function runQueue() {
         if (f) await playFile(f); // son du dossier Universal Announcer (LAT, sinon Default) ; sinon texte seulement
       }
       $('annNow').textContent = 'Dernière annonce : ' + item.title;
+      annDone(item.key);
     }
   }
   playing = false;

@@ -42,24 +42,28 @@ assert.ok(landB && landB.level === 'dur');
 const ofp = parseOfp({
   fetch: { status: 'Success' },
   params: { units: 'kgs' },
-  general: { icao_airline: 'AFV', flight_number: '650', initial_altitude: '35000', air_distance: '3800' },
+  general: { icao_airline: 'AFV', flight_number: '650', initial_altitude: '35000', air_distance: '3800', climb_profile: '250/300/78', descent_profile: '78/300/250', cruise_profile: 'CI 30' },
   atc: { callsign: 'AFV650' },
   aircraft: { icaocode: 'A359', reg: 'F-HTYH' },
-  origin: { icao_code: 'LFPG', pos_lat: '49.0', pos_long: '2.5', plan_rwy: '27L', elevation: '392' },
-  destination: { icao_code: 'TFFR', pos_lat: '16.26', pos_long: '-61.53', plan_rwy: '12', elevation: '36' },
+  origin: { icao_code: 'LFPG', pos_lat: '49.0', pos_long: '2.5', plan_rwy: '27L', elevation: '392', trans_alt: '5000' },
+  destination: { icao_code: 'TFFR', pos_lat: '16.26', pos_long: '-61.53', plan_rwy: '12', elevation: '36', trans_level: '4000' },
   fuel: { plan_ramp: '60000' },
   weather: { orig_metar: 'LFPG ...', dest_metar: 'TFFR ...' },
   navlog: { fix: [
+    { ident: 'OPALE', pos_lat: '49.2', pos_long: '2', altitude_feet: '9000', stage: 'CLB', via_airway: 'OPAL5A', is_sid_star: '1' },
     { ident: 'TOC', pos_lat: '48', pos_long: '0', altitude_feet: '35000', stage: 'CLB' },
     { ident: 'ABC', pos_lat: '40', pos_long: '-20', altitude_feet: '35000', stage: 'CRZ' },
     { ident: 'DEF', pos_lat: '35', pos_long: '-30', altitude_feet: '37000', stage: 'CRZ' },
     { ident: 'GHI', pos_lat: '30', pos_long: '-40', altitude_feet: '37000', stage: 'CRZ' },
-    { ident: 'TOD', pos_lat: '18', pos_long: '-60', altitude_feet: '37000', stage: 'CRZ' }
+    { ident: 'TOD', pos_lat: '18', pos_long: '-60', altitude_feet: '37000', stage: 'CRZ' },
+    { ident: 'BOREL', pos_lat: '16.5', pos_long: '-61.4', altitude_feet: '6000', stage: 'DSC', via_airway: 'BOREL1A', is_sid_star: '1' }
   ] }
 });
 assert.strictEqual(ofp.steps.length, 1);
 assert.strictEqual(ofp.steps[0].alt, 37000);
 assert.strictEqual(ofp.tod.ident, 'TOD');
 assert.strictEqual(ofp.destination.rwy, '12');
+assert.strictEqual(ofp.sid, 'OPAL5A'); assert.strictEqual(ofp.star, 'BOREL1A');
+assert.strictEqual(ofp.climbProfile, '250/300/78'); assert.strictEqual(ofp.transAlt, 5000); assert.strictEqual(ofp.transLevel, 4000);
 console.log('SimBrief OK :', ofp.callsign, ofp.origin.icao, '->', ofp.destination.icao, 'palier', ofp.steps[0].ident);
 console.log('TOUS LES TESTS PASSENT');

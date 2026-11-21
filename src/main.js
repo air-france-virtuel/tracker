@@ -10,6 +10,7 @@ const { fetchOfp } = require('./simbrief');
 const { DemoFlight, demoPlan } = require('./demo');
 const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
+const { MaxEcoute } = require('./ecoute');
 const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
@@ -36,7 +37,7 @@ const sim = new SimLink();
 const dataDir = () => app.getPath('userData');
 const storeFile = () => path.join(dataDir(), 'donnees.json');
 const defaults = {
-  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, community: '', uaDir: '' },
+  settings: { pilot: '', simbrief: '', announcements: true, volume: 0.8, hard1: 600, hard2: 900, maxVoice: true, maxVolume: 0.9, closeToTray: true, discord: true, chat: true, liveShare: true, maxOverlay: true, maxPos: null, community: '', uaDir: '' },
   fleet: [],
   sounds: {},
   feedback: [],
@@ -105,6 +106,11 @@ function handleTelemetry(t) {
     send('flight:event', e);
     if (e.type === 'phase' && e.phase === PHASES.length - 1) finishFlight();
   }
+  if (live && !flight.demo && flight.mode !== 'demo') {
+    const p = flight.plan || {};
+    live.update({ cs: p.callsign || '', from: (p.origin || {}).icao || '', to: (p.destination || {}).icao || '', ac: p.aircraft || '', reg: flight.aircraft || p.registration || '',
+      lat: t.lat, lon: t.lon, alt: Math.round(t.alt || 0), gs: Math.round(t.gs || 0), hdg: Math.round(t.hdg || 0), ph: flight.engine.phase });
+  }
   const now = Date.now();
   if (now - lastSent > 200) {
     lastSent = now;
@@ -128,6 +134,7 @@ function onLanding(e) {
 function finishFlight() {
   if (!flight || flight.finished) return;
   flight.finished = true;
+  if (live) live.update(null);
   const p = flight.plan;
   const rep = Object.assign({
     id: Date.now(),
@@ -164,6 +171,7 @@ function finishFlight() {
 
 function stopFlight() {
   if (flight && flight.timer) clearInterval(flight.timer);
+  if (live) live.update(null);
   flight = null;
 }
 
@@ -211,6 +219,7 @@ function setupUpdater() {
 let tray = null;
 let quitting = false;
 let chatUpdate = () => {};
+let live = null; // pilotes en vol (positions partagées entre pilotes de la compagnie)
 let trayState = { flying: false, callsign: '', route: '', phase: '', remaining: '', alt: '', aircraft: '', startedAt: 0, grade: '', plan: false, compact: false };
 app.on('before-quit', () => { quitting = true; });
 function showMain(tab, action) {
@@ -365,15 +374,23 @@ app.whenReady().then(() => {
     let grade = ''; try { grade = careerState().gradeName || ''; } catch (e) { /* rien */ }
     chat.setProfile({ pseudo: store.settings.pilot || '', grade, flight: trayState.flying ? [trayState.callsign, trayState.route].filter(Boolean).join(' · ') : '' });
   };
-  chatUpdate = () => { chatProfile(); if (chat.state === 'nopseudo' && (store.settings.pilot || '').trim().length >= 2) chat.start(); };
+  const { Live } = require('./live');
+  live = new Live(chat);
+  live.setShare(store.settings.liveShare !== false);
+  live.on('list', (l) => send('live:list', l));
+  const liveStart = () => { if ((store.settings.pilot || '').trim().length >= 2 && chatCfgOk()) live.start(); };
+  setInterval(() => { if (live.ready) live.sync(); }, 30000); // retire les vols sans nouvelles
+  chatUpdate = () => { chatProfile(); live.setShare(store.settings.liveShare !== false); liveStart(); if (chat.state === 'nopseudo' && (store.settings.pilot || '').trim().length >= 2) chat.start(); };
   chat.on('status', (st) => send('chat:status', st));
   chat.on('history', (list) => send('chat:history', list));
   chat.on('message', (m) => send('chat:message', m));
   chat.on('removed', (id) => send('chat:removed', id));
   const chatCfg = () => Object.assign({ rules: '' }, careerData.get('chat.json').data || {});
-  const chatInit = () => { chat.configure(chatCfg()); chatProfile(); if (store.settings.chat !== false) chat.start(); };
+  const chatCfgOk = () => !!chat.cfg;
+  const chatInit = () => { chat.configure(chatCfg()); chatProfile(); if (store.settings.chat !== false) chat.start(); liveStart(); };
   chatInit();
   careerData.refresh('chat.json').then(chatInit);
+  ipcMain.handle('live:get', () => { liveStart(); return live.status(); });
   ipcMain.handle('chat:get', () => ({ status: chat.status(), messages: chat.visible(), rules: chatCfg().rules || '' }));
   ipcMain.handle('chat:start', () => { chatProfile(); return chat.start(); });
   ipcMain.handle('chat:send', (_e, t) => chat.send(String(t || '')));
@@ -384,7 +401,10 @@ app.whenReady().then(() => {
   // avions de la compagnie (réservation partagée entre pilotes)
   ipcMain.handle('fleet:bookings', () => { chatProfile(); return chat.aircraftList(); });
   ipcMain.handle('fleet:take', (_e, reg, until) => { chatProfile(); return chat.aircraftTake(String(reg || ''), +until || 0); });
-  ipcMain.handle('fleet:release', (_e, reg) => { chatProfile(); return chat.aircraftRelease(String(reg || '')); });
+  ipcMain.handle('hangar:get', () => { chatProfile(); return chat.hangarGet(); });
+  ipcMain.handle('hangar:finish', (_e, o) => { chatProfile(); return chat.finishFlight(o || {}); });
+  ipcMain.handle('hangar:admin', (_e, a, reg, v, t) => { chatProfile(); return chat.hangarAdmin(String(a || ''), String(reg || ''), v, t); });
+  ipcMain.handle('fleet:release', (_e, reg, maint) => { chatProfile(); return chat.aircraftRelease(String(reg || ''), +maint || 0); });
   Promise.all([careerData.refresh('missions.json'), careerData.refresh('infos.json')])
     .then(() => { send('career:changed', careerState()); send('infos:changed', careerData.get('infos.json')); });
 
@@ -407,6 +427,41 @@ app.whenReady().then(() => {
   ipcMain.handle('compact:close', () => { if (compact && !compact.isDestroyed()) compact.close(); return true; });
   ipcMain.handle('compact:pin', (_e, on) => { if (compact && !compact.isDestroyed()) compact.setAlwaysOnTop(!!on); return !!on; });
   ipcMain.on('compact:push', (_e, d) => { if (compact && !compact.isDestroyed()) compact.webContents.send('compact:data', d); });
+
+  // ---------- Max par-dessus le simulateur (petite fenêtre toujours au premier plan) ----------
+  let maxWin = null;
+  ipcMain.handle('max:open', () => {
+    if (maxWin && !maxWin.isDestroyed()) { maxWin.showInactive(); return true; }
+    const { screen } = require('electron');
+    const wa = screen.getPrimaryDisplay().workArea;
+    const p = store.settings.maxPos || {};
+    const w = 380, h = 470;
+    const inside = p.x != null && screen.getAllDisplays().some((d) => p.x >= d.bounds.x - 50 && p.x < d.bounds.x + d.bounds.width - 50 && p.y >= d.bounds.y - 10 && p.y < d.bounds.y + d.bounds.height - 50);
+    maxWin = new BrowserWindow({
+      width: w, height: h, x: inside ? p.x : wa.x + wa.width - w - 16, y: inside ? p.y : wa.y + 80,
+      frame: false, transparent: true, resizable: true, minWidth: 300, minHeight: 120, skipTaskbar: false, focusable: true,
+      alwaysOnTop: true, show: false, hasShadow: false, title: 'Max – copilote', icon: path.join(__dirname, '..', 'renderer', 'assets', 'icon.png'),
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
+    });
+    maxWin.setAlwaysOnTop(true, 'screen-saver'); // au-dessus du simulateur (plein écran fenêtré)
+    maxWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    maxWin.loadFile(path.join(__dirname, '..', 'renderer', 'max.html'));
+    maxWin.once('ready-to-show', () => maxWin && maxWin.showInactive()); // ne vole pas le focus au simulateur
+    maxWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    const savePos = () => { if (maxWin && !maxWin.isDestroyed()) { const b = maxWin.getBounds(); store.settings.maxPos = { x: b.x, y: b.y }; saveStore(); } };
+    maxWin.on('moved', savePos);
+    maxWin.on('closed', () => { maxWin = null; send('max:state', false); });
+    send('max:state', true);
+    return true;
+  });
+  ipcMain.handle('max:close', () => { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); return true; });
+  ipcMain.on('max:push', (_e, d) => { if (maxWin && !maxWin.isDestroyed()) maxWin.webContents.send('max:data', d); });
+  ipcMain.on('max:action', (_e, a) => {
+    if (!a || typeof a.type !== 'string') return;
+    if (a.type === 'close') { if (maxWin && !maxWin.isDestroyed()) maxWin.close(); return; }
+    if (a.type === 'mini' && maxWin && !maxWin.isDestroyed()) { const b = maxWin.getBounds(); maxWin.setBounds({ x: b.x, y: b.y, width: b.width, height: a.on ? 132 : 470 }); }
+    send('max:action', a); // la check-list et la voix sont gérées par le tracker principal
+  });
 
   // ---------- radar météo (RainViewer, dernière image disponible) ----------
   let radarCache = null;
@@ -480,6 +535,18 @@ app.whenReady().then(() => {
     try { return await voice.speak(text); } catch (e) { console.error('voix de Max :', e); return null; }
   });
   ipcMain.handle('voice:preload', () => { if (store.settings.maxVoice && voice.status().installed) voice.load().catch(() => {}); return true; });
+
+  // ---------- écoute de Max (micro) ----------
+  const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));
+  ecoute.on('status', (s) => send('ecoute:status', s));
+  ipcMain.handle('ecoute:status', () => ecoute.status());
+  ipcMain.handle('ecoute:download', () => ecoute.download());
+  ipcMain.handle('ecoute:remove', () => ecoute.remove());
+  ipcMain.handle('ecoute:warm', () => { ecoute.warm(); return true; });
+  ipcMain.handle('ecoute:text', async (_e, samples, rate) => {
+    try { return { text: await ecoute.recognize(samples, rate) }; } catch (e) { return { error: String((e && e.message) || e) }; }
+  });
+  app.on('will-quit', () => ecoute.stop());
 
   ipcMain.handle('app:init', () => {
     refreshFleet();

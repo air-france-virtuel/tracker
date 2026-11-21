@@ -37,16 +37,22 @@ function fakeSupabase() {
     auth: { getSession: async () => ({ data: { session } }), signInAnonymously: async () => { session = { user: { id: 'u' + (++uid) } }; return { data: { session }, error: null }; } },
     from: q,
     rpc: async (fn, a) => { const me = db.pilots.find((x) => x.id === session.user.id); if (!me.is_admin) return { error: { message: 'Réservé à la direction' } }; if (fn === 'hide_message') { const m = db.messages.find((x) => x.id === a.mid); m.deleted = true; handlers.forEach((h) => h.ev === 'UPDATE' && h.fn({ new: m })); } return { error: null }; },
-    channel: () => {
+    // comme supabase-js : un canal du même nom est réutilisé, et on ne peut plus l'écouter après subscribe()
+    channels: [],
+    getChannels: () => client.channels,
+    channel: (name) => {
+      const ex = client.channels.find((c) => c.topic === 'realtime:' + name); if (ex) return ex;
       const ch = {
-        on(type, f, fn) { if (type === 'postgres_changes') handlers.push({ ev: f.event, fn }); else ch.sync = fn; return ch; },
-        subscribe(cb) { setTimeout(() => cb('SUBSCRIBED'), 1); return ch; },
+        topic: 'realtime:' + name, subscribed: false,
+        on(type, f, fn) { if (ch.subscribed) throw new Error('cannot add `postgres_changes` callbacks for ' + ch.topic + ' after `subscribe()`.'); if (type === 'postgres_changes') handlers.push({ ev: f.event, fn }); else ch.sync = fn; return ch; },
+        subscribe(cb) { ch.subscribed = true; ch.cb = cb; setTimeout(() => cb(client.failNext ? (client.failNext = false, 'CHANNEL_ERROR') : 'SUBSCRIBED'), 1); return ch; },
         track: async (p) => { presence[p.id] = [p]; ch.sync && ch.sync(); },
         presenceState: () => presence
       };
+      client.channels.push(ch);
       return ch;
     },
-    removeChannel() {}
+    removeChannel: async (ch) => { client.channels = client.channels.filter((c) => c !== ch); }
   };
   return client;
 }
@@ -86,6 +92,18 @@ function fakeSupabase() {
   // banni : envoi refusé par le serveur
   sb.db.pilots[0].banned = true;
   const b = await c.send('test'); assert.strictEqual(b.ok, false); assert.ok(/exclu/.test(b.error));
+  // coupure du temps réel puis reconnexion : pas d'erreur « after subscribe() »
+  sb.db.pilots[0].banned = false;
+  c.channel.cb('CHANNEL_ERROR');
+  assert.strictEqual(c.state, 'error');
+  const again = await c.start();
+  assert.strictEqual(again.state, 'ready', again.error);
+  assert.strictEqual(sb.channels.length, 1, 'un seul canal ouvert');
+  // le chat et la réservation d'avion qui démarrent en même temps : un seul compte
+  const c2 = new Chat(fs.mkdtempSync(path.join(os.tmpdir(), 'afv-chat2-')), { createClient: () => fakeSupabase() });
+  c2.configure({ url: 'https://abc.supabase.co', key: 'x'.repeat(30) }); c2.setProfile({ pseudo: 'Durand' });
+  const [s1, s2] = await Promise.all([c2.session(), c2.session()]);
+  assert.strictEqual(s1.id, s2.id);
   // la session est gardée dans le dossier du pilote
   assert.ok(fs.existsSync(path.join(dir)) );
   console.log('CHAT : TOUS LES TESTS PASSENT');

@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('afv', {
   voiceRemove: () => ipcRenderer.invoke('voice:remove'),
   voiceSpeak: (text, force) => ipcRenderer.invoke('voice:speak', text, !!force),
   voicePreload: () => ipcRenderer.invoke('voice:preload'),
+  ecouteStatus: () => ipcRenderer.invoke('ecoute:status'),
+  ecouteDownload: () => ipcRenderer.invoke('ecoute:download'),
+  ecouteRemove: () => ipcRenderer.invoke('ecoute:remove'),
+  ecouteWarm: () => ipcRenderer.invoke('ecoute:warm'),
+  ecouteText: (samples, rate) => ipcRenderer.invoke('ecoute:text', samples, rate),
   getCareer: () => ipcRenderer.invoke('career:get'),
   acceptMission: (id) => ipcRenderer.invoke('career:accept', id),
   dropMission: (id) => ipcRenderer.invoke('career:drop', id),
@@ -35,6 +40,10 @@ contextBridge.exposeInMainWorld('afv', {
   compactClose: () => ipcRenderer.invoke('compact:close'),
   compactPin: (on) => ipcRenderer.invoke('compact:pin', !!on),
   compactPush: (d) => ipcRenderer.send('compact:push', d),
+  maxOpen: () => ipcRenderer.invoke('max:open'),
+  maxClose: () => ipcRenderer.invoke('max:close'),
+  maxPush: (d) => ipcRenderer.send('max:push', d),
+  maxAction: (a) => ipcRenderer.send('max:action', a),
   getRadar: () => ipcRenderer.invoke('radar:get'),
   getNews: (force) => ipcRenderer.invoke('news:get', !!force),
   getPlanning: (refresh) => ipcRenderer.invoke('planning:get', !!refresh),
@@ -48,9 +57,13 @@ contextBridge.exposeInMainWorld('afv', {
   chatHide: (id) => ipcRenderer.invoke('chat:hide', id),
   chatBan: (uid) => ipcRenderer.invoke('chat:ban', uid),
   chatReports: () => ipcRenderer.invoke('chat:reports'),
+  liveGet: () => ipcRenderer.invoke('live:get'),
+  hangarGet: () => ipcRenderer.invoke('hangar:get'),
+  hangarFinish: (o) => ipcRenderer.invoke('hangar:finish', o),
+  hangarAdmin: (a, reg, v, t) => ipcRenderer.invoke('hangar:admin', a, reg, v, t),
   fleetBookings: () => ipcRenderer.invoke('fleet:bookings'),
   fleetTake: (reg, until) => ipcRenderer.invoke('fleet:take', reg, until),
-  fleetRelease: (reg) => ipcRenderer.invoke('fleet:release', reg),
+  fleetRelease: (reg, maint) => ipcRenderer.invoke('fleet:release', reg, maint),
   uaGet: () => ipcRenderer.invoke('ua:get'),
   uaPick: () => ipcRenderer.invoke('ua:pick'),
   uaReset: () => ipcRenderer.invoke('ua:reset'),
@@ -66,7 +79,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

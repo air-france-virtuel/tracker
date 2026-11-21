@@ -19,6 +19,8 @@ function findMakensis() {
 const nsis = findMakensis();
 const out = path.join(root, 'dist');
 const name = 'LesAilesTricolores-Tracker-Setup-' + v + '.exe';
+// Conditions d'utilisation : NSIS lit le texte en UTF-8 seulement avec la marque BOM (sinon « crÃ©Ã©e » au lieu de « créée »)
+{ const lic = path.join(__dirname, 'licence.txt'); const b = fs.readFileSync(lic); if (b[0] !== 0xEF) fs.writeFileSync(lic, Buffer.concat([Buffer.from([0xEF, 0xBB, 0xBF]), b])); }
 execFileSync(nsis.bin, [
   '-V2', '-INPUTCHARSET', 'UTF8',
   '-DVERSION=' + v, '-DVERSION4=' + v4, '-DOUTFILE=' + path.join(out, name),

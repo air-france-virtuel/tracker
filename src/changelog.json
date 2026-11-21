@@ -1,5 +1,52 @@
 [
   {
+    "version": "1.1.0-beta",
+    "date": "2026-11-20",
+    "added": [
+      "Version bêta : toutes ces nouveautés sont à tester, signale tout souci dans « Donner mon avis »",
+      "Max par-dessus le simulateur : une petite fenêtre toujours au premier plan s’ouvre au début du vol (déplaçable, réductible, voix coupable). Réglages › « Afficher Max par-dessus le simulateur » pour la désactiver",
+      "Check-list à chaque phase du vol (avant départ, roulage, décollage, montée, croisière, descente, approche, après atterrissage, parking) : Max la lit à voix haute et coche tout seul ce qu’il voit dans le simulateur (frein de parking, volets, train, phares, strobes, anticollision, pilote auto, altimètre, spoilers, moteurs). Le reste se coche d’un clic",
+      "Max suit ton plan SimBrief : piste et SID au départ, profil de montée et de descente (ex. 250 kt, puis 300 kt, puis Mach 0,84), paliers, cost index, STAR, altitude et niveau de transition, carburant prévu et dégagement. Plus de consignes générales qui ne viennent pas de SimBrief",
+      "Max fait les annonces d’un vrai copilote, une seule fois et au bon moment : « Cent nœuds », « Vario positif », « Train rentré », altitude de transition (calage standard), « Niveau cent », « Mille pieds avant le niveau », niveau de transition (calage QNH), « Deux mille cinq cents », « Mille, stabilisé » (ou « non stabilisé »), « Cinq cents », « Cent au-dessus », « Minimums », « Spoilers sortis », « Soixante-dix nœuds », remise des gaz",
+      "Les annonces passent avant tout le reste, et Max ne lit pas de check-list pendant la course au décollage ni pendant le freinage. Il t’informe aussi à mi-parcours, si le carburant est sous le plan SimBrief et à 50 NM de l’arrivée",
+      "Nouvelle rubrique « Pilotes en vol » : carte et liste des pilotes des Ailes Tricolores en vol en ce moment (nom de pilote, indicatif, départ → arrivée, avion, altitude, vitesse, phase du vol), mise à jour en direct",
+      "Ta position est partagée pendant les vols suivis par le tracker (pas en démo) et disparaît dès la fin du vol ; Réglages › « Me montrer aux autres pilotes quand je vole » pour ne pas apparaître",
+      "Pastille dans le menu : nombre de pilotes en vol",
+      "Carte du vol : zoom avec la molette de la souris, un double-clic ou les boutons + / −, et déplacement en faisant glisser la carte (plan, satellite et radar)",
+      "« Route entière » ou « Suivre l’avion » recentre la carte",
+      "Fin du vol : l’avion de la compagnie rentre au hangar tout seul et redevient disponible pour les autres pilotes, sauf si un autre vol de « Ma journée » part de l’aéroport d’arrivée (Max le garde alors pour ce vol)",
+      "Maintenance : en rentrant au hangar après un vol, l’avion de la compagnie passe en maintenance (30 min + 10 min par heure de vol, 3 h au plus). Pendant ce temps personne ne peut le prendre ; le planning affiche « en maintenance jusqu’à … »",
+      "Nouvelle rubrique « Hangar » (la flotte de la compagnie) : chaque avion avec sa livrée, son état en direct (disponible, piloté par…, en maintenance avec compte à rebours), l’aéroport où il se trouve, son état d’usure en %, ses heures, ses vols, la prochaine grande visite et son historique (vols et maintenances)",
+      "Usure et maintenance réalistes : 1 % d’usure par heure de vol, 5 % de plus et 30 min de maintenance en plus après un atterrissage dur, +8 % à chaque maintenance, avion cloué au sol sous 60 %, grande visite de 3 h toutes les 150 h",
+      "L’avion part de l’aéroport où il a atterri : Max compose la journée au départ de cet aéroport",
+      "Direction : terminer une maintenance, déplacer un avion, le retirer ou le remettre dans la flotte, ajouter un avion",
+      "« Ma journée » plus claire : chaque vol affiche « ✓ Fait », « ▶ Prochain » ou « À faire » (il se coche tout seul une fois au parking), avec les indicatifs LAT quand tu voles avec l’avion de la compagnie. Pour le prochain vol, 3 étapes guidées : préparer dans SimBrief, charger le plan, lancer le vol",
+      "Infos du jour : petite carte « Pilotes en vol » avec les pilotes de la compagnie en l’air en ce moment ; un clic l’ouvre en grand",
+      "Pilotes en vol : bouton « Copier dans SimBrief » sous chaque pilote, qui ouvre SimBrief avec le même départ, la même arrivée et le même avion (indicatif LAT)",
+      "Planning : le tracker se souvient de l’avion choisi dans « Max : quel avion prends-tu ? », même après un redémarrage (ou reprend l’avion de la compagnie que tu pilotes), et bouton « Vider ma journée »",
+      "Tracker de vol : en haut de la préparation, le prochain vol de « Ma journée » (ex. « Vol 2/4 de ta journée : LAT1649 LEBL → LFPG ») avec un bouton SimBrief, et une vérification que le plan chargé est bien celui de ce vol",
+      "Pose tes questions à Max pendant le vol (sur son panneau par-dessus le simu ou dans le tracker) : temps restant, heure d’arrivée, distance, carburant par rapport au plan, TOD, altitude, vitesse, météo, vent et QNH au départ ou à l’arrivée, pistes, SID, STAR, dégagement, prochain point, paliers, transition, check-list. Il répond à voix haute avec les données du vol",
+      "Max lit tout ton plan SimBrief : route complète, détail du carburant (bloc, roulage, délestage, contingence, dégagement, réserve finale, extra, à l’atterrissage), TAF, temps de vol prévu, cost index, vent moyen, avion et immatriculation. Cite un point de la route (« carburant à BAXOD », « on passe MTL quand ? ») et il te donne l’altitude, le carburant, le vent et la température prévus à ce point",
+      "Check-lists plus claires : les points techniques ont une petite explication sous leur nom (ex. « Météo (ATIS) et autorisation de départ (clairance) » : quoi écouter et quoi demander au contrôleur)",
+      "Check-lists : « Annonce d’embarquement » et « Annonce de descente » se cochent toutes seules quand l’annonce passe (jouée par le tracker ou par Universal Announcer)",
+      "Parle à Max au micro : clique sur le bouton micro de son panneau, pose ta question à voix haute, il te répond. La reconnaissance vocale fonctionne sur ton PC, sans Internet (téléchargement unique d’environ 640 Mo au premier usage). Il comprend l’alphabet aéronautique : « Lima Fox Papa Golf » devient LFPG"
+    ],
+    "removed": [
+      "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",
+      "L’ancienne rubrique « Hangar & flotte » (ta liste personnelle d’avions) est remplacée par le Hangar de la compagnie ; le choix « Appareil de la flotte » disparaît de la préparation du vol"
+    ],
+    "fixed": [
+      "Altitude : le tracker affiche maintenant la même altitude que l’écran de vol de l’avion (niveau de vol standard au-dessus de 18 000 ft, altitude au calage du pilote en dessous). Avant, il montrait l’altitude géométrique, qui pouvait différer de plus de 1 000 ft (ex. FL298 au lieu de FL310)",
+      "Chat des pilotes : après une coupure de connexion, le message « cannot add postgres_changes callbacks… after subscribe() » restait affiché et « Réessayer » ne marchait pas. Le chat se reconnecte maintenant tout seul",
+      "Discord : dans la liste des membres, ton statut montre maintenant ce que tu fais (« Vol LAT010 · LFPG → RJTT » ou « Prépare son prochain vol ») au lieu du seul nom de l’appli ; « Les Ailes Tricolores » reste en titre de ton profil",
+      "Max ne répète plus « comme prévu sur SimBrief » à chaque palier : il dit simplement « Palier : monte au FL370 à BAXOD. » (niveau arrondi au niveau de vol réel)",
+      "Fenêtre des nouveautés : quand la liste est longue, elle défile et le bouton « C’est parti » reste visible (avant, on pouvait rester bloqué dessus). Elle se ferme aussi avec Échap ou en cliquant à côté",
+      "Planning : si le programme des vols n’est pas encore celui du jour, Max le dit clairement au lieu de « je ne trouve plus de vol ». Le programme est maintenant récupéré jusqu’à trois fois chaque matin",
+      "Installation : les conditions d’utilisation s’affichent avec les bons accents (avant : « crÃ©Ã©e » au lieu de « créée »)",
+      "Questions à Max : « météo à LFPG » donne bien la météo de l’aéroport cité (départ, arrivée ou dégagement, par son code ou sa ville), et plus celle de l’arrivée par défaut"
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-11-20",
     "added": [
@@ -8,234 +55,6 @@
       "Planning du jour : F-HLAU apparaît avec F-HLAT dans « Max : quel avion prends-tu ? » ; avec le 777, Max propose un vol long-courrier 777-300ER au départ de l’aéroport choisi (l’avion reste à destination, le retour se fait à la session suivante)",
       "Avions de la compagnie réservés : quand un pilote prend F-HLAT ou F-HLAU, aucun autre pilote ne peut le prendre. Les autres voient « piloté par » suivi du nom de pilote du tracker et jusqu’à quelle heure",
       "Bouton « Rendre l’avion » ; sinon l’avion redevient libre tout seul 2 h après la fin de la journée prévue (24 h au plus). Un pilote n’a qu’un avion de la compagnie à la fois"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.9.0-beta",
-    "date": "2026-11-20",
-    "added": [
-      "Planning du jour : l’A320 de la compagnie (F-HLAT, livrée « Ruban ») apparaît en premier dans « Max : quel avion prends-tu ? »",
-      "Avec l’avion de la compagnie, Max te propose une journée de vols A320 classiques (sans A319, A321 ni A320neo) qui s’enchaînent : chaque vol part de l’arrivée du précédent, 40 min à 3 h d’escale, retour à Paris en fin de journée",
-      "Choix de l’aéroport de départ de l’avion, bouton « Autre proposition » et ajout de toute la journée à « Ma journée » en un clic",
-      "Les liens SimBrief préparent alors les vols avec l’indicatif LAT et l’immatriculation de notre avion"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.8.1-beta",
-    "date": "2026-11-20",
-    "added": [],
-    "removed": [
-      "Liste des annonces (et boutons « Écouter ») dans la rubrique « Annonces sonores » : il ne reste que le réglage d’Universal Announcer"
-    ],
-    "fixed": []
-  },
-  {
-    "version": "0.8.0-beta",
-    "date": "2026-11-20",
-    "added": [
-      "Lien avec Universal Announcer (rubrique « Annonces sonores ») : le tracker trouve tout seul son dossier « Announcements »",
-      "Les annonces cabine viennent maintenant d’Universal Announcer : le tracker joue ses sons (dossier LAT, sinon Default) au bon moment du vol",
-      "Pas de doublon : quand Universal Announcer est lancé, c’est lui qui joue les annonces et le tracker affiche seulement leur texte",
-      "La rubrique « Annonces sonores » montre quel son est utilisé pour chaque annonce, avec un bouton « Écouter »"
-    ],
-    "removed": [
-      "Import de tes propres fichiers son dans le tracker (remplacé par Universal Announcer)"
-    ],
-    "fixed": [
-      "Le tracker ne plante plus quand on le lance alors que MSFS est déjà ouvert (paquet incomplet du simulateur)"
-    ]
-  },
-  {
-    "version": "0.7.0-beta",
-    "date": "2026-11-20",
-    "added": [
-      "Nouvelle rubrique « Livrées » : télécharge et installe les livrées de la compagnie en un clic, directement dans ton dossier Community de MSFS 2024",
-      "Première livrée disponible : Les Ailes Tricolores « Ruban » pour le Fenix A320 IAE (F-HLAT)",
-      "Le dossier Community est trouvé tout seul (version Steam ou Microsoft Store) ; bouton « Changer » si besoin",
-      "Une pastille « MAJ » prévient quand une nouvelle version d’une livrée est sortie ; bouton « Désinstaller » pour la retirer"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.6.1-beta",
-    "date": "2026-11-20",
-    "added": [],
-    "removed": [],
-    "fixed": [
-      "Le raccourci du bureau et du menu Démarrer affiche bien le nouveau logo LAT (Windows gardait l’ancien logo AFV en mémoire)"
-    ]
-  },
-  {
-    "version": "0.6.0-beta",
-    "date": "2026-11-20",
-    "added": [
-      "Nouveau nom : la compagnie s’appelle maintenant « Les Ailes Tricolores » (LAT)",
-      "Nouveau logo : l’insigne de pilote aux ailes blanches et à l’écusson bleu-blanc-rouge, partout (menu, icône, près de l’horloge, installateur, Discord)",
-      "Mention claire : projet de loisir non officiel, sans lien avec Air France",
-      "Nouveaux raccourcis « Les Ailes Tricolores - Tracker » sur le bureau et dans le menu Démarrer"
-    ],
-    "removed": [
-      "Ancien nom « Air France Virtuel » et ancien logo AFV",
-      "Anciens raccourcis du bureau et du menu Démarrer (remplacés automatiquement)"
-    ],
-    "fixed": []
-  },
-  {
-    "version": "0.5.4-beta",
-    "date": "2026-11-20",
-    "added": [
-      "Chat entre pilotes : discute en direct avec tous les pilotes qui ont le tracker (tout en bas du menu)",
-      "Chat : liste des pilotes en ligne (ceux en vol en premier, avec leur vol), ton grade et ton vol affichés à côté de ton nom, compteur de messages non lus",
-      "Chat : bouton « Signaler » sur chaque message ; la direction peut supprimer un message ou exclure un pilote",
-      "Réglages : case « Activer le chat entre pilotes »"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.5.3-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Si Windows bloque l’installation d’une mise à jour (Smart App Control, antivirus), le tracker le détecte au redémarrage et explique quoi faire, avec un bouton « Télécharger l’installateur »",
-      "Mises à jour : lien « Télécharger l’installateur à la main » toujours disponible"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.5.2-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Vols réels › À venir : l’avis de Max sur le vol choisi : un seul vol, ou la suite de la journée de l’avion à respecter dans l’ordre",
-      "Bouton « Prendre ce vol » : le vol est ajouté à « Ma journée » et Max t’explique (à voix haute si sa voix est installée) ce que tu dois faire avec cet avion",
-      "Planning du jour › Ma journée : choisis l’avion que tu veux prendre, Max te dit s’il fait un seul vol ou s’il faut suivre son planning, et ajoute les vols manquants en un clic"
-    ],
-    "removed": [],
-    "fixed": []
-  },
-  {
-    "version": "0.5.1-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Icône AFV près de l’horloge de Windows : clic pour ouvrir le tracker, clic droit pour les raccourcis (démarrer un vol, briefing de Max, panneau compact, planning, vols réels, carrière, mises à jour, réglages)",
-      "La croix de la fenêtre garde le tracker ouvert près de l’horloge (un vol en cours n’est plus perdu) ; réglable dans Réglages",
-      "Option « Lancer le tracker au démarrage de Windows » (clic droit sur l’icône › Options)",
-      "Discord : ton profil affiche « Joue à Air France Virtuel » avec ton vol en cours : indicatif, route, phase, niveau, temps de vol et temps restant ; désactivable dans Réglages"
-    ],
-    "removed": [],
-    "fixed": [
-      "Lancer le tracker une deuxième fois ramène la fenêtre déjà ouverte au lieu d’ouvrir un second tracker"
-    ]
-  },
-  {
-    "version": "0.5.0-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Nouveau menu : écrans rangés par rubriques (Aujourd’hui, Voler, Carrière), gros bouton « Démarrer un vol », recherche rapide (Ctrl K), suivi du vol en cours et profil pilote avec progression vers le prochain grade, menu réductible en icônes",
-      "Briefing de Max dès le chargement du plan SimBrief : vol, masses, route, paliers, carburant, météo décodée au départ, à l’arrivée et au dégagement, vent sur la piste et conseils ; Max le lit à voix haute",
-      "Vols réels : onglets « À venir » et « Précédents » avec le programme du jour (heures, avion, immatriculation, statut), sur la liste et la carte",
-      "Depuis un vol à venir ou précédent : copie vers SimBrief et accès direct à la journée de l’avion"
-    ],
-    "removed": [
-      "Ancienne liste de boutons du menu : Sons, Avis, Mises à jour et Réglages passent en icônes en bas du menu (toujours trouvables avec la recherche)"
-    ],
-    "fixed": [
-      "Journée de l’avion : un vol sans heure de départ était classé en premier et faisait croire à un vol manquant ; les heures manquantes sont maintenant estimées"
-    ]
-  },
-  {
-    "version": "0.4.2-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Planning du jour : les vrais vols Air France de la journée avec l’avion utilisé, classés en court, moyen et long-courrier, durée estimée, bouton SimBrief et « Ma journée » pour préparer ses vols",
-      "Planning du jour : programme officiel des vols Air France de Paris (CDG et Orly) avec heures de départ et d’arrivée, avion prévu et statut (programmé, en vol, arrivé, annulé), mis à jour chaque jour",
-      "Journée de l’avion : depuis un vol du planning, tous les vols du jour du même avion (même immatriculation), dans l’ordre, avec un bouton pour tous les ajouter à « Ma journée »",
-      "Infos du jour : l’actualité d’Air France (salle de presse officielle, ou Google Actualités en secours), avec un lien vers chaque article"
-    ],
-    "removed": [],
-    "fixed": [
-      "Vols réels : les routes (départ → arrivée) restaient « inconnues » ; nouvelle façon de les demander et deuxième source de secours (adsbdb.com)"
-    ]
-  },
-  {
-    "version": "0.4.1-beta",
-    "date": "2026-11-19",
-    "added": [],
-    "removed": [],
-    "fixed": [
-      "Mises à jour automatiques : le fichier de configuration manquait dans l’installation, la vérification échouait toujours"
-    ]
-  },
-  {
-    "version": "0.4.0-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Nouveau tracker « centre des opérations » : bandeau avec heures OUT / OFF, ETA, distance restante, carburant comparé au plan SimBrief et piste d’arrivée",
-      "Profil vertical du vol (prévu et réel, T/C et T/D) et navlog SimBrief avec le prochain point, l’ETA et le carburant prévu",
-      "Vent en direct dans les paramètres",
-      "Panneau compact en option : petite fenêtre épinglable pour un deuxième écran, avec le prochain événement, les paramètres, une mini-carte, la check-list de la phase et Max",
-      "Carte des vols réels en cours : zoom, déplacement, vues Monde, Europe, Atlantique et Antilles, route du vol choisi",
-      "Carte du monde dans le tracker de vol : route, TOD et position de l’avion, avec un mode « Suivre l’avion »",
-      "Nouveau logo AFV dans le tracker, l’icône et l’installateur",
-      "Pop-up dès qu’une nouvelle mise à jour est trouvée, avec ce qui change et un bouton pour l’installer",
-      "Mode satellite sur les cartes (images NASA) et radar météo des précipitations (RainViewer), sur la carte du vol et celle des vols réels",
-      "Nouvel écran d’installation : image, pourcentage, barre rouge et étapes cochées une à une",
-      "Lien de téléchargement direct de la dernière version"
-    ],
-    "removed": [
-      "Ancien logo"
-    ],
-    "fixed": []
-  },
-  {
-    "version": "0.3.0-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Vols réels : les vols Air France en cours dans le monde, avec départ, arrivée, altitude et vitesse (OpenSky Network et adsb.lol)",
-      "Filtre par aéroport et recherche par numéro de vol ou ville",
-      "Bouton « Copier vers SimBrief » : départ, arrivée, numéro de vol et type d’avion pré-remplis"
-    ],
-    "removed": [],
-    "fixed": [
-      "Mises à jour : nouvel essai automatique 15 minutes après un échec, et détail de l’erreur affiché",
-      "Publication : une nouvelle version n’apparaît qu’une fois tous ses fichiers en ligne"
-    ]
-  },
-  {
-    "version": "0.2.0-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Mode carrière : 5 grades, de Cadet à Commandant Senior · Instructeur, avec heures de vol, points et progression",
-      "Missions & rôles : passagers, cargo, charter / VIP, humanitaire et formation, avec le rôle à tenir et un briefing",
-      "Missions du jour proposées par Max, dont un vol du jour à points doublés",
-      "Qualifications A350 et B777 à obtenir par des vols de formation",
-      "Choix de la mission dans le tracker : elle est validée automatiquement au parking si le trajet correspond",
-      "Bouton « Préparer dans SimBrief » sur chaque mission",
-      "Infos du jour : message de la direction, événements, alertes et météo réelle (METAR) des aéroports"
-    ],
-    "removed": [],
-    "fixed": [
-      "Installateur : chemins de fichiers compatibles avec la fabrication sous Windows"
-    ]
-  },
-  {
-    "version": "0.1.0-beta",
-    "date": "2026-11-19",
-    "added": [
-      "Suivi automatique des 9 phases du vol avec Microsoft Flight Simulator 2020 et 2024",
-      "Lecture du plan SimBrief : pistes, niveau de croisière, paliers de montée, météo",
-      "Max, le copilote : conseils à chaque phase, alertes TOD, paliers, 250 kt sous 10 000 ft, train, approche",
-      "Max parle à voix haute (voix française hors ligne, à installer une fois dans Réglages), avec un bouton pour le couper",
-      "Annonces à bord avec tes propres sons (MP3, WAV ou OGG)",
-      "Hangar et flotte limitée : atterrissage dur = avion en réparation",
-      "Rapport de vol enregistré au parking, onglet « Mes vols »",
-      "Avis des pilotes sur la bêta",
-      "Mises à jour automatiques et assistant d'installation"
     ],
     "removed": [],
     "fixed": []

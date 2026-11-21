@@ -58,4 +58,10 @@ assert.ok(/plan SimBrief|données/.test(answer('carburant', {}).text + answer('t
 assert.ok(!/undefined|NaN/.test(['flaps', 'piste', 'météo', 'transition', 'masse', 'passagers'].map((q) => answer(q, {}).text).join(' ')));
 // points de route sans nom (vol de démonstration) : pas de plantage
 assert.ok(answer('carburant', { plan: { origin: { icao: 'LFPG' }, destination: { icao: 'LFMN' }, route_points: [{ lat: 1, lon: 2 }, {}] } }).text);
+// « avant le TOD » : la réponse parle du TOD, pas de l'arrivée ; « dans » n'est pas pris pour un aéroport
+{
+  const c = { ops: { eta: Date.now() + 59 * 60000, remaining: 420 }, tod: { distNm: 210, minutes: 27 }, phase: 4, plan: { origin: { icao: 'LFPG' }, destination: { icao: 'LEBL' } } };
+  for (const q of ['combien de temps il me reste avant mon tod', 'dans combien de temps je descends', 'temps restant avant le début de descente']) assert.ok(/^TOD dans 210/.test(answer(q, c).text), q);
+  assert.ok(/Il reste environ 59 minutes/.test(answer('combien de temps il me reste', c).text));
+}
 console.log('QUESTIONS À MAX : TOUS LES TESTS PASSENT');

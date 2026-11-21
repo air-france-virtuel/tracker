@@ -44,7 +44,8 @@
       "Fenêtre des nouveautés : quand la liste est longue, elle défile et le bouton « C’est parti » reste visible (avant, on pouvait rester bloqué dessus). Elle se ferme aussi avec Échap ou en cliquant à côté",
       "Planning : si le programme des vols n’est pas encore celui du jour, Max le dit clairement au lieu de « je ne trouve plus de vol ». Le programme est maintenant récupéré jusqu’à trois fois chaque matin",
       "Installation : les conditions d’utilisation s’affichent avec les bons accents (avant : « crÃ©Ã©e » au lieu de « créée »)",
-      "Questions à Max : « météo à LFPG » donne bien la météo de l’aéroport cité (départ, arrivée ou dégagement, par son code ou sa ville), et plus celle de l’arrivée par défaut"
+      "Questions à Max : « météo à LFPG » donne bien la météo de l’aéroport cité (départ, arrivée ou dégagement, par son code ou sa ville), et plus celle de l’arrivée par défaut",
+      "Max : « combien de temps avant mon TOD ? » donne bien le temps jusqu’au début de descente, et non plus le temps jusqu’à l’arrivée"
     ]
   },
   {

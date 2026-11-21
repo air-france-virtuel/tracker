@@ -396,3 +396,10 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .live-mini-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:600;font-size:14px;pointer-events:none}
 .live-mini-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .live-mini-list .lm{font-size:12.5px;background:#F2F4F8;border-radius:12px;padding:4px 10px;color:var(--ink)}
+
+.live-card{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.live-card.on{border-color:var(--red)}
+.live-card .rt{border:none;border-radius:0;width:100%;margin:0}
+.lc-act{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;border-top:1px solid #EEF1F6;background:#F8FAFD}
+.lc-act a{font-weight:700;font-size:12.5px;color:var(--red);text-decoration:none}
+.lc-act a:hover{text-decoration:underline}

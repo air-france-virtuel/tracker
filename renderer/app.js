@@ -2081,6 +2081,13 @@ function renderLiveMini() {
   $('liveMiniSub').textContent = S.live.error ? 'Connexion : ' + S.live.error : L.length ? L.length + ' pilote' + (L.length > 1 ? 's' : '') + ' en vol en ce moment' : 'Les pilotes des Ailes Tricolores en vol en ce moment';
   $('liveMiniList').innerHTML = L.slice(0, 4).map((p) => '<span class="lm"><b>' + esc(p.pseudo) + '</b> ' + esc(p.cs || '') + (p.from ? ' · ' + esc(p.from) + ' → ' + esc(p.to || '?') : '') + (p.alt != null ? ' · ' + (p.alt >= 18000 ? 'FL' + Math.round(p.alt / 100) : fmt(p.alt) + ' ft') : '') + '</span>').join('') + (L.length > 4 ? '<span class="lm">+' + (L.length - 4) + ' autres</span>' : '');
 }
+// Copier le vol d'un autre pilote dans SimBrief : même départ, même arrivée, même type d'avion, indicatif LAT
+function liveSimbrief(x) {
+  const p = { orig: x.from, dest: x.to, airline: 'LAT' };
+  const n = String(x.cs || '').replace(/\D/g, ''); if (n) p.fltnum = n;
+  if (x.ac && /^[A-Z0-9]{3,4}$/i.test(x.ac)) p.type = x.ac.toUpperCase();
+  return 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(p).toString();
+}
 function renderLive() {
   renderLiveMini();
   const L = S.live.list || [];
@@ -2091,10 +2098,12 @@ function renderLive() {
     : !S.live.ready ? 'Connexion aux autres pilotes…'
     : L.length ? L.length + ' pilote' + (L.length > 1 ? 's' : '') + ' en vol' + (L.some((x) => x.mine) ? ' (toi compris)' : '') : 'Aucun pilote de la compagnie en vol pour le moment';
   const alt = (x) => x.alt == null ? '—' : x.alt >= 18000 ? 'FL' + Math.round(x.alt / 100) : fmt(x.alt) + ' ft';
-  $('liveList').innerHTML = L.length ? '<div class="live-grid">' + L.map((x) => '<button class="rt' + (x.id === S.live.sel ? ' on' : '') + '" data-livesel="' + esc(x.id) + '">' +
+  $('liveList').innerHTML = L.length ? '<div class="live-grid">' + L.map((x) => '<div class="live-card' + (x.id === S.live.sel ? ' on' : '') + '"><button class="rt" data-livesel="' + esc(x.id) + '">' +
     '<span class="n">' + esc(x.cs || '—') + (x.mine ? '<br><span class="pst arrive">toi</span>' : '') + '</span>' +
     '<span><b>' + esc(x.pseudo) + '</b>' + (x.grade ? ' <span class="c">· ' + esc(x.grade) + '</span>' : '') + '<br><span class="c">' + (x.from ? esc(x.from) + ' → ' + esc(x.to || '?') : 'Route inconnue') + (x.ac ? ' · ' + esc(x.ac) : '') + (x.reg ? ' · ' + esc(x.reg) : '') + (x.ph != null ? ' · ' + esc(PH_LABEL[x.ph] || '') : '') + '</span></span>' +
-    '<span class="a">' + alt(x) + '<br>' + (x.gs != null ? x.gs + ' kt' : '') + '</span></button>').join('') + '</div>'
+    '<span class="a">' + alt(x) + '<br>' + (x.gs != null ? x.gs + ' kt' : '') + '</span></button>' +
+    (!x.mine && x.from && x.to ? '<div class="lc-act"><a href="' + esc(liveSimbrief(x)) + '" target="_blank" rel="noopener" title="Ouvre SimBrief avec le même départ, la même arrivée et le même avion">✈ Faire le même vol dans SimBrief</a><span class="muted small">' + esc(x.from) + ' → ' + esc(x.to) + (x.ac ? ' · ' + esc(x.ac) : '') + '</span></div>' : '') +
+    '</div>').join('') + '</div>'
     : '<div class="empty">' + (S.live.ready ? 'Personne ne vole en ce moment. Dès qu’un pilote lance un vol avec le tracker, il apparaît ici.' : 'Pour voir les autres pilotes, mets ton nom de pilote dans les Réglages.') + '</div>';
   renderLiveMap();
 }
@@ -2136,7 +2145,7 @@ document.addEventListener('click', (e) => {
   const p = (S.live.list || []).find((x) => x.id === s.dataset.livesel); if (!p) return;
   S.live.sel = p.id;
   // la carte se centre sur l'avion choisi
-  if (s.tagName === 'BUTTON') { const w = Math.min(liveVB[2], 40), h = w * (liveVB[3] / liveVB[2]); setLiveView([MX(p.lon) - w / 2, MY(p.lat) - h / 2, w, h]); }
+  if (s.closest('.live-card')) { const w = Math.min(liveVB[2], 40), h = w * (liveVB[3] / liveVB[2]); setLiveView([MX(p.lon) - w / 2, MY(p.lat) - h / 2, w, h]); }
   renderLive();
 });
 (function liveMapControls() {

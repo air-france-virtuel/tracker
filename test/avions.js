@@ -28,10 +28,16 @@ function server() {
         const p = db.pilots.find((x) => x.id === me()); const now = new Date().toISOString();
         if (fn === 'take_aircraft') {
           const b = db.bookings.find((x) => x.reg === a.p_reg);
+          if (b && b.kind === 'maintenance' && b.until > now) return { data: null, error: { message: 'AVION_MAINTENANCE' } };
           if (b && b.user_id !== p.id && b.until > now) return { data: null, error: { message: 'AVION_PRIS' } };
-          db.bookings = db.bookings.filter((x) => x.user_id !== p.id && x.reg !== a.p_reg);
-          const r = { reg: a.p_reg, user_id: p.id, pseudo: p.pseudo, taken_at: now, until: a.p_until };
+          db.bookings = db.bookings.filter((x) => !(x.user_id === p.id && x.kind !== 'maintenance') && x.reg !== a.p_reg);
+          const r = { reg: a.p_reg, user_id: p.id, pseudo: p.pseudo, taken_at: now, until: a.p_until, kind: 'vol' };
           db.bookings.push(r); return { data: r, error: null };
+        }
+        if (fn === 'release_aircraft' && a.p_maint_minutes > 0) {
+          const x = db.bookings.find((y) => y.reg === a.p_reg && y.user_id === p.id && y.kind === 'vol');
+          if (x) { x.kind = 'maintenance'; x.until = new Date(Date.now() + a.p_maint_minutes * 60000).toISOString(); }
+          return { data: x || null, error: null };
         }
         if (fn === 'release_aircraft') { db.bookings = db.bookings.filter((x) => !(x.reg === a.p_reg && (x.user_id === p.id || p.is_admin))); return { data: null, error: null }; }
         return { error: { message: '?' } };
@@ -65,6 +71,12 @@ function server() {
   // Martin le rend : Durand peut le prendre
   assert.ok((await a.aircraftRelease('F-HLAT')).ok);
   assert.ok((await b.aircraftTake('F-HLAT', until)).ok);
+  // fin du vol : Durand rend F-HLAT en maintenance 45 min ; personne ne peut le prendre, même lui
+  assert.ok((await b.aircraftRelease('F-HLAT', 45)).ok);
+  const lm = (await a.aircraftList()).list.find((x) => x.reg === 'F-HLAT');
+  assert.strictEqual(lm.maint, true); assert.ok(lm.until > Date.now() + 44 * 60000);
+  assert.ok(/maintenance/.test((await a.aircraftTake('F-HLAT', until)).error));
+  assert.ok(/maintenance/.test((await b.aircraftTake('F-HLAT', until)).error));
   // serveur pas encore préparé (avions.sql pas lancé) : message compréhensible
   srv.db.off = true;
   assert.ok(/pas encore activée/.test((await a.aircraftList()).error));

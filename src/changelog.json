@@ -14,7 +14,8 @@
       "Pastille dans le menu : nombre de pilotes en vol",
       "Carte du vol : zoom avec la molette de la souris, un double-clic ou les boutons + / −, et déplacement en faisant glisser la carte (plan, satellite et radar)",
       "« Route entière » ou « Suivre l’avion » recentre la carte",
-      "Fin du vol : l’avion de la compagnie rentre au hangar tout seul et redevient disponible pour les autres pilotes, sauf si un autre vol de « Ma journée » part de l’aéroport d’arrivée (Max le garde alors pour ce vol)"
+      "Fin du vol : l’avion de la compagnie rentre au hangar tout seul et redevient disponible pour les autres pilotes, sauf si un autre vol de « Ma journée » part de l’aéroport d’arrivée (Max le garde alors pour ce vol)",
+      "Maintenance : en rentrant au hangar après un vol, l’avion de la compagnie passe en maintenance (30 min + 10 min par heure de vol, 3 h au plus). Pendant ce temps personne ne peut le prendre ; le planning affiche « en maintenance jusqu’à … »"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0"

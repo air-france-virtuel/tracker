@@ -549,22 +549,27 @@ afv.on('flight:event', (e) => {
 });
 // Fin du vol : l'avion de la compagnie rentre au hangar (il redevient libre pour les autres pilotes),
 // sauf si un autre vol de « Ma journée » part de l'aéroport d'arrivée : on le garde pour ce vol.
-async function autoHangar() {
+// Durée de la maintenance après les vols : 30 min + 10 min par heure de vol (3 h au plus)
+const maintMinutes = (flightMin) => Math.min(180, 30 + Math.round((flightMin || 0) / 60 * 10 / 5) * 5);
+async function autoHangar(rep) {
   try {
     await loadBookings(true);
-    const b = (S.plan2.book.list || []).find((x) => x.mine && x.until > Date.now());
+    const b = (S.plan2.book.list || []).find((x) => x.mine && !x.maint && x.until > Date.now());
     if (!b) return;
+    S.plan2.flown = Object.assign(S.plan2.flown || {}, { [b.reg]: (S.plan2.flown && S.plan2.flown[b.reg] || 0) + (rep && rep.flightMinutes || 60) });
     const d = S.plan2.data, arr = S.plan && S.plan.destination && S.plan.destination.icao;
     const next = d && arr ? d.flights.filter((f) => d.mine.includes(f.key) && f.from === arr && (f.depEst || 0) > Date.now() - 30 * 60000).sort((x, y) => x.depEst - y.depEst) : [];
     if (next.length) { maxSays('Je garde ' + b.reg + ' pour ton prochain vol, ' + (next[0].number || next[0].callsign) + ' au départ de ' + arr + '.'); return; }
-    const r = await afv.fleetRelease(b.reg);
+    const mins = maintMinutes(S.plan2.flown[b.reg]);
+    const r = await afv.fleetRelease(b.reg, mins);
     await loadBookings(true);
-    if (r && r.ok) maxSays(b.reg + ' rentre au hangar : il est de nouveau disponible pour les autres pilotes.');
+    delete S.plan2.flown[b.reg];
+    if (r && r.ok) maxSays(b.reg + ' rentre au hangar pour la maintenance : il sera de nouveau disponible dans ' + (mins >= 60 ? Math.floor(mins / 60) + ' h ' + String(mins % 60).padStart(2, '0') : mins + ' minutes') + '.');
   } catch (e) { /* l'avion se libérera tout seul à l'heure prévue */ }
 }
 afv.on('flight:report', (r) => {
   showReport(r);
-  if (r.mode !== 'demo') setTimeout(autoHangar, 6000);
+  if (r.mode !== 'demo') setTimeout(() => autoHangar(r), 6000);
   if (r.mission) maxSays(r.mission.validated ? 'Bravo commandant ! Mission validée, ' + r.mission.points + ' points de plus pour ta carrière.' : 'Mission non validée cette fois. ' + (r.mission.reason || ''));
 });
 afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });
@@ -1380,7 +1385,12 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-maxday-take]')) { renderPlanning(); return; }
   if (e.target.closest('[data-maxday-release]')) {
     const o = companyPlane(S.plan2.myReg);
-    if (o) { const r = await afv.fleetRelease(o.reg); S.plan2.book.msg = r && r.ok ? '' : (r && r.error) || ''; await loadBookings(true); }
+    if (o) {
+      const flown = S.plan2.flown && S.plan2.flown[o.reg];
+      const r = await afv.fleetRelease(o.reg, flown ? maintMinutes(flown) : 0);
+      if (flown && r && r.ok) delete S.plan2.flown[o.reg];
+      S.plan2.book.msg = r && r.ok ? '' : (r && r.error) || ''; await loadBookings(true);
+    }
     renderPlanning(); return;
   }
   if (e.target.closest('[data-maxday-add]')) {
@@ -1484,7 +1494,7 @@ function maxDayHtml(all, mine) {
   const byModel = {};
   for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
   const opts = '<option value="">Choisis ton avion…</option>' +
-    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => { const b = bookingOf(c.reg); return '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.label) + ' de la compagnie' + (b ? (b.mine ? ' · piloté par toi' : ' · piloté par ' + esc(b.pseudo)) : '') + '</option>'; }).join('') + '</optgroup>' : '') +
+    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => { const b = bookingOf(c.reg); return '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.label) + ' de la compagnie' + (b ? (b.maint ? ' · en maintenance jusqu’à ' + hLocal(b.until) : b.mine ? ' · piloté par toi' : ' · piloté par ' + esc(b.pseudo)) : '') + '</option>'; }).join('') + '</optgroup>' : '') +
     '<optgroup label="──────────" disabled></optgroup>' + Object.keys(byModel).sort().map((m) => '<optgroup label="Air France · ' + esc(m) + '">' +
     byModel[m].sort((a, b) => a.reg.localeCompare(b.reg)).map((r) => '<option value="' + esc(r.reg) + '"' + (r.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(r.reg) + ' · ' + r.n + ' vol' + (r.n > 1 ? 's' : '') + '</option>').join('') + '</optgroup>').join('');
   const reg = S.plan2.myReg;
@@ -1515,7 +1525,10 @@ function maxDayHtml(all, mine) {
     };
     add = day.legs.map((f) => f.key);
     const b = bookingOf(own.reg);
-    if (b && !b.mine) {
+    if (b && b.maint) {
+      t = { html: '<b>🔧 ' + esc(own.reg) + ' est en maintenance au hangar</b> jusqu’à ' + hLocal(b.until) + '. Personne ne peut le prendre avant la fin : choisis un autre avion, ou reviens à ' + hLocal(b.until) + '.', say: own.reg + ' est en maintenance au hangar jusqu’à ' + hLocal(b.until) + '.' };
+      add = []; booked = 'other';
+    } else if (b && !b.mine) {
       t = { html: '<b>' + esc(own.reg) + ' est déjà piloté par ' + esc(b.pseudo) + '</b> jusqu’à ' + hLocal(b.until) + ' au plus tard. Tant qu’il l’a, personne d’autre ne peut le prendre : choisis un autre avion, ou reviens quand il l’aura rendu.', say: own.reg + ' est déjà piloté par ' + b.pseudo + '. Choisis un autre avion.' };
       add = []; booked = 'other';
     } else if (b) {

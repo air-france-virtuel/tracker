@@ -32,6 +32,7 @@ const friendly = (e) => {
 const friendlyFleet = (e) => {
   const m = String((e && (e.message || e.error_description || e.msg)) || e || '');
   if (/AVION_PRIS/.test(m)) return 'Trop tard : un autre pilote vient de prendre cet avion.';
+  if (/AVION_MAINTENANCE/.test(m)) return 'Cet avion est en maintenance au hangar : réessaie quand elle sera terminée.';
   if (/PILOTE_INCONNU/.test(m)) return 'Ton compte pilote n’est pas reconnu par le serveur.';
   if (/aircraft_bookings|take_aircraft|release_aircraft|does not exist|schema cache/i.test(m)) return 'La réservation des avions n’est pas encore activée par la direction.';
   return friendly(e);
@@ -125,9 +126,9 @@ class Chat extends EventEmitter {
     try {
       await this.session();
       // nom affiché = nom de pilote actuel dans le tracker (table des pilotes), même s'il l'a changé depuis
-      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until,pilots(pseudo)').gt('until', new Date().toISOString());
+      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until,kind,pilots(pseudo)').gt('until', new Date().toISOString());
       if (r.error) throw r.error;
-      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: (b.pilots && b.pilots.pseudo) || b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id })) };
+      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: (b.pilots && b.pilots.pseudo) || b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id, maint: b.kind === 'maintenance' })) };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
   async aircraftTake(reg, until) {
@@ -138,10 +139,11 @@ class Chat extends EventEmitter {
       return { ok: true, until: Date.parse(r.data.until) };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
-  async aircraftRelease(reg) {
+  // maint (minutes) > 0 : après un vol, l'avion rentre au hangar en maintenance au lieu d'être libre tout de suite
+  async aircraftRelease(reg, maint) {
     try {
       await this.session();
-      const r = await this.sb.rpc('release_aircraft', { p_reg: clean(reg, 10).toUpperCase() });
+      const r = await this.sb.rpc('release_aircraft', { p_reg: clean(reg, 10).toUpperCase(), p_maint_minutes: Math.max(0, Math.min(360, Math.round(+maint || 0))) });
       if (r.error) throw r.error;
       return { ok: true };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }

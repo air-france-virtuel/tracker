@@ -55,7 +55,7 @@ contextBridge.exposeInMainWorld('afv', {
   liveGet: () => ipcRenderer.invoke('live:get'),
   fleetBookings: () => ipcRenderer.invoke('fleet:bookings'),
   fleetTake: (reg, until) => ipcRenderer.invoke('fleet:take', reg, until),
-  fleetRelease: (reg) => ipcRenderer.invoke('fleet:release', reg),
+  fleetRelease: (reg, maint) => ipcRenderer.invoke('fleet:release', reg, maint),
   uaGet: () => ipcRenderer.invoke('ua:get'),
   uaPick: () => ipcRenderer.invoke('ua:pick'),
   uaReset: () => ipcRenderer.invoke('ua:reset'),

@@ -46,6 +46,12 @@ afv.on('ecoute:status', (st) => {
   if (st.installed && !st.downloading) { $('micSet').hidden = true; micUi('', 'C’est prêt : clique sur le micro et parle-moi.'); setTimeout(() => micUi(''), 6000); } else micSetup(st);
 });
 $('micDl').addEventListener('click', () => { afv.ecouteDownload(); micSetup({ downloading: true, percent: 0 }); });
+// filet de sécurité : on redemande l'état toutes les 3 secondes tant que l'encart est affiché
+setInterval(async () => {
+  if ($('micSet').hidden) return;
+  const st = await afv.ecouteStatus();
+  if (st.installed && !st.downloading) { $('micSet').hidden = true; micUi('', 'C’est prêt : clique sur le micro et parle-moi.'); setTimeout(() => micUi(''), 6000); } else if (st.downloading || st.error) micSetup(st);
+}, 3000);
 $('micNo').addEventListener('click', () => { $('micSet').hidden = true; });
 async function heard(samples, rate) {
   mic = null;

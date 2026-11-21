@@ -587,7 +587,8 @@ app.whenReady().then(() => {
 
   // ---------- écoute de Max (micro) ----------
   const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));
-  ecoute.on('status', (s) => send('ecoute:status', s));
+  // le panneau de Max (fenêtre à part) suit aussi le téléchargement
+  ecoute.on('status', (s) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('ecoute:status', s); });
   ipcMain.handle('ecoute:status', () => ecoute.status());
   ipcMain.handle('ecoute:download', () => ecoute.download());
   ipcMain.handle('ecoute:remove', () => ecoute.remove());

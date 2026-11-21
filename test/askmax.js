@@ -3,7 +3,7 @@
 const assert = require('assert');
 const { answer } = require('../renderer/askmax');
 const now = Date.parse('2026-11-21T12:00:00Z');
-const plan = { origin: { icao: 'LFPG', rwy: '27L' }, destination: { icao: 'LFMN', rwy: '04R' }, alternate: { icao: 'LFML', name: 'Marseille', rwy: '31R' },
+const plan = { origin: { icao: 'LFPG', rwy: '27L', name: 'Paris Charles de Gaulle' }, destination: { icao: 'LFMN', rwy: '04R', name: 'Nice Cote d Azur' }, alternate: { icao: 'LFML', name: 'Marseille', rwy: '31R' }, metarAltn: 'LFML 211130Z 31012KT 9999 14/06 Q1020',
   cruiseAlt: 35000, sid: 'OPAL5A', star: 'MERLU1A', transAlt: 5000, transLevel: 5000, steps: [{ alt: 37100, ident: 'BAXOD' }], pax: 162, zfwKg: 61200, towKg: 67900,
   metarDep: 'LFPG 211130Z 27012G22KT 9999 FEW030 08/03 Q1018', metarArr: 'LFMN 211130Z 05006KT CAVOK 15/08 Q1021', tod: {},
   route: 'OPAL5A OPALE UT225 MTL UM728 BAXOD MERLU1A', distanceNm: 372, eteSec: 4920, blockSec: 5700, costIndex: '30', avgWindComp: -12, callsign: 'LAT1234', aircraft: 'A320', registration: 'F-HLAT',
@@ -47,6 +47,11 @@ t('temps de vol prévu', 'duree', /1 h 22.*1 h 35/);
 t('vent moyen', 'ventmoyen', /12 nœuds de face/);
 t('immatriculation', 'avion', /LAT1234, A320 immatriculé F-HLAT/);
 t('météo à LFMN', 'meteo', /LFMN/);
+t('donne moi la météo à lfpg', 'meteo', /Météo à LFPG/);
+t('vent à LFPG ?', 'vent', /Au départ : vent du 270, 12 nœuds/);
+t('qnh lfmn', 'qnh', /LFMN : QNH 1021/);
+t('météo à LFML', 'meteo', /LFML/);
+t('météo à LEMD', 'autre', /LEMD n’y est pas/);
 t('blabla incompréhensible', 'inconnu', /pas compris/);
 // sans données : pas de plantage, réponse claire
 assert.ok(/plan SimBrief|données/.test(answer('carburant', {}).text + answer('temps restant', {}).text));

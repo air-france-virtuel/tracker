@@ -38,7 +38,8 @@
       "Discord : dans la liste des membres, ton statut montre maintenant ce que tu fais (« Vol LAT010 · LFPG → RJTT » ou « Prépare son prochain vol ») au lieu du seul nom de l’appli ; « Les Ailes Tricolores » reste en titre de ton profil",
       "Max ne répète plus « comme prévu sur SimBrief » à chaque palier : il dit simplement « Palier : monte au FL370 à BAXOD. » (niveau arrondi au niveau de vol réel)",
       "Fenêtre des nouveautés : quand la liste est longue, elle défile et le bouton « C’est parti » reste visible (avant, on pouvait rester bloqué dessus). Elle se ferme aussi avec Échap ou en cliquant à côté",
-      "Planning : si le programme des vols n’est pas encore celui du jour, Max le dit clairement au lieu de « je ne trouve plus de vol ». Le programme est maintenant récupéré jusqu’à trois fois chaque matin"
+      "Planning : si le programme des vols n’est pas encore celui du jour, Max le dit clairement au lieu de « je ne trouve plus de vol ». Le programme est maintenant récupéré jusqu’à trois fois chaque matin",
+      "Installation : les conditions d’utilisation s’affichent avec les bons accents (avant : « crÃ©Ã©e » au lieu de « créée »)"
     ]
   },
   {

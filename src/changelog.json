@@ -31,7 +31,8 @@
       "Check-lists : « Annonce d’embarquement » et « Annonce de descente » se cochent toutes seules quand l’annonce passe (jouée par le tracker ou par Universal Announcer)",
       "Parle à Max au micro : clique sur le bouton micro de son panneau, pose ta question à voix haute, il te répond. La reconnaissance vocale fonctionne sur ton PC, sans Internet (téléchargement unique d’environ 640 Mo au premier usage). Il comprend l’alphabet aéronautique : « Lima Fox Papa Golf » devient LFPG",
       "Arrivé à la gate, si le vol fait partie de « Ma journée », Max te propose de préparer le vol suivant : il ouvre SimBrief déjà rempli et charge le plan tout seul dès que tu as cliqué sur « Generate Flight » (ou tout de suite s’il est déjà prêt). Tu peux répondre avec les boutons ou au micro (« oui », « plus tard »)",
-      "Tracker fermé en plein vol ? À la réouverture, le vol reprend là où il en était : phase, check-list, statistiques et carte. Max te dit où tu en es (distance restante, prochain point, TOD)"
+      "Tracker fermé en plein vol ? À la réouverture, le vol reprend là où il en était : phase, check-list, statistiques et carte. Max te dit où tu en es (distance restante, prochain point, TOD)",
+      "Pistes en service comme dans la vraie vie : le tracker regarde les avions réels en approche et au décollage autour de l’aéroport (données ADS-B publiques), écarte les pistes fermées par les NOTAM de ton dossier SimBrief et, sans trafic, prend la piste la plus face au vent. Si ton plan SimBrief prévoit une piste fermée ou dans l’autre sens, Max te prévient. Il annonce la piste de départ au début du vol et celle d’arrivée en croisière, et répond à « quelle piste ? »"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

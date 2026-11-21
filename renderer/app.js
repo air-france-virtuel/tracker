@@ -130,7 +130,7 @@ async function openMax() { await afv.maxOpen(); }
 // Question posée à Max (panneau par-dessus le simu ou tracker) : réponse à voix haute avec les données du vol
 function askMax(q) {
   q = String(q || '').slice(0, 160);
-  const r = AskMax.answer(q, { t: S.lastT, plan: S.plan, route: S.route, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '', ck: S.ck, now: Date.now() });
+  const r = AskMax.answer(q, { pistes: S.pistes, t: S.lastT, plan: S.plan, route: S.route, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '', ck: S.ck, now: Date.now() });
   S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: 'Toi : ' + q }]).slice(-4);
   maxStop(); maxSays(r.text);
 }
@@ -433,8 +433,41 @@ function renderPlan() {
     '<div><div class="k">Paliers de montée</div>' + steps + '</div>' +
     (p.metarDep ? '<div class="full"><div class="k">Météo départ</div><div class="metar">' + esc(p.metarDep) + '</div></div>' : '') +
     (p.metarArr ? '<div class="full"><div class="k">Météo arrivée</div><div class="metar">' + esc(p.metarArr) + '</div></div>' : '') +
+    '<div class="full"><div class="k">Pistes en service (trafic réel, NOTAM, vent)</div><div id="pistesBox" class="pistes">' + pistesHtml() + '</div></div>' +
     (p.demo ? '<div class="full muted small">Plan de démonstration.</div>' : '');
+  if (!p.demo && (!S.pistes || S.pistes.for !== planKey(p))) refreshPistes(false, true);
 }
+// ---------- pistes en service : trafic réel autour de l'aéroport, pistes fermées par NOTAM, vent ----------
+const planKey = (p) => p ? p.origin.icao + '-' + p.destination.icao + '-' + (p.origin.rwy || '') + '-' + (p.destination.rwy || '') : '';
+const SRC = { trafic: 'vue sur le trafic réel', sens: 'même sens que le trafic', vent: 'la plus face au vent', plan: 'pas de trafic ni de vent net : piste du plan' };
+function pisteLine(d, label) {
+  if (!d) return '<div class="muted small">' + label + ' : recherche…</div>';
+  if (!d.rwy) return '<div class="muted small">' + label + ' ' + esc(d.icao) + ' : ' + esc(d.error || 'piste en service inconnue pour le moment') + '</div>';
+  const warn = d.planClosed ? 'la piste ' + d.planRwy + ' du plan est fermée (NOTAM)' : d.reversed ? 'ton plan SimBrief prévoit la ' + d.planRwy + ', dans l’autre sens' : d.differs ? 'plan : ' + d.planRwy + ' (parallèle)' : '';
+  const shut = (d.closed || []).map((c) => c.rwy + (c.partial ? ' (partiellement)' : '')).filter((x, i, a) => a.indexOf(x) === i);
+  return '<div class="pl' + (d.planClosed || d.reversed ? ' bad' : d.differs ? ' warn' : ' ok') + '"><b>' + label + ' ' + esc(d.icao) + ' : ' + esc(d.rwy) + '</b> <span class="muted small">' + esc(SRC[d.source] || '') + (d.source === 'trafic' && d.detail ? ' : ' + esc(d.detail) : d.source === 'vent' && d.detail ? ' (' + esc(d.detail) + ')' : '') + '</span>' +
+    (warn ? '<div class="small">⚠ ' + esc(warn) + '</div>' : '') + (shut.length ? '<div class="small muted">Fermée par NOTAM : ' + esc(shut.join(', ')) + '</div>' : '') + '</div>';
+}
+function pistesHtml() {
+  const P = S.pistes;
+  if (!P) return '<div class="muted small">Recherche des pistes en service…</div>';
+  return pisteLine(P.dep, 'Départ') + pisteLine(P.arr, 'Arrivée') + '<div class="small muted">Mis à jour à ' + hLocal(P.at) + ' · <button class="linkbtn" data-pistes-refresh>Actualiser</button></div>';
+}
+async function refreshPistes(force, announce) {
+  const p = S.plan; if (!p || p.demo) return null;
+  const key = planKey(p);
+  let r = null;
+  try { r = await afv.getPistes(p, force); } catch (e) { r = null; }
+  if (!r || planKey(S.plan) !== key) return null;
+  S.pistes = Object.assign({ for: key, at: Date.now() }, r);
+  const box = $('pistesBox'); if (box) box.innerHTML = pistesHtml();
+  if (announce) {
+    const warn = [r.dep, r.arr].filter((d) => d && d.rwy && (d.planClosed || d.reversed));
+    if (warn.length) { const txt = warn.map((d) => d.say).join(' '); addAlert('Pistes en service', txt, 'red'); maxSays(txt); }
+  }
+  return S.pistes;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-pistes-refresh]')) { const b = $('pistesBox'); if (b) b.innerHTML = '<div class="muted small">Recherche des pistes en service…</div>'; refreshPistes(true, false); } });
 function renderAircraftSelect() {
   const sel = $('selAircraft');
   const now = Date.now();
@@ -483,6 +516,7 @@ async function startFlight(mode) {
   maxSays(adviceFor(0));
   startChecklist(0);
   playPhaseAnnouncements(0);
+  if (mode !== 'demo' && S.plan) refreshPistes(true, false).then((P) => { if (P && P.dep && P.dep.say) setTimeout(() => maxSays(P.dep.say), 12000); });
 }
 // Le tracker a été fermé en plein vol (ou la fenêtre rouverte) : on reprend le vol là où il en était.
 async function resumeFlight(fl) {
@@ -581,6 +615,7 @@ afv.on('flight:event', (e) => {
     $('maxPhase').textContent = 'Phase : ' + e.name;
     maxSays(adviceFor(e.phase));
     startChecklist(e.phase);
+    if (e.phase === 4 && S.plan && !S.plan.demo) refreshPistes(true, false).then((P) => { if (P && P.arr && P.arr.say) setTimeout(() => maxSays(P.arr.say), 9000); });
     if (e.phase === 7) setTimeout(() => playPhaseAnnouncements(7), 12000); else playPhaseAnnouncements(e.phase);
   } else if (e.type === 'joined') {
     addAlert('Vol rejoint en cours de route', 'L’avion était déjà en vol : le suivi reprend directement en phase ' + PHASES[e.phase].toLowerCase() + '.');

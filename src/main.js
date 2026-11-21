@@ -12,6 +12,7 @@ const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
 const { MaxEcoute } = require('./ecoute');
 const { Proc } = require('./proc');
+const { Pistes } = require('./pistes');
 const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
@@ -568,6 +569,21 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('voice:preload', () => { if (store.settings.maxVoice && voice.status().installed) voiceProc.post({ warm: true }); return true; });
   ipcMain.handle('voice:remove', () => { voiceProc.stop(); return voice.remove(); });
+
+  // ---------- pistes en service (trafic réel, NOTAM, vent) ----------
+  const pistes = new Pistes(path.join(dataDir(), 'pistes'), (u, o) => require('electron').net.fetch(u, o));
+  const pisteCache = new Map();
+  ipcMain.handle('pistes:get', async (_e, plan, force) => {
+    if (!plan || !plan.origin || !plan.destination) return null;
+    const one = async (ap, metar, kind) => {
+      const key = ap.icao + kind;
+      const c = pisteCache.get(key);
+      if (!force && c && Date.now() - c.at < 5 * 60000) return c;
+      try { const d = await pistes.active(Object.assign({}, ap, { metar }), kind); pisteCache.set(key, d); return d; } catch (e) { return { icao: ap.icao, kind, rwy: null, error: String((e && e.message) || e) }; }
+    };
+    const [dep, arr] = await Promise.all([one(plan.origin, plan.metarDep, 'dep'), one(plan.destination, plan.metarArr, 'arr')]);
+    return { dep, arr };
+  });
 
   // ---------- écoute de Max (micro) ----------
   const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));

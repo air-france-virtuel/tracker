@@ -8,6 +8,22 @@ const num = (v, d = 0) => {
 const str = (v) => (typeof v === 'string' ? v.trim() : (v == null ? '' : String(v)));
 const asArray = (v) => (Array.isArray(v) ? v : (v ? [v] : []));
 
+// NOTAM du dossier SimBrief pour un aéroport : [{ text, from, to }] (dates en ms quand elles sont données)
+function notamsFor(j, icao, side) {
+  const mine = asArray((j[side] || {}).notam).map((n) => [n, true]);
+  const all = mine.concat(asArray((j.notams || {}).notamdrec).concat(asArray((j.notams || {}).notam)).map((n) => [n, false]));
+  const t = (v) => { const n = Date.parse(str(v)); return Number.isFinite(n) ? n : null; };
+  const out = [];
+  for (const [n, own] of all) {
+    if (!n || typeof n !== 'object') continue;
+    const loc = str(n.location_icao || n.icao_id || n.location_id || n.icao || '').toUpperCase();
+    if (loc ? loc !== icao : !own) continue;
+    const text = str(n.notam_raw || n.notam_text || n.text || n.raw || '');
+    if (text) out.push({ text: text.slice(0, 600), from: t(n.date_effective), to: t(n.date_expire) });
+  }
+  return out.slice(0, 200);
+}
+
 // Transforme la réponse JSON de SimBrief en un plan simple utilisé par le tracker.
 function parseOfp(j) {
   if (!j || typeof j !== 'object') throw new Error('Réponse SimBrief vide');
@@ -55,8 +71,8 @@ function parseOfp(j) {
     flightNumber: str(g.icao_airline) + str(g.flight_number),
     aircraft: str((j.aircraft || {}).icaocode),
     registration: str((j.aircraft || {}).reg),
-    origin: { icao: str(o.icao_code), name: str(o.name), lat: num(o.pos_lat), lon: num(o.pos_long), elev: num(o.elevation), rwy: str(o.plan_rwy) },
-    destination: { icao: str(d.icao_code), name: str(d.name), lat: num(d.pos_lat), lon: num(d.pos_long), elev: num(d.elevation), rwy: str(d.plan_rwy) },
+    origin: { icao: str(o.icao_code), name: str(o.name), lat: num(o.pos_lat), lon: num(o.pos_long), elev: num(o.elevation), rwy: str(o.plan_rwy), notams: notamsFor(j, str(o.icao_code).toUpperCase(), 'origin') },
+    destination: { icao: str(d.icao_code), name: str(d.name), lat: num(d.pos_lat), lon: num(d.pos_long), elev: num(d.elevation), rwy: str(d.plan_rwy), notams: notamsFor(j, str(d.icao_code).toUpperCase(), 'destination') },
     cruiseAlt: num(g.initial_altitude),
     stepString: str(g.stepclimb_string),
     route: str(g.route),

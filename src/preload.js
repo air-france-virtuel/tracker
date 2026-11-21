@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('afv', {
   voiceRemove: () => ipcRenderer.invoke('voice:remove'),
   voiceSpeak: (text, force) => ipcRenderer.invoke('voice:speak', text, !!force),
   voicePreload: () => ipcRenderer.invoke('voice:preload'),
+  getPistes: (plan, force) => ipcRenderer.invoke('pistes:get', plan, !!force),
   ecouteStatus: () => ipcRenderer.invoke('ecoute:status'),
   ecouteDownload: () => ipcRenderer.invoke('ecoute:download'),
   ecouteRemove: () => ipcRenderer.invoke('ecoute:remove'),

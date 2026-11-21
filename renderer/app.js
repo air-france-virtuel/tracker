@@ -512,6 +512,7 @@ async function startFlight(mode) {
   renderMaxVoiceHint();
   $('maxPhase').textContent = 'Phase : Boarding';
   S.maxHist = []; S.infos = {}; S.co = Callouts.create();
+  S.posCheck = mode !== 'demo';
   if (S.store && S.store.settings.maxOverlay !== false) await openMax();
   maxSays(adviceFor(0));
   startChecklist(0);
@@ -549,7 +550,7 @@ function resumeWhere() {
   if (S.phase != null && S.phase < 5 && S.lastTod && S.lastTod.distNm != null) parts.push(AskMax.answer('tod', ctx).text);
   maxSays(parts.join(' '));
 }
-$('btnStart').addEventListener('click', () => startFlight('sim'));
+$('btnStart').addEventListener('click', async () => { if (!S.simOk) { startFlight('sim'); return; } $('btnStart').disabled = true; try { await loadPlanForStart(); await startFlight('sim'); } finally { $('btnStart').disabled = false; } });
 $('btnDemo').addEventListener('click', () => startFlight('demo'));
 $('btnStop').addEventListener('click', async () => {
   await afv.stopFlight();
@@ -605,6 +606,12 @@ afv.on('flight:tick', (d) => {
   tickChecklist(t);
   flightInfos(t, d);
   if (S.resumeSay) resumeWhere();
+  // au début du vol : l'avion est-il bien à l'aéroport de départ du plan chargé ?
+  if (S.posCheck && S.plan && t.onGround && S.plan.origin.lat) {
+    S.posCheck = false;
+    const dnm = hav(t, S.plan.origin);
+    if (dnm > 10) { const txt = 'Attention : ton avion n’est pas à ' + S.plan.origin.icao + ', le départ du plan SimBrief chargé (' + S.plan.origin.icao + ' → ' + S.plan.destination.icao + '). Vérifie que tu as généré le bon vol.'; addAlert('Plan de vol', txt, 'red'); maxSays(txt); }
+  } else if (S.posCheck && t && !t.onGround) S.posCheck = false;
 });
 afv.on('flight:event', (e) => {
   if (!S.flight) return;
@@ -1952,7 +1959,35 @@ document.querySelector('.nsearch').addEventListener('click', () => { if ($('side
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if ($('side').classList.contains('mini')) setMini(false); $('navSearch').focus(); $('navSearch').select(); }
 });
-$('btnGoFly').addEventListener('click', () => showTab('vol'));
+// « Démarrer un vol » : un seul clic charge le dernier plan SimBrief puis démarre le suivi.
+let goFlyBusy = false;
+async function goFly() {
+  showTab('vol');
+  if (S.flight || goFlyBusy) return;
+  goFlyBusy = true;
+  try {
+    await loadPlanForStart();
+    if (!S.simOk) { $('startMsg').textContent = 'Plan prêt. Lance Microsoft Flight Simulator : le suivi démarrera quand tu cliqueras à nouveau sur « Démarrer un vol ».'; return; }
+    await startFlight('sim');
+  } finally { goFlyBusy = false; }
+}
+// Charge le dernier plan SimBrief (si le pilote a un identifiant SimBrief) ; garde l'ancien plan en cas d'échec.
+async function loadPlanForStart() {
+  if (!S.store || !S.store.settings.simbrief) return false;
+  $('sbMsg').textContent = 'Chargement de ton dernier plan SimBrief…';
+  try {
+    const p = await afv.loadSimbrief();
+    const changed = !S.plan || planKey(S.plan) !== planKey(p) || S.plan.callsign !== p.callsign;
+    S.plan = p;
+    $('sbMsg').textContent = 'Plan chargé : ' + (p.callsign ? p.callsign + ' · ' : '') + p.origin.icao + ' → ' + p.destination.icao + '.';
+    renderPlan(); renderDayNext(false); renderMissionHint();
+    return changed;
+  } catch (e) {
+    $('sbMsg').textContent = (S.plan ? 'Plan SimBrief non rechargé, je garde celui déjà chargé. ' : 'Plan SimBrief non chargé : le vol sera suivi sans plan. ') + String((e && e.message) || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+    return false;
+  }
+}
+$('btnGoFly').addEventListener('click', goFly);
 $('navBrief').addEventListener('click', () => { if (S.plan) showBriefing(S.plan, false); });
 $('liveCard').addEventListener('click', () => showTab('vol'));
 const sideCache = {};

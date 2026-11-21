@@ -117,7 +117,7 @@ async function openMax() { await afv.maxOpen(); }
 // Question posée à Max (panneau par-dessus le simu ou tracker) : réponse à voix haute avec les données du vol
 function askMax(q) {
   q = String(q || '').slice(0, 160);
-  const r = AskMax.answer(q, { t: S.lastT, plan: S.plan, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '', ck: S.ck, now: Date.now() });
+  const r = AskMax.answer(q, { t: S.lastT, plan: S.plan, route: S.route, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: S.flight && S.phase != null ? PHASES[S.phase] : '', ck: S.ck, now: Date.now() });
   S.maxHist = (S.maxHist || []).concat([{ time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), text: 'Toi : ' + q }]).slice(-4);
   maxStop(); maxSays(r.text);
 }

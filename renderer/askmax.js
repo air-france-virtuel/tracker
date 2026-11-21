@@ -22,9 +22,45 @@
     return 'Météo à ' + icao + ' : ' + (parts.length ? parts.join(', ') : metar) + '.';
   }
 
+  const tonnes = (kg) => fmt(kg / 1000, 1) + ' t';
+  // point de la route cité dans la question (« carburant à BAXOD », « on passe MTL quand ? »)
+  const COMMON = new Set(['LES', 'DES', 'UNE', 'QUE', 'QUI', 'EST', 'POUR', 'AVEC', 'DANS', 'SUR', 'TOC', 'TOD', 'SID', 'STAR', 'QNH', 'TAF', 'ETA', 'ETE', 'FUEL', 'MAX', 'VENT', 'PISTE', 'METEO', 'PLAN', 'ROUTE', 'BLOC', 'TEMPS', 'NIVEAU', 'QUAND', 'COMBIEN', 'QUEL', 'QUELLE', 'RESTE', 'PREVU', 'ALTITUDE', 'VITESSE', 'POINT', 'ARRIVEE', 'DEPART', 'CARBURANT']);
+  function pointIn(q, plan) {
+    const pts = (plan && plan.route_points) || []; if (!pts.length) return null;
+    const apts = new Set([plan.origin && plan.origin.icao, plan.destination && plan.destination.icao, plan.alternate && plan.alternate.icao].filter(Boolean));
+    const words = q.toUpperCase().split(/[^A-Z0-9]+/).filter((w) => w.length >= 2 && !COMMON.has(w) && !apts.has(w));
+    for (const w of words) { const p = pts.find((x) => x.ident.toUpperCase() === w); if (p) return p; }
+    if (/\btoc\b/.test(q)) return pts.find((x) => x.ident === 'TOC') || null;
+    if (/\btod\b/.test(q) && /(carburant|fuel|altitude|vent|passe|heure)/.test(q)) return pts.find((x) => x.ident === 'TOD') || null;
+    return null;
+  }
+  function pointInfo(p, c) {
+    const bits = [];
+    if (p.alt) bits.push('altitude prévue ' + (p.alt >= 18000 ? fl(p.alt) : fmt(p.alt) + ' pieds'));
+    if (p.fuelKg != null) bits.push('carburant prévu ' + tonnes(p.fuelKg));
+    if (p.windKt != null && p.windDir != null && p.alt > 1000) bits.push('vent prévu ' + String(Math.round(p.windDir)).padStart(3, '0') + '/' + Math.round(p.windKt) + ' nœuds');
+    if (p.oat != null && p.alt > 1000) bits.push('température ' + Math.round(p.oat) + ' degrés');
+    if (p.eltSec != null) bits.push('passage prévu ' + dur(p.eltSec / 60) + ' après le décollage');
+    const rp = c.route && c.route.pts && c.route.pts.find((x) => x.ident === p.ident);
+    const cum = rp && rp.cum != null ? rp.cum : p.cum;
+    if (c.ops && cum != null && c.ops.along != null) bits.push(cum > c.ops.along ? 'encore ' + fmt(cum - c.ops.along) + ' nautiques' : 'déjà passé');
+    return 'À ' + p.ident + (p.name && p.name !== p.ident ? ' (' + p.name.toLowerCase() + ')' : '') + (p.via && p.via !== 'DCT' ? ', sur ' + p.via : '') + ' : ' + (bits.join(', ') || 'pas d’info dans le plan') + '.';
+  }
+
   // Chaque sujet : mots-clés reconnus et réponse (les sujets précis d'abord : « météo à l'arrivée » est une question météo)
   const TOPICS = [
-    { id: 'aide', k: /\b(aide|help|que (peux|sais)|quoi demander|questions?)\b/, a: () => 'Tu peux me demander : temps restant, distance, heure d’arrivée, altitude, vitesse, carburant, TOD, pistes, météo au départ ou à l’arrivée, QNH, vent, SID, STAR, dégagement, prochain point, paliers, transition, phase du vol ou check-list.' },
+    { id: 'pointroute', k: { test: () => false }, a: () => '' }, // remplacé par la recherche d'un point de la route (voir answer)
+    { id: 'aide', k: /\b(aide|help|que (peux|sais)|quoi demander|questions?)\b/, a: () => 'Tu peux me demander : temps restant, distance, heure d’arrivée, altitude, vitesse, carburant (et le détail prévu : bloc, réserve, extra), TOD, route, pistes, météo et TAF, QNH, vent, SID, STAR, dégagement, cost index, temps de vol prévu, prochain point, paliers, transition, phase ou check-list. Tu peux aussi citer un point de la route, par exemple « carburant à BAXOD ».' },
+    { id: 'fuelplan', k: /\b(carburant|fuel|kerosene)\b.*\b(prevu|bloc|block|plan|depart|decollage|atterrissage|arrivee|reserve|extra|contingence|delestage|trip|detail)|\b(reserve finale|carburant de reserve|bloc carburant|block fuel|contingence|extra fuel|trip fuel)\b/, a: (c) => {
+      const F = c.plan && c.plan.fuel; if (!F) return 'Je n’ai pas le détail du carburant dans le plan.';
+      const parts = [['au bloc', F.ramp], ['roulage', F.taxi], ['délestage du vol', F.trip], ['contingence', F.contingency], ['dégagement', F.alternate], ['réserve finale', F.reserve], ['extra', F.extra], ['prévu à l’atterrissage', F.landing]].filter((x) => x[1] != null && x[1] > 0);
+      return parts.length ? 'Carburant SimBrief : ' + parts.map(([n, v]) => n + ' ' + tonnes(v)).join(', ') + '.' : 'Je n’ai pas le détail du carburant dans le plan.'; } },
+    { id: 'route', k: /\b(route|itineraire|plan de vol|par ou|airways?|voies? aeriennes?)\b/, a: (c) => c.plan && c.plan.route ? 'Route SimBrief : ' + c.plan.origin.icao + ' ' + c.plan.route + ' ' + c.plan.destination.icao + (c.plan.distanceNm ? ', ' + fmt(c.plan.distanceNm) + ' nautiques' : '') + '.' : 'Je n’ai pas la route dans le plan.' },
+    { id: 'taf', k: /\b(taf|prevision|prevue? (a|pour) l arrivee)\b/, a: (c) => !c.plan ? 'Pas de plan SimBrief.' : /(depart|decoll)/.test(c.q) ? (c.plan.tafDep ? 'TAF de ' + c.plan.origin.icao + ' : ' + c.plan.tafDep : 'Pas de TAF du départ dans le plan.') : (c.plan.tafArr ? 'TAF de ' + c.plan.destination.icao + ' : ' + c.plan.tafArr : 'Pas de TAF de l’arrivée dans le plan.') },
+    { id: 'duree', k: /\b(temps de vol prevu|duree prevue|ete|temps prevu|combien de temps (dure|prend) le vol|temps bloc)\b/, a: (c) => c.plan && c.plan.eteSec ? 'Temps de vol prévu : ' + dur(c.plan.eteSec / 60) + (c.plan.blockSec ? ', temps bloc ' + dur(c.plan.blockSec / 60) : '') + '.' : 'Je n’ai pas le temps de vol prévu.' },
+    { id: 'cost', k: /\b(cost index|ci)\b/, a: (c) => c.plan && (c.plan.costIndex || c.plan.cruiseProfile) ? 'Cost index ' + (c.plan.costIndex || c.plan.cruiseProfile.replace(/^CI\s*/i, '')) + '.' : 'Pas de cost index dans le plan.' },
+    { id: 'ventmoyen', k: /\b(vent moyen|composante|vent (de face|arriere|en route|en croisiere))\b/, a: (c) => c.plan && c.plan.avgWindComp != null ? 'Composante de vent moyenne prévue : ' + (c.plan.avgWindComp < 0 ? fmt(-c.plan.avgWindComp) + ' nœuds de face' : fmt(c.plan.avgWindComp) + ' nœuds arrière') + '.' : 'Pas de vent moyen dans le plan.' },
+    { id: 'avion', k: /\b(quel avion|immatriculation|immat|indicatif|callsign|numero de vol|type d avion)\b/, a: (c) => c.plan ? 'Vol ' + (c.plan.callsign || c.plan.flightNumber || '?') + ', ' + (c.plan.aircraft || 'avion inconnu') + (c.plan.registration ? ' immatriculé ' + c.plan.registration : '') + ', ' + c.plan.origin.icao + ' → ' + c.plan.destination.icao + '.' : 'Pas de plan SimBrief.' },
     { id: 'carburant', k: /\b(carburant|fuel|kerosene|essence|petrole|reservoir)/, a: (c) => {
       if (!c.t) return 'Je n’ai pas encore les données de l’avion.';
       let s = 'Il reste ' + fmt(c.t.fuelKg / 1000, 1) + ' tonnes à bord.';
@@ -59,6 +95,9 @@
     const q = norm(question).trim();
     if (!q) return { id: 'vide', text: 'Pose-moi une question sur le vol, par exemple « combien de temps reste-t-il ? ».' };
     const c = Object.assign({ now: Date.now() }, ctx || {}, { q });
+    // un point de la route est cité : Max lit la ligne du navlog SimBrief
+    const pt = pointIn(question, c.plan);
+    if (pt) return { id: 'pointroute', text: pointInfo(pt, c) };
     for (const t of TOPICS) {
       if (t.k.test(q)) { let text; try { text = t.a(c); } catch (e) { text = 'Je n’ai pas cette information pour le moment.'; } return { id: t.id, text }; }
     }

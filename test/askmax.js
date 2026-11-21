@@ -5,8 +5,12 @@ const { answer } = require('../renderer/askmax');
 const now = Date.parse('2026-11-21T12:00:00Z');
 const plan = { origin: { icao: 'LFPG', rwy: '27L' }, destination: { icao: 'LFMN', rwy: '04R' }, alternate: { icao: 'LFML', name: 'Marseille', rwy: '31R' },
   cruiseAlt: 35000, sid: 'OPAL5A', star: 'MERLU1A', transAlt: 5000, transLevel: 5000, steps: [{ alt: 37100, ident: 'BAXOD' }], pax: 162, zfwKg: 61200, towKg: 67900,
-  metarDep: 'LFPG 211130Z 27012G22KT 9999 FEW030 08/03 Q1018', metarArr: 'LFMN 211130Z 05006KT CAVOK 15/08 Q1021', tod: {} };
-const c = { t: { alt: 34980, vs: 0, ias: 275, gs: 460, fuelKg: 6100 }, plan, ops: { remaining: 212, eta: now + 28 * 60000, next: { ident: 'MTL', cum: 400 }, along: 360, fuelPlan: 6400 },
+  metarDep: 'LFPG 211130Z 27012G22KT 9999 FEW030 08/03 Q1018', metarArr: 'LFMN 211130Z 05006KT CAVOK 15/08 Q1021', tod: {},
+  route: 'OPAL5A OPALE UT225 MTL UM728 BAXOD MERLU1A', distanceNm: 372, eteSec: 4920, blockSec: 5700, costIndex: '30', avgWindComp: -12, callsign: 'LAT1234', aircraft: 'A320', registration: 'F-HLAT',
+  tafArr: 'TAF LFMN 211100Z 2112/2218 05008KT CAVOK', fuel: { ramp: 7100, taxi: 200, trip: 4300, contingency: 215, alternate: 900, reserve: 1100, extra: 385, landing: 2600 },
+  route_points: [{ ident: 'LFPG' }, { ident: 'OPALE', alt: 9000 }, { ident: 'MTL', alt: 35000, fuelKg: 5600, windDir: 268, windKt: 45, oat: -52, eltSec: 2700, name: 'MONTELIMAR', via: 'UT225' }, { ident: 'BAXOD', alt: 37100, fuelKg: 4900, eltSec: 3600 }, { ident: 'LFMN' }] };
+const route = { pts: [{ ident: 'MTL', cum: 400 }, { ident: 'BAXOD', cum: 460 }] };
+const c = { route, t: { alt: 34980, vs: 0, ias: 275, gs: 460, fuelKg: 6100 }, plan, ops: { remaining: 212, eta: now + 28 * 60000, next: { ident: 'MTL', cum: 400 }, along: 360, fuelPlan: 6400 },
   tod: { distNm: 95, minutes: 12 }, phase: 4, phaseName: 'Croisière', ck: { title: 'Croisière', items: [{ text: 'Niveau de croisière atteint', done: true }, { text: 'Arrivée préparée (ATIS, STAR, piste)', done: false }] }, now };
 const A = (q) => answer(q, c);
 const t = (q, id, re) => { const r = A(q); assert.strictEqual(r.id, id, q + ' → ' + r.id); if (re) assert.ok(re.test(r.text), q + ' : ' + r.text); };
@@ -32,6 +36,17 @@ t('qu est-ce qui reste dans la check-list', 'check', /il reste : arrivée prépa
 t('on en est où ?', 'phase', /croisière/);
 t('aide', 'aide', /temps restant/);
 t('merci Max', 'merci');
+t('carburant prévu à BAXOD ?', 'pointroute', /BAXOD.*FL370.*4,9 t.*1 h 00.*100 nautiques/);
+t('on passe mtl quand', 'pointroute', /MTL \(montelimar\), sur UT225.*vent prévu 268\/45.*-52 degrés.*45 minutes.*40 nautiques/);
+t('quelle est la route', 'route', /LFPG OPAL5A .* LFMN, 372 nautiques/);
+t('réserve finale', 'fuelplan', /au bloc 7,1 t.*réserve finale 1,1 t.*extra 0,4 t/);
+t('carburant prévu au départ', 'fuelplan', /au bloc 7,1 t/);
+t('TAF', 'taf', /TAF LFMN/);
+t('cost index', 'cost', /30/);
+t('temps de vol prévu', 'duree', /1 h 22.*1 h 35/);
+t('vent moyen', 'ventmoyen', /12 nœuds de face/);
+t('immatriculation', 'avion', /LAT1234, A320 immatriculé F-HLAT/);
+t('météo à LFMN', 'meteo', /LFMN/);
 t('blabla incompréhensible', 'inconnu', /pas compris/);
 // sans données : pas de plantage, réponse claire
 assert.ok(/plan SimBrief|données/.test(answer('carburant', {}).text + answer('temps restant', {}).text));

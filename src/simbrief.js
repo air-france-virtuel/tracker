@@ -27,7 +27,11 @@ function parseOfp(j) {
     stage: str(f.stage),
     via: str(f.via_airway),
     sidStar: str(f.is_sid_star) === '1',
-    fuelKg: f.fuel_plan_onboard != null ? Math.round(toKg(f.fuel_plan_onboard)) : null
+    fuelKg: f.fuel_plan_onboard != null ? Math.round(toKg(f.fuel_plan_onboard)) : null,
+    // pour les questions à Max sur le plan
+    windDir: f.wind_dir != null ? num(f.wind_dir) : null, windKt: f.wind_spd != null ? num(f.wind_spd) : null,
+    oat: f.oat != null ? num(f.oat) : null, eltSec: f.time_total != null ? num(f.time_total) : null,
+    name: str(f.name), freq: str(f.frequency)
   })).filter((f) => f.lat || f.lon);
 
   // Paliers de montée : en croisière, chaque point où l'altitude prévue augmente.
@@ -61,7 +65,7 @@ function parseOfp(j) {
     fuelPlanKg: Math.round(toKg((j.fuel || {}).plan_ramp)),
     metarDep: str((j.weather || {}).orig_metar),
     metarArr: str((j.weather || {}).dest_metar),
-    route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon, alt: f.alt, fuelKg: f.fuelKg })),
+    route_points: fixes.map((f) => ({ ident: f.ident, lat: f.lat, lon: f.lon, alt: f.alt, fuelKg: f.fuelKg, windDir: f.windDir, windKt: f.windKt, oat: f.oat, eltSec: f.eltSec, name: f.name, via: f.via })),
     toc, tod, steps,
     sid: sidFix ? sidFix.via : '', star: starFix ? starFix.via : '',
     climbProfile: str(g.climb_profile), cruiseProfile: str(g.cruise_profile), descentProfile: str(g.descent_profile),
@@ -74,7 +78,11 @@ function parseOfp(j) {
     costIndex: str(g.costindex),
     avgWindComp: num(g.avg_wind_comp),
     schedOut: num((j.times || {}).sched_out) ? num((j.times || {}).sched_out) * 1000 : null,
-    metarAltn: str((j.weather || {}).altn_metar)
+    metarAltn: str((j.weather || {}).altn_metar),
+    tafDep: str((j.weather || {}).orig_taf), tafArr: str((j.weather || {}).dest_taf),
+    blockSec: num((j.times || {}).est_block) || null,
+    fuel: (() => { const F = j.fuel || {}; const k = (v) => (v != null && v !== '' ? Math.round(toKg(v)) : null);
+      return { taxi: k(F.taxi), trip: k(F.enroute_burn), contingency: k(F.contingency), alternate: k(F.alternate_burn), reserve: k(F.reserve), extra: k(F.extra), minTakeoff: k(F.min_takeoff), takeoff: k(F.plan_takeoff), landing: k(F.plan_landing), ramp: k(F.plan_ramp) }; })()
   };
 }
 

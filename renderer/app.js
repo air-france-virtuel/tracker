@@ -580,6 +580,7 @@ async function autoHangar(rep) {
 }
 afv.on('flight:report', (r) => {
   showReport(r);
+  S.reports = [r].concat(S.reports || []);
   if (r.mode !== 'demo') setTimeout(() => autoHangar(r), 6000);
   if (r.mission) maxSays(r.mission.validated ? 'Bravo commandant ! Mission validée, ' + r.mission.points + ' points de plus pour ta carrière.' : 'Mission non validée cette fois. ' + (r.mission.reason || ''));
 });
@@ -1344,6 +1345,33 @@ setInterval(() => { if (S.plan2.company.length && $('tab-planning').classList.co
 const companyPlane = (reg) => (S.plan2.company || []).find((c) => c.reg === reg) || null;
 // vols que notre avion peut reprendre : exactement le même modèle (notre A320 « classique » : ni A319, ni A321, ni A320neo)
 const sameFamily = (type, ours) => String(type || '').toUpperCase() === String(ours || '').toUpperCase();
+// « Ma journée » : chaque vol avec son état (fait / prochain / à faire) et, pour le prochain, les 3 étapes à suivre
+function legDone(f) {
+  const today = new Date().toDateString();
+  return (S.reports || []).some((r) => r.mode !== 'demo' && r.from === f.from && r.to === f.to && new Date(r.date).toDateString() === today && (!f.depEst || Date.parse(r.date) > f.depEst - 3 * 3600000));
+}
+function myDayHtml(mine) {
+  if (!mine.length) return '<h3 class="caps">Ma journée</h3><p class="muted">Ajoute des vols avec l’étoile ☆, ou laisse Max te proposer une journée avec l’avion de la compagnie.</p>';
+  const own = companyPlane(S.plan2.myReg);
+  const num = (f) => own ? esc(f.number || f.callsign).replace(/^AF\s?/, 'LAT') : esc(f.number || f.callsign);
+  const nextI = mine.findIndex((f) => !legDone(f));
+  const cards = '<div class="mine">' + mine.map((f, i) => {
+    const done = legDone(f), next = i === nextI;
+    return '<div class="am' + (done ? ' done' : next ? ' next' : '') + '"><div class="row between"><span class="t">' + (i + 1) + '. ' + num(f) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</span>' +
+      '<span class="pst ' + (done ? 'arrive' : next ? 'en-vol' : '') + '">' + (done ? '✓ Fait' : next ? '▶ Prochain' : 'À faire') + '</span></div>' +
+      '<div class="muted small">' + (f.depEst ? 'Départ ' + hhZ(f.depEst) + ' · ' : '') + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>';
+  }).join('') + '</div>';
+  if (nextI < 0) return '<h3 class="caps">Ma journée</h3>' + cards + '<div class="day-guide"><b>✓ Journée terminée, bravo commandant !</b> Tes rapports sont dans « Mes vols ».</div>';
+  const f = mine[nextI];
+  const planOk = S.plan && S.plan.origin && S.plan.origin.icao === f.from && S.plan.destination && S.plan.destination.icao === f.to;
+  const guide = '<div class="day-guide"><div class="dg-h">▶ Prochain vol : <b>' + num(f) + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ prévu ' + hhZ(f.depEst) : '') + '</div>' +
+    '<ol class="dg-steps">' +
+    '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">1</span><div><b>Prépare le vol dans SimBrief</b><div class="muted small">Le formulaire s’ouvre déjà rempli' + (own ? ' (indicatif LAT, ' + esc(own.reg) + ')' : '') + ' : clique sur « Generate Flight » en bas de la page SimBrief.</div></div><a class="btn small red" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Ouvrir SimBrief</a></li>' +
+    '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">2</span><div><b>Charge le plan dans le tracker</b><div class="muted small">' + (planOk ? '✓ Plan ' + esc(f.from) + ' → ' + esc(f.to) + ' chargé.' : S.plan2.dayErr ? '<span style="color:var(--red)">' + esc(S.plan2.dayErr) + '</span>' : S.plan && S.plan.origin ? '<span style="color:var(--red)">Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + ' : génère d’abord ' + esc(f.from) + ' → ' + esc(f.to) + ' dans SimBrief.</span>' : 'Le tracker récupère le plan que tu viens de générer.') + '</div></div><button class="btn small ' + (planOk ? 'ghost' : 'red') + '" data-dayload>' + (planOk ? 'Recharger' : 'Charger le plan') + '</button></li>' +
+    '<li><span class="n">3</span><div><b>Lance le vol</b><div class="muted small">Dans MSFS, place ' + (own ? esc(own.reg) : 'ton avion') + ' à ' + esc(f.from) + ', puis « Démarrer le suivi ». Le vol se coche ✓ tout seul une fois au parking à ' + esc(f.to) + '.</div></div><button class="btn small ' + (planOk ? 'red' : 'ghost') + '" data-daygo>Aller au tracker</button></li>' +
+    '</ol></div>';
+  return '<h3 class="caps">Ma journée</h3>' + cards + guide;
+}
 function planSimbrief(f) {
   const own = companyPlane(S.plan2.myReg);
   const p = own
@@ -1367,8 +1395,7 @@ function renderPlanning() {
   $('planCats').innerHTML = cats.map(([k, l, n]) => '<button class="tag' + (S.plan2.cat === k ? ' on' : '') + '" data-pcat="' + k + '" aria-pressed="' + (S.plan2.cat === k) + '">' + l + ' · ' + n + '</button>').join('');
   const byKey = Object.fromEntries(all.map((f) => [f.key, f]));
   const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
-  $('planMine').innerHTML = '<h3 class="caps">Ma journée</h3>' + (mine.length ? '<div class="mine">' + mine.map((f, i) => '<div class="am"><div class="t">' + (i + 1) + '. ' + esc(f.number || f.callsign) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</div><div class="muted small">' + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <a href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a> · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>').join('') + '</div>'
-    : '<p class="muted">Ajoute des vols avec l’étoile ☆ pour préparer ta journée de vols.</p>') + maxDayHtml(all, mine);
+  $('planMine').innerHTML = myDayHtml(mine) + maxDayHtml(all, mine);
   renderRotation(all, d);
   const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
   $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
@@ -2223,4 +2250,15 @@ document.addEventListener('click', async (e) => {
   }
   const s2 = e.target.closest('[data-hgsel]');
   if (s2 && !e.target.closest('button')) { S.hg.sel = s2.dataset.hgsel; S.hg.msg = ''; renderHangar(); }
+});
+
+// Ma journée : charger le plan SimBrief / aller au tracker
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-dayload]')) {
+    const b = e.target.closest('[data-dayload]'); b.disabled = true; b.textContent = 'Chargement…';
+    S.plan2.dayErr = '';
+    try { S.plan = await afv.loadSimbrief(); renderPlan(); renderMissionHint(); } catch (err) { S.plan2.dayErr = String((err && err.message) || err).replace(/^Error:\s*/, ''); }
+    renderPlanning(); return;
+  }
+  if (e.target.closest('[data-daygo]')) showTab('vol');
 });

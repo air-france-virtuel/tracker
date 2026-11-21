@@ -107,7 +107,7 @@ function flightInfos(t, d) {
   }
   if (o && o.fuelPlan != null && !I.fuelLow && S.phase >= 3 && t.fuelKg < o.fuelPlan - 1500) {
     I.fuelLow = true;
-    maxSays('Attention, carburant : ' + fmt((o.fuelPlan - t.fuelKg) / 1000, 1) + ' tonne de moins que prévu sur SimBrief. Vérifie la consommation.');
+    maxSays('Attention, carburant : ' + fmt((o.fuelPlan - t.fuelKg) / 1000, 1) + ' tonne de moins que prévu. Vérifie la consommation.');
   }
   if (o && o.remaining != null && !I.arr50 && S.phase >= 5 && o.remaining < 50) { I.arr50 = true; maxSays('Plus que 50 nautiques avant ' + (S.plan ? S.plan.destination.icao : 'l’arrivée') + '. Prépare l’approche et la ' + rwy('destination') + '.'); }
 }
@@ -203,7 +203,7 @@ function adviceFor(p) {
   const dep = pl ? pl.origin.icao : 'le départ';
   const arr = pl ? pl.destination.icao : 'l’arrivée';
   const fl = pl && pl.cruiseAlt ? 'FL' + Math.round(pl.cruiseAlt / 100) : 'ton niveau de croisière';
-  const steps = pl && pl.steps && pl.steps.length ? ' Paliers prévus : ' + pl.steps.map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + s.ident).join(', ') + '.' : '';
+  const steps = pl && pl.steps && pl.steps.length ? ' Paliers prévus : ' + pl.steps.map((s) => 'FL' + Math.round(s.alt / 1000) * 10 + ' à ' + s.ident).join(', ') + '.' : '';
   const wDep = pl ? windOf(pl.metarDep) : '';
   const wArr = pl ? windOf(pl.metarArr) : '';
   const ft = (n) => n >= 10000 ? 'FL' + Math.round(n / 100) : fmt(n) + ' pieds';
@@ -212,14 +212,14 @@ function adviceFor(p) {
   }
   switch (p) {
     case 0: return 'Embarquement à ' + dep + '. Départ ' + rwy('origin') + (pl.sid ? ', SID ' + pl.sid : '') + (wDep ? ', ' + wDep : '') + '.' +
-      (pl.fuelPlanKg ? ' Carburant prévu par SimBrief : ' + fmt(pl.fuelPlanKg / 1000, 1) + ' tonnes.' : '') + (pl.zfwKg ? ' Masse sans carburant : ' + fmt(pl.zfwKg / 1000, 1) + ' tonnes.' : '');
+      (pl.fuelPlanKg ? ' Carburant prévu : ' + fmt(pl.fuelPlanKg / 1000, 1) + ' tonnes.' : '') + (pl.zfwKg ? ' Masse sans carburant : ' + fmt(pl.zfwKg / 1000, 1) + ' tonnes.' : '');
     case 1: return 'Roulage vers la ' + rwy('origin') + (pl.sid ? ', départ ' + pl.sid : '') + '.';
     case 2: return 'Décollage ' + rwy('origin') + (pl.sid ? ', SID ' + pl.sid : '') + '. Montée initiale vers ' + fl + '.';
-    case 3: return 'Montée vers ' + fl + '.' + (pl.climbProfile ? ' Profil de montée SimBrief : ' + sayProfile(pl.climbProfile) + '.' : '') +
+    case 3: return 'Montée vers ' + fl + '.' + (pl.climbProfile ? ' Profil de montée : ' + sayProfile(pl.climbProfile) + '.' : '') +
       (pl.transAlt ? ' Altitude de transition à ' + dep + ' : ' + ft(pl.transAlt) + ', passe en standard.' : '') + steps;
     case 4: return 'Croisière à ' + fl + (pl.cruiseProfile ? ', ' + pl.cruiseProfile.replace(/^CI\s*/i, 'cost index ') : '') + '.' + (pl.tod ? ' Je te préviens 10 minutes avant le TOD.' : '');
     case 5: return 'Descente vers ' + arr + (pl.star ? ', STAR ' + pl.star : '') + ', ' + rwy('destination') + (wArr ? ', ' + wArr : '') + '.' +
-      (pl.descentProfile ? ' Profil de descente SimBrief : ' + sayProfile(pl.descentProfile) + '.' : '') + (pl.transLevel ? ' Niveau de transition à ' + arr + ' : ' + ft(pl.transLevel) + ', passe au QNH.' : '');
+      (pl.descentProfile ? ' Profil de descente : ' + sayProfile(pl.descentProfile) + '.' : '') + (pl.transLevel ? ' Niveau de transition à ' + arr + ' : ' + ft(pl.transLevel) + ', passe au QNH.' : '');
     case 6: return 'Approche ' + rwy('destination') + ' à ' + arr + '.' + (pl.alternate && pl.alternate.icao ? ' Dégagement prévu : ' + pl.alternate.icao + '.' : '');
     case 7: return 'Atterrissage ' + rwy('destination') + ' à ' + arr + '.';
     case 8: return 'Au parking à ' + arr + ' : ton rapport de vol est enregistré.';
@@ -395,7 +395,7 @@ function renderPlan() {
   const box = $('planBox');
   if (!p) { box.hidden = true; return; }
   box.hidden = false;
-  const steps = p.steps && p.steps.length ? p.steps.map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + esc(s.ident)).join(', ') : 'aucun';
+  const steps = p.steps && p.steps.length ? p.steps.map((s) => 'FL' + Math.round(s.alt / 1000) * 10 + ' à ' + esc(s.ident)).join(', ') : 'aucun';
   box.innerHTML =
     '<div><div class="k">Vol</div><b>' + esc(p.callsign || '—') + '</b></div>' +
     '<div><div class="k">Appareil (SimBrief)</div><b>' + esc(p.aircraft || '—') + '</b></div>' +
@@ -535,8 +535,8 @@ afv.on('flight:event', (e) => {
     addAlert('TOD atteint', txt, 'red');
     maxSays(txt);
   } else if (e.type === 'step') {
-    const txt = 'Palier de montée : monte au FL' + Math.round(e.alt / 100) + ' à ' + e.ident + ', comme prévu sur SimBrief.';
-    addAlert('Palier SimBrief', txt);
+    const txt = 'Palier : monte au FL' + Math.round(e.alt / 1000) * 10 + ' à ' + e.ident + '.';
+    addAlert('Palier de montée', txt);
     maxSays(txt);
   } else if (e.type === 'landing') {
     const lvl = e.level === 'normal' ? '' : (e.level === 'dur' ? 'red' : 'red');
@@ -1626,7 +1626,7 @@ function showBriefing(pl, auto) {
   const ete = pl.eteSec ? Math.floor(pl.eteSec / 3600) + ' h ' + String(Math.round(pl.eteSec % 3600 / 60)).padStart(2, '0') : '';
   const fl = pl.cruiseAlt ? 'FL' + String(Math.round(pl.cruiseAlt / 100)).padStart(3, '0') : '';
   const t = (kg) => kg ? fmt(kg / 1000, 1) + ' t' : '';
-  const steps = (pl.steps || []).map((s) => 'FL' + Math.round(s.alt / 100) + ' à ' + s.ident).join(', ');
+  const steps = (pl.steps || []).map((s) => 'FL' + Math.round(s.alt / 1000) * 10 + ' à ' + s.ident).join(', ');
   const wind = pl.avgWindComp ? (pl.avgWindComp > 0 ? 'vent arrière moyen ' + pl.avgWindComp + ' kt' : 'vent de face moyen ' + (-pl.avgWindComp) + ' kt') : '';
   // conseils de Max selon la météo
   const tips = [];

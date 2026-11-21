@@ -21,7 +21,8 @@
     "fixed": [
       "Altitude : le tracker affiche maintenant la même altitude que l’écran de vol de l’avion (niveau de vol standard au-dessus de 18 000 ft, altitude au calage du pilote en dessous). Avant, il montrait l’altitude géométrique, qui pouvait différer de plus de 1 000 ft (ex. FL298 au lieu de FL310)",
       "Chat des pilotes : après une coupure de connexion, le message « cannot add postgres_changes callbacks… after subscribe() » restait affiché et « Réessayer » ne marchait pas. Le chat se reconnecte maintenant tout seul",
-      "Discord : dans la liste des membres, ton statut montre maintenant ce que tu fais (« Vol LAT010 · LFPG → RJTT » ou « Prépare son prochain vol ») au lieu du seul nom de l’appli ; « Les Ailes Tricolores » reste en titre de ton profil"
+      "Discord : dans la liste des membres, ton statut montre maintenant ce que tu fais (« Vol LAT010 · LFPG → RJTT » ou « Prépare son prochain vol ») au lieu du seul nom de l’appli ; « Les Ailes Tricolores » reste en titre de ton profil",
+      "Max ne répète plus « comme prévu sur SimBrief » à chaque palier : il dit simplement « Palier : monte au FL370 à BAXOD. » (niveau arrondi au niveau de vol réel)"
     ]
   },
   {

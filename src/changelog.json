@@ -22,7 +22,7 @@
       "Direction : terminer une maintenance, déplacer un avion, le retirer ou le remettre dans la flotte, ajouter un avion",
       "« Ma journée » plus claire : chaque vol affiche « ✓ Fait », « ▶ Prochain » ou « À faire » (il se coche tout seul une fois au parking), avec les indicatifs LAT quand tu voles avec l’avion de la compagnie. Pour le prochain vol, 3 étapes guidées : préparer dans SimBrief, charger le plan, lancer le vol",
       "Infos du jour : petite carte « Pilotes en vol » avec les pilotes de la compagnie en l’air en ce moment ; un clic l’ouvre en grand",
-      "Pilotes en vol : bouton « Faire le même vol dans SimBrief » sous chaque pilote, qui ouvre SimBrief avec le même départ, la même arrivée et le même avion (indicatif LAT)"
+      "Pilotes en vol : bouton « Copier dans SimBrief » sous chaque pilote, qui ouvre SimBrief avec le même départ, la même arrivée et le même avion (indicatif LAT)"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

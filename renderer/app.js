@@ -2102,7 +2102,7 @@ function renderLive() {
     '<span class="n">' + esc(x.cs || '—') + (x.mine ? '<br><span class="pst arrive">toi</span>' : '') + '</span>' +
     '<span><b>' + esc(x.pseudo) + '</b>' + (x.grade ? ' <span class="c">· ' + esc(x.grade) + '</span>' : '') + '<br><span class="c">' + (x.from ? esc(x.from) + ' → ' + esc(x.to || '?') : 'Route inconnue') + (x.ac ? ' · ' + esc(x.ac) : '') + (x.reg ? ' · ' + esc(x.reg) : '') + (x.ph != null ? ' · ' + esc(PH_LABEL[x.ph] || '') : '') + '</span></span>' +
     '<span class="a">' + alt(x) + '<br>' + (x.gs != null ? x.gs + ' kt' : '') + '</span></button>' +
-    (!x.mine && x.from && x.to ? '<div class="lc-act"><a href="' + esc(liveSimbrief(x)) + '" target="_blank" rel="noopener" title="Ouvre SimBrief avec le même départ, la même arrivée et le même avion">✈ Faire le même vol dans SimBrief</a><span class="muted small">' + esc(x.from) + ' → ' + esc(x.to) + (x.ac ? ' · ' + esc(x.ac) : '') + '</span></div>' : '') +
+    (!x.mine && x.from && x.to ? '<div class="lc-act"><a href="' + esc(liveSimbrief(x)) + '" target="_blank" rel="noopener" title="Ouvre SimBrief avec le même départ, la même arrivée et le même avion">✈ Copier dans SimBrief</a><span class="muted small">' + esc(x.from) + ' → ' + esc(x.to) + (x.ac ? ' · ' + esc(x.ac) : '') + '</span></div>' : '') +
     '</div>').join('') + '</div>'
     : '<div class="empty">' + (S.live.ready ? 'Personne ne vole en ce moment. Dès qu’un pilote lance un vol avec le tracker, il apparaît ici.' : 'Pour voir les autres pilotes, mets ton nom de pilote dans les Réglages.') + '</div>';
   renderLiveMap();

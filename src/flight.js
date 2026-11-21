@@ -67,6 +67,14 @@ class FlightEngine {
     // --- transitions de phase (toujours vers l'avant, sauf décollage interrompu et remise de gaz)
     if (ph === P.BOARDING) {
       if (this.hold('taxi', t.onGround && t.gs > 3, now, 3)) { s.blockOff = now; this.setPhase(ev, P.TAXI, now); }
+      // Suivi démarré (ou tracker relancé) avion déjà en vol : on rejoint directement la bonne phase.
+      else if (this.hold('enroute', air && t.agl > 300 && t.gs > 80, now, 5)) {
+        const cruise = this.plan && this.plan.cruiseAlt ? this.plan.cruiseAlt - 600 : 18000;
+        const p = t.agl < 3000 && t.vs < 300 ? P.APPROACH : t.vs < -500 ? P.DESCENT : t.vs > 500 && t.alt < cruise ? P.CLIMB : t.alt >= cruise || Math.abs(t.vs) <= 500 ? P.CRUISE : P.CLIMB;
+        this.flags.joinedInFlight = true;
+        ev.push({ type: 'joined', phase: p });
+        this.setPhase(ev, p, now);
+      }
     } else if (ph === P.TAXI) {
       if (this.hold('roll', t.onGround && t.gs > 40, now, 2)) this.setPhase(ev, P.TAKEOFF, now);
       if (air && t.agl > 50) { this.setPhase(ev, P.TAKEOFF, now); }

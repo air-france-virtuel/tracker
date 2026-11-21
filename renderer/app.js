@@ -582,6 +582,8 @@ afv.on('flight:event', (e) => {
     maxSays(adviceFor(e.phase));
     startChecklist(e.phase);
     if (e.phase === 7) setTimeout(() => playPhaseAnnouncements(7), 12000); else playPhaseAnnouncements(e.phase);
+  } else if (e.type === 'joined') {
+    addAlert('Vol rejoint en cours de route', 'L’avion était déjà en vol : le suivi reprend directement en phase ' + PHASES[e.phase].toLowerCase() + '.');
   } else if (e.type === 'warning') {
     addAlert('Max', e.text);
     maxSays(e.text);
@@ -1261,6 +1263,9 @@ function buildRoute(pl) {
   if (pts[pts.length - 1].ident !== pl.destination.icao) pts.push({ ident: pl.destination.icao, lat: pl.destination.lat, lon: pl.destination.lon, alt: pl.destination.elev || 0 });
   let cum = 0;
   pts.forEach((p, i) => { if (i) cum += hav(pts[i - 1], p); p.cum = cum; if (p.alt == null) p.alt = i === 0 || i === pts.length - 1 ? 0 : pl.cruiseAlt; });
+  // les aéroports de départ et d'arrivée à leur altitude réelle (SimBrief met parfois une altitude de procédure)
+  if (pl.origin.elev != null) pts[0].alt = pl.origin.elev;
+  if (pl.destination.elev != null) pts[pts.length - 1].alt = pl.destination.elev;
   return { pts, total: cum };
 }
 // Position projetée sur la route : distance parcourue et prochain point.

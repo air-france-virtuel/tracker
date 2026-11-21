@@ -66,4 +66,14 @@ assert.strictEqual(ofp.destination.rwy, '12');
 assert.strictEqual(ofp.sid, 'OPAL5A'); assert.strictEqual(ofp.star, 'BOREL1A');
 assert.strictEqual(ofp.climbProfile, '250/300/78'); assert.strictEqual(ofp.transAlt, 5000); assert.strictEqual(ofp.transLevel, 4000);
 console.log('SimBrief OK :', ofp.callsign, ofp.origin.icao, '->', ofp.destination.icao, 'palier', ofp.steps[0].ident);
+// suivi démarré avion déjà en vol : la phase est rejointe directement (plus de « Boarding » à 4 000 ft)
+{
+  const { FlightEngine: FE } = require('../src/flight');
+  const join = (t, plan) => { const e = new FE({ plan }); for (let i = 0; i < 8; i++) e.update(Object.assign({ lat: 41.4, lon: 2.1, onGround: false, fuelKg: 3000, engOn: true }, t), 100 + i); return e.phase; };
+  assert.strictEqual(join({ alt: 4190, agl: 2600, gs: 180, vs: -700 }), 6, 'approche');
+  assert.strictEqual(join({ alt: 15000, agl: 14990, gs: 300, vs: -1800 }), 5, 'descente');
+  assert.strictEqual(join({ alt: 37000, agl: 36990, gs: 450, vs: 0 }, { cruiseAlt: 37000 }), 4, 'croisière');
+  assert.strictEqual(join({ alt: 12000, agl: 11990, gs: 300, vs: 2000 }, { cruiseAlt: 37000 }), 3, 'montée');
+  assert.strictEqual(join({ alt: 400, agl: 0, gs: 0, vs: 0, onGround: true }), 0, 'au sol : reste en boarding');
+}
 console.log('TOUS LES TESTS PASSENT');

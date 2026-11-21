@@ -65,6 +65,12 @@
           </div>
           <div class="card" id="dayFlight"></div>
         </div>
+        <div class="card live-mini">
+          <div class="row between"><div><h2 style="margin:0">Pilotes en vol</h2><div class="muted small" id="liveMiniSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>
+            <button class="btn small ghost" data-tab-open="ligne">Ouvrir la carte</button></div>
+          <div class="live-mini-wrap"><svg id="liveMini" viewBox="0 0 360 150" role="img" aria-label="Carte des pilotes de la compagnie en vol" data-tab-open="ligne"></svg><div class="live-mini-empty" id="liveMiniEmpty" hidden>Aucun pilote en vol pour le moment</div></div>
+          <div class="live-mini-list" id="liveMiniList"></div>
+        </div>
         <div class="cards2">
           <div class="card"><h2>Bonus et événements</h2><div id="infoEvents"></div></div>
           <div class="card"><h2>Alertes</h2><div id="infoAlerts"></div></div>

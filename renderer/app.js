@@ -2055,7 +2055,34 @@ async function loadLive() {
   renderLive();
 }
 afv.on('live:list', (l) => { Object.assign(S.live, l); renderLive(); });
+// Petite carte « Pilotes en vol » sur la page Infos du jour (vue Europe, sans fond satellite)
+function renderLiveMini() {
+  const svg = $('liveMini'); if (!svg) return;
+  mapSkeleton(svg);
+  const L = S.live.list || [];
+  // cadrage : l'Europe quand personne ne vole, sinon les avions
+  let [x, y, w, h] = VIEWS.europe;
+  if (L.length) {
+    const xs = L.map((p) => MX(p.lon)), ys = L.map((p) => MY(p.lat));
+    // cadré sur les avions (au moins la taille de la France), sans couper personne
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    w = Math.max(28, (x1 - x0) * 1.4 + 8); h = Math.max(12, (y1 - y0) * 1.4 + 6);
+    x = (x0 + x1) / 2 - w / 2; y = (y0 + y1) / 2 - h / 2;
+  }
+  const ratio = (svg.clientHeight || 260) / (svg.clientWidth || 1000);
+  const hh = Math.max(h, w * ratio), ww = hh / ratio;
+  const vb = [x + w / 2 - ww / 2, y + h / 2 - hh / 2, ww, hh];
+  svg.setAttribute('viewBox', vb.join(' '));
+  const k = Math.pow(ww / 360, 0.6);
+  svg.querySelector('.fg').innerHTML = L.map((p) => '<g transform="translate(' + MX(p.lon).toFixed(3) + ' ' + MY(p.lat).toFixed(3) + ')"><title>' + esc(p.pseudo + ' · ' + (p.cs || '')) + '</title>' +
+    '<g transform="rotate(' + (p.hdg || 0) + ') scale(' + (0.5 * k) + ')"><path d="' + PLANE + '" style="fill:' + (p.mine ? '#C8102E' : '#0A1E4A') + ';stroke:#fff;stroke-width:.6"/></g>' +
+    '<text x="' + (2.8 * k) + '" y="' + (-1.8 * k) + '" font-size="' + (3 * k) + '" font-weight="700" fill="#0A1E4A" paint-order="stroke" stroke="#fff" stroke-width="' + (0.7 * k) + '">' + esc(p.pseudo) + '</text></g>').join('');
+  $('liveMiniEmpty').hidden = !!L.length;
+  $('liveMiniSub').textContent = S.live.error ? 'Connexion : ' + S.live.error : L.length ? L.length + ' pilote' + (L.length > 1 ? 's' : '') + ' en vol en ce moment' : 'Les pilotes des Ailes Tricolores en vol en ce moment';
+  $('liveMiniList').innerHTML = L.slice(0, 4).map((p) => '<span class="lm"><b>' + esc(p.pseudo) + '</b> ' + esc(p.cs || '') + (p.from ? ' · ' + esc(p.from) + ' → ' + esc(p.to || '?') : '') + (p.alt != null ? ' · ' + (p.alt >= 18000 ? 'FL' + Math.round(p.alt / 100) : fmt(p.alt) + ' ft') : '') + '</span>').join('') + (L.length > 4 ? '<span class="lm">+' + (L.length - 4) + ' autres</span>' : '');
+}
 function renderLive() {
+  renderLiveMini();
   const L = S.live.list || [];
   const b = $('liveBadge'); if (b) { const n = L.filter((x) => !x.mine).length; b.hidden = !n; b.textContent = n; }
   if (!$('tab-ligne').classList.contains('on')) return;
@@ -2262,3 +2289,5 @@ document.addEventListener('click', async (e) => {
   }
   if (e.target.closest('[data-daygo]')) showTab('vol');
 });
+
+document.addEventListener('click', (e) => { const o = e.target.closest('[data-tab-open]'); if (o) showTab(o.dataset.tabOpen); });

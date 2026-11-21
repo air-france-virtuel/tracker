@@ -30,7 +30,8 @@
       "Check-lists plus claires : les points techniques ont une petite explication sous leur nom (ex. « Météo (ATIS) et autorisation de départ (clairance) » : quoi écouter et quoi demander au contrôleur)",
       "Check-lists : « Annonce d’embarquement » et « Annonce de descente » se cochent toutes seules quand l’annonce passe (jouée par le tracker ou par Universal Announcer)",
       "Parle à Max au micro : clique sur le bouton micro de son panneau, pose ta question à voix haute, il te répond. La reconnaissance vocale fonctionne sur ton PC, sans Internet (téléchargement unique d’environ 640 Mo au premier usage). Il comprend l’alphabet aéronautique : « Lima Fox Papa Golf » devient LFPG",
-      "Arrivé à la gate, si le vol fait partie de « Ma journée », Max te propose de préparer le vol suivant : il ouvre SimBrief déjà rempli et charge le plan tout seul dès que tu as cliqué sur « Generate Flight » (ou tout de suite s’il est déjà prêt). Tu peux répondre avec les boutons ou au micro (« oui », « plus tard »)"
+      "Arrivé à la gate, si le vol fait partie de « Ma journée », Max te propose de préparer le vol suivant : il ouvre SimBrief déjà rempli et charge le plan tout seul dès que tu as cliqué sur « Generate Flight » (ou tout de suite s’il est déjà prêt). Tu peux répondre avec les boutons ou au micro (« oui », « plus tard »)",
+      "Tracker fermé en plein vol ? À la réouverture, le vol reprend là où il en était : phase, check-list, statistiques et carte. Max te dit où tu en es (distance restante, prochain point, TOD)"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",
@@ -45,7 +46,8 @@
       "Planning : si le programme des vols n’est pas encore celui du jour, Max le dit clairement au lieu de « je ne trouve plus de vol ». Le programme est maintenant récupéré jusqu’à trois fois chaque matin",
       "Installation : les conditions d’utilisation s’affichent avec les bons accents (avant : « crÃ©Ã©e » au lieu de « créée »)",
       "Questions à Max : « météo à LFPG » donne bien la météo de l’aéroport cité (départ, arrivée ou dégagement, par son code ou sa ville), et plus celle de l’arrivée par défaut",
-      "Max : « combien de temps avant mon TOD ? » donne bien le temps jusqu’au début de descente, et non plus le temps jusqu’à l’arrivée"
+      "Max : « combien de temps avant mon TOD ? » donne bien le temps jusqu’au début de descente, et non plus le temps jusqu’à l’arrivée",
+      "Le tracker prend beaucoup moins de mémoire en vol : la voix et l’écoute de Max tournent à part et se ferment toutes seules quand Max ne parle plus depuis quelques minutes (la phrase suivante met une à deux secondes de plus à venir)"
     ]
   },
   {

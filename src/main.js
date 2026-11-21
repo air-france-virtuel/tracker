@@ -11,6 +11,7 @@ const { DemoFlight, demoPlan } = require('./demo');
 const { autoUpdater } = require('electron-updater');
 const { MaxVoice } = require('./voice');
 const { MaxEcoute } = require('./ecoute');
+const { Proc } = require('./proc');
 const career = require('./career');
 const real = require('./realflights');
 const newsMod = require('./news');
@@ -106,6 +107,7 @@ function handleTelemetry(t) {
     send('flight:event', e);
     if (e.type === 'phase' && e.phase === PHASES.length - 1) finishFlight();
   }
+  saveFlightState(evs.some((e) => e.type === 'phase'));
   if (live && !flight.demo && flight.mode !== 'demo') {
     const p = flight.plan || {};
     live.update({ cs: p.callsign || '', from: (p.origin || {}).icao || '', to: (p.destination || {}).icao || '', ac: p.aircraft || '', reg: flight.aircraft || p.registration || '',
@@ -116,6 +118,32 @@ function handleTelemetry(t) {
     lastSent = now;
     send('flight:tick', { t, phase: flight.engine.phase, tod: flight.engine.todInfo, stats: flight.engine.report() });
   }
+}
+
+// ---------- vol en cours gardé sur le disque : si le tracker est fermé en plein vol, il reprend là où il en était ----------
+const resumeFile = () => path.join(dataDir(), 'vol-en-cours.json');
+const RESUME_MAX_MS = 12 * 3600000;
+let lastResumeSave = 0;
+function saveFlightState(force) {
+  if (!flight || flight.finished || flight.demo || flight.mode === 'demo') return;
+  const now = Date.now();
+  if (!force && now - lastResumeSave < 15000) return;
+  lastResumeSave = now;
+  const e = flight.engine;
+  const state = { at: now, version: VERSION, mode: flight.mode, plan: flight.plan, aircraft: flight.aircraft, missionId: flight.missionId, title: flight.title || '', log: flight.log.slice(-200),
+    engine: { phase: e.phase, flags: e.flags, warnAt: e.warnAt, last: e.last, lastAirborne: e.lastAirborne, stats: e.stats, todInfo: e.todInfo } };
+  try { fs.writeFileSync(resumeFile() + '.tmp', JSON.stringify(state)); fs.renameSync(resumeFile() + '.tmp', resumeFile()); } catch (err) { /* disque plein ou protégé : tant pis */ }
+}
+function clearFlightState() { try { fs.unlinkSync(resumeFile()); } catch (e) { /* rien à effacer */ } }
+function restoreFlightState() {
+  let st = null;
+  try { st = JSON.parse(fs.readFileSync(resumeFile(), 'utf8')); } catch (e) { return false; }
+  if (!st || st.mode === 'demo' || !st.engine || Date.now() - st.at > RESUME_MAX_MS || st.engine.phase >= PHASES.length - 1) { clearFlightState(); return false; }
+  const engine = new FlightEngine({ plan: st.plan, hardLanding: store.settings.hard1, veryHardLanding: store.settings.hard2 });
+  Object.assign(engine, st.engine, { since: {} });
+  flight = { mode: st.mode, plan: st.plan, aircraft: st.aircraft || '', log: st.log || [], missionId: st.missionId || null, title: st.title, engine, resumed: true };
+  flight.log.push({ time: new Date().toISOString(), type: 'resume', text: 'Tracker relancé : vol repris' });
+  return true;
 }
 
 function onLanding(e) {
@@ -134,6 +162,7 @@ function onLanding(e) {
 function finishFlight() {
   if (!flight || flight.finished) return;
   flight.finished = true;
+  clearFlightState();
   if (live) live.update(null);
   const p = flight.plan;
   const rep = Object.assign({
@@ -169,8 +198,9 @@ function finishFlight() {
   if (rep.mission) send('career:changed', careerState());
 }
 
-function stopFlight() {
+function stopFlight(keep) {
   if (flight && flight.timer) clearInterval(flight.timer);
+  if (keep) saveFlightState(true); else clearFlightState();
   if (live) live.update(null);
   flight = null;
 }
@@ -333,6 +363,7 @@ else app.on('second-instance', () => showMain());
 
 app.whenReady().then(() => {
   loadStore();
+  restoreFlightState();
   checkPendingUpdate();
   refreshFleet();
 
@@ -528,13 +559,15 @@ app.whenReady().then(() => {
   voice.on('status', (s) => send('voice:status', s));
   ipcMain.handle('voice:status', () => voice.status());
   ipcMain.handle('voice:download', () => voice.download());
-  ipcMain.handle('voice:remove', () => voice.remove());
+  // La voix tourne dans son propre processus, fermé après 3 minutes sans parler : la mémoire est rendue à Windows.
+  const voiceProc = new Proc(path.join(__dirname, 'voice-worker.js'), [path.join(dataDir(), 'voix')], 3 * 60000, 'Voix de Max');
   ipcMain.handle('voice:speak', async (_e, text, force) => {
     if (!force && !store.settings.maxVoice) return null;
     if (!voice.status().installed) return null;
-    try { return await voice.speak(text); } catch (e) { console.error('voix de Max :', e); return null; }
+    try { return await voiceProc.call({ text: String(text || '').slice(0, 600) }); } catch (e) { console.error('voix de Max :', e); return null; }
   });
-  ipcMain.handle('voice:preload', () => { if (store.settings.maxVoice && voice.status().installed) voice.load().catch(() => {}); return true; });
+  ipcMain.handle('voice:preload', () => { if (store.settings.maxVoice && voice.status().installed) voiceProc.post({ warm: true }); return true; });
+  ipcMain.handle('voice:remove', () => { voiceProc.stop(); return voice.remove(); });
 
   // ---------- écoute de Max (micro) ----------
   const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));
@@ -546,17 +579,18 @@ app.whenReady().then(() => {
   ipcMain.handle('ecoute:text', async (_e, samples, rate) => {
     try { return { text: await ecoute.recognize(samples, rate) }; } catch (e) { return { error: String((e && e.message) || e) }; }
   });
-  app.on('will-quit', () => ecoute.stop());
+  app.on('will-quit', () => { ecoute.stop(); voiceProc.stop(); });
+  app.on('before-quit', () => saveFlightState(true));
 
   ipcMain.handle('app:init', () => {
     refreshFleet();
-    return { version: VERSION, showNews: !!store.lastSeenVersion && store.lastSeenVersion !== VERSION, firstRun: !store.lastSeenVersion, store, reports: listReports(), sim: { connected: sim.connected }, flight: flight ? { phase: flight.engine.phase, plan: flight.plan, mode: flight.mode } : null };
+    return { version: VERSION, showNews: !!store.lastSeenVersion && store.lastSeenVersion !== VERSION, firstRun: !store.lastSeenVersion, store, reports: listReports(), sim: { connected: sim.connected }, flight: flight ? { phase: flight.engine.phase, plan: flight.plan, mode: flight.mode, aircraft: flight.aircraft, missionId: flight.missionId, resumed: !!flight.resumed } : null };
   });
   ipcMain.handle('update:get', () => upd);
   ipcMain.handle('update:check', () => { if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {}); return upd; });
   ipcMain.handle('update:install', () => {
     if (upd.state === 'ready') {
-      stopFlight(); updInstalling = true;
+      stopFlight(true); updInstalling = true;
       setImmediate(() => { try { autoUpdater.quitAndInstall(true, true); } catch (e) { updInstalling = false; upd.state = 'blocked'; upd.failed = { version: upd.version }; upd.error = String((e && e.message) || e).slice(0, 300); updSend(); } });
     }
     return true;

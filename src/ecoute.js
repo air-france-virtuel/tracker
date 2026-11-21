@@ -9,6 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { EventEmitter } = require('events');
 const { Readable } = require('stream');
+const { Proc } = require('./proc');
 
 const ARCHIVE_URL = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2';
 const ARCHIVE_SIZE = 639387718;
@@ -64,9 +65,6 @@ class MaxEcoute extends EventEmitter {
     this.dir = dir;
     this.workerPath = workerPath || path.join(__dirname, 'ecoute-worker.js');
     this.downloading = null;
-    this.worker = null;
-    this.jobs = new Map();
-    this.nextId = 1;
     this.state = { installed: this.isInstalled(), downloading: false, percent: 0, error: '' };
   }
   isInstalled() { return Object.keys(FILES).every((f) => fs.existsSync(path.join(this.dir, f))); }
@@ -109,45 +107,17 @@ class MaxEcoute extends EventEmitter {
     return this.status();
   }
 
-  // Processus de reconnaissance : démarré au premier besoin, gardé ouvert ensuite (le modèle reste chargé).
-  start() {
-    if (this.worker) return this.worker;
-    let w;
-    try {
-      const { utilityProcess } = require('electron');
-      w = utilityProcess.fork(this.workerPath, [this.dir], { serviceName: 'Écoute de Max' });
-      w.send = w.postMessage.bind(w);
-    } catch (e) {
-      w = require('child_process').fork(this.workerPath, [this.dir], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });
-    }
-    w.on('message', (m) => {
-      const j = m && this.jobs.get(m.id);
-      if (!j) return;
-      this.jobs.delete(m.id);
-      if (m.error) j.reject(new Error(m.error)); else j.resolve(m.text || '');
-    });
-    w.on('exit', () => {
-      if (this.worker === w) this.worker = null;
-      for (const j of this.jobs.values()) j.reject(new Error('L’écoute de Max s’est arrêtée. Réessaie.'));
-      this.jobs.clear();
-    });
-    this.worker = w;
-    return w;
-  }
-  // Charge le modèle pendant que le pilote parle, pour répondre plus vite.
-  warm() { if (this.isInstalled()) this.start().send({ warm: true }); }
-  stop() { if (this.worker) { try { this.worker.kill(); } catch (e) { /* rien */ } this.worker = null; } }
+  // Processus de reconnaissance (environ 400 Mo) : démarré au premier besoin, fermé après 2 minutes sans parler à Max.
+  get proc() { if (!this._proc) this._proc = new Proc(this.workerPath, [this.dir], 2 * 60000, 'Écoute de Max'); return this._proc; }
+  warm() { if (this.isInstalled()) this.proc.post({ warm: true }); }
+  stop() { if (this._proc) this._proc.stop(); }
 
   // samples : Float32Array (ou tableau) de son mono à 16 kHz. Renvoie le texte entendu.
-  recognize(samples, sampleRate) {
-    if (!this.isInstalled()) return Promise.reject(new Error('L’écoute de Max n’est pas installée.'));
+  async recognize(samples, sampleRate) {
+    if (!this.isInstalled()) throw new Error('L’écoute de Max n’est pas installée.');
     const a = samples instanceof Float32Array ? samples : Float32Array.from(samples || []);
-    if (a.length < 1600) return Promise.resolve('');
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      this.jobs.set(id, { resolve, reject });
-      this.start().send({ id, samples: Array.from(a), sampleRate: sampleRate || 16000 });
-    });
+    if (a.length < 1600) return '';
+    return (await this.proc.call({ samples: Array.from(a), sampleRate: sampleRate || 16000 })) || '';
   }
 }
 

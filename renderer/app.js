@@ -484,6 +484,37 @@ async function startFlight(mode) {
   startChecklist(0);
   playPhaseAnnouncements(0);
 }
+// Le tracker a été fermé en plein vol (ou la fenêtre rouverte) : on reprend le vol là où il en était.
+async function resumeFlight(fl) {
+  S.plan = fl.plan || S.plan;
+  S.flight = { mode: fl.mode, aircraft: fl.aircraft };
+  S.phase = fl.phase; S.trail = []; queue.length = 0;
+  opsReset();
+  $('alerts').innerHTML = '';
+  $('prep').hidden = true; $('live').hidden = false; $('btnStop').hidden = false;
+  const curM = fl.missionId && S.career ? S.career.missions.find((m) => m.id === fl.missionId) : null;
+  $('flightSub').textContent = (curM ? 'Mission : ' + curM.title + ' · ' : '') + (S.plan ? (S.plan.callsign || '') + ' · ' + S.plan.origin.icao + ' → ' + S.plan.destination.icao : 'Vol sans plan SimBrief') + (fl.aircraft ? ' · ' + fl.aircraft : '');
+  S.lastPos = null;
+  renderPhases(fl.phase); renderMap(null); renderTod(null, fl.phase);
+  afv.voicePreload();
+  renderMaxVoiceHint();
+  $('maxPhase').textContent = 'Phase : ' + PHASES[fl.phase];
+  S.maxHist = []; S.co = Callouts.create();
+  if (S.store && S.store.settings.maxOverlay !== false) await openMax();
+  startChecklist(fl.phase);
+  S.resumeSay = Date.now();
+  maxSays('Je reprends le vol' + (S.plan ? ' ' + S.plan.origin.icao + ' vers ' + S.plan.destination.icao : '') + ' là où on en était : phase ' + PHASES[fl.phase].toLowerCase() + '.' + (S.simOk ? '' : ' J’attends que le simulateur soit reconnecté.'));
+}
+// Dès que la position revient du simulateur, Max dit où on en est.
+function resumeWhere() {
+  if (!S.resumeSay || !S.ops) return;
+  S.resumeSay = 0;
+  const ctx = { t: S.lastT, plan: S.plan, route: S.route, ops: S.ops, tod: S.phase != null && S.phase < 5 ? S.lastTod : null, phase: S.phase, phaseName: PHASES[S.phase], ck: S.ck, now: Date.now() };
+  const parts = [AskMax.answer('distance', ctx).text];
+  if (S.ops.next) parts.push(AskMax.answer('prochain point', ctx).text);
+  if (S.phase != null && S.phase < 5 && S.lastTod && S.lastTod.distNm != null) parts.push(AskMax.answer('tod', ctx).text);
+  maxSays(parts.join(' '));
+}
 $('btnStart').addEventListener('click', () => startFlight('sim'));
 $('btnDemo').addEventListener('click', () => startFlight('demo'));
 $('btnStop').addEventListener('click', async () => {
@@ -539,6 +570,7 @@ afv.on('flight:tick', (d) => {
   tickCallouts(t);
   tickChecklist(t);
   flightInfos(t, d);
+  if (S.resumeSay) resumeWhere();
 });
 afv.on('flight:event', (e) => {
   if (!S.flight) return;
@@ -889,6 +921,7 @@ function renderAnnHint() { $('annHint').hidden = !!S.uaFound; }
   renderAircraftSelect(); renderFleet(); renderSounds(); renderFb(); renderSettings(); renderPhases(null); renderAnnHint();
   S.voice = await afv.voiceStatus(); renderVoice(); renderMaxVoiceHint();
   S.infos = await afv.getInfos(); await refreshCareer(); loadMetar();
+  if (d.flight && d.flight.mode !== 'demo' && d.flight.phase != null) resumeFlight(d.flight);
   UPD = await afv.getUpdate(); renderUpdate(); if (UPD.failed) updFailPopup(); else updPopup();
   const cl = await renderChangelog();
   const now = cl.find((v) => v.version === d.version);

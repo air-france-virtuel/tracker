@@ -16,13 +16,14 @@
       "« Route entière » ou « Suivre l’avion » recentre la carte",
       "Fin du vol : l’avion de la compagnie rentre au hangar tout seul et redevient disponible pour les autres pilotes, sauf si un autre vol de « Ma journée » part de l’aéroport d’arrivée (Max le garde alors pour ce vol)",
       "Maintenance : en rentrant au hangar après un vol, l’avion de la compagnie passe en maintenance (30 min + 10 min par heure de vol, 3 h au plus). Pendant ce temps personne ne peut le prendre ; le planning affiche « en maintenance jusqu’à … »",
-      "Nouvelle rubrique « Hangar de la compagnie » : chaque avion avec sa livrée, son état en direct (disponible, piloté par…, en maintenance avec compte à rebours), l’aéroport où il se trouve, son état d’usure en %, ses heures, ses vols, la prochaine grande visite et son historique (vols et maintenances)",
+      "Nouvelle rubrique « Hangar » (la flotte de la compagnie) : chaque avion avec sa livrée, son état en direct (disponible, piloté par…, en maintenance avec compte à rebours), l’aéroport où il se trouve, son état d’usure en %, ses heures, ses vols, la prochaine grande visite et son historique (vols et maintenances)",
       "Usure et maintenance réalistes : 1 % d’usure par heure de vol, 5 % de plus et 30 min de maintenance en plus après un atterrissage dur, +8 % à chaque maintenance, avion cloué au sol sous 60 %, grande visite de 3 h toutes les 150 h",
       "L’avion part de l’aéroport où il a atterri : Max compose la journée au départ de cet aéroport",
       "Direction : terminer une maintenance, déplacer un avion, le retirer ou le remettre dans la flotte, ajouter un avion"
     ],
     "removed": [
-      "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0"
+      "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",
+      "L’ancienne rubrique « Hangar & flotte » (ta liste personnelle d’avions) est remplacée par le Hangar de la compagnie ; le choix « Appareil de la flotte » disparaît de la préparation du vol"
     ],
     "fixed": [
       "Altitude : le tracker affiche maintenant la même altitude que l’écran de vol de l’avion (niveau de vol standard au-dessus de 18 000 ft, altitude au calage du pilote en dessous). Avant, il montrait l’altitude géométrique, qui pouvait différer de plus de 1 000 ft (ex. FL298 au lieu de FL310)",

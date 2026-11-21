@@ -418,7 +418,6 @@ function renderAircraftSelect() {
     opts.push('<option value="' + esc(a.reg) + '"' + (busy ? ' disabled' : '') + '>' + esc(a.reg) + ' · ' + esc(a.type) + (busy ? ' (au hangar)' : '') + '</option>');
   });
   sel.innerHTML = opts.join('');
-  $('fleetHint').textContent = fleet.length ? '' : 'Ta flotte est vide : ajoute tes avions dans « Hangar & flotte ».';
 }
 
 $('btnSimbrief').addEventListener('click', async () => {
@@ -598,6 +597,7 @@ $('btnReportFb').addEventListener('click', () => { $('reportModal').hidden = tru
 
 // ---------------- hangar ----------------
 function renderFleet() {
+  if (!$('fleet')) return; // l'ancien « Hangar & flotte » a été remplacé par le Hangar de la compagnie
   const now = Date.now();
   const f = S.store.fleet;
   const busy = f.filter((a) => a.repairUntil && a.repairUntil > now).length;
@@ -614,7 +614,7 @@ function renderFleet() {
       '<div class="row">' + (m ? '<button class="btn small ghost" data-repair="' + i + '">Terminer la réparation</button>' : '') + '<button class="btn small ghost" data-del="' + i + '">Retirer</button></div></div>';
   }).join('');
 }
-$('fleet').addEventListener('click', async (ev) => {
+if ($('fleet')) $('fleet').addEventListener('click', async (ev) => {
   const b = ev.target.closest('button');
   if (!b) return;
   const f = S.store.fleet.slice();
@@ -623,7 +623,7 @@ $('fleet').addEventListener('click', async (ev) => {
   S.store.fleet = await afv.setFleet(f);
   renderFleet(); renderAircraftSelect();
 });
-$('btnAddPlane').addEventListener('click', async () => {
+if ($('btnAddPlane')) $('btnAddPlane').addEventListener('click', async () => {
   const reg = $('newReg').value.trim().toUpperCase();
   if (!reg) { $('addMsg').textContent = 'Indique une immatriculation.'; return; }
   if (S.store.fleet.some((a) => a.reg === reg)) { $('addMsg').textContent = 'Cet avion est déjà dans la flotte.'; return; }
@@ -653,7 +653,7 @@ $('btnSndRefresh').addEventListener('click', () => { loadUa(); renderSounds(); }
 function alertBox(e) { console.error(e); }
 
 // ---------------- avis ----------------
-const TAGS = ['Annonces sonores', 'Conseils de Max', 'Carte du vol', 'Alerte TOD', 'Détection des phases', 'Hangar et flotte', 'Rapport de vol', 'Autre'];
+const TAGS = ['Annonces sonores', 'Conseils de Max', 'Carte du vol', 'Alerte TOD', 'Détection des phases', 'Hangar', 'Rapport de vol', 'Autre'];
 function renderFb() {
   $('stars').innerHTML = [1, 2, 3, 4, 5].map((n) => '<button class="star' + (n <= S.stars ? ' on' : '') + '" data-star="' + n + '" aria-label="' + n + ' sur 5">★</button>').join('');
   $('tags').innerHTML = TAGS.map((t) => '<button class="tag' + (S.tags[t] ? ' on' : '') + '" data-tag="' + esc(t) + '" aria-pressed="' + !!S.tags[t] + '">' + esc(t) + '</button>').join('');

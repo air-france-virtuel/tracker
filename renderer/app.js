@@ -1361,7 +1361,8 @@ function myDayHtml(mine) {
       '<span class="pst ' + (done ? 'arrive' : next ? 'en-vol' : '') + '">' + (done ? '✓ Fait' : next ? '▶ Prochain' : 'À faire') + '</span></div>' +
       '<div class="muted small">' + (f.depEst ? 'Départ ' + hhZ(f.depEst) + ' · ' : '') + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>';
   }).join('') + '</div>';
-  if (nextI < 0) return '<h3 class="caps">Ma journée</h3>' + cards + '<div class="day-guide"><b>✓ Journée terminée, bravo commandant !</b> Tes rapports sont dans « Mes vols ».</div>';
+  const head = '<div class="row between"><h3 class="caps" style="margin:0">Ma journée</h3><button class="linkbtn" data-dayclear title="Retire tous les vols de « Ma journée »">Vider ma journée</button></div>';
+  if (nextI < 0) return head + cards + '<div class="day-guide"><b>✓ Journée terminée, bravo commandant !</b> Tes rapports sont dans « Mes vols ».</div>';
   const f = mine[nextI];
   const planOk = S.plan && S.plan.origin && S.plan.origin.icao === f.from && S.plan.destination && S.plan.destination.icao === f.to;
   const guide = '<div class="day-guide"><div class="dg-h">▶ Prochain vol : <b>' + num(f) + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ prévu ' + hhZ(f.depEst) : '') + '</div>' +
@@ -1370,7 +1371,7 @@ function myDayHtml(mine) {
     '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">2</span><div><b>Charge le plan dans le tracker</b><div class="muted small">' + (planOk ? '✓ Plan ' + esc(f.from) + ' → ' + esc(f.to) + ' chargé.' : S.plan2.dayErr ? '<span style="color:var(--red)">' + esc(S.plan2.dayErr) + '</span>' : S.plan && S.plan.origin ? '<span style="color:var(--red)">Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + ' : génère d’abord ' + esc(f.from) + ' → ' + esc(f.to) + ' dans SimBrief.</span>' : 'Le tracker récupère le plan que tu viens de générer.') + '</div></div><button class="btn small ' + (planOk ? 'ghost' : 'red') + '" data-dayload>' + (planOk ? 'Recharger' : 'Charger le plan') + '</button></li>' +
     '<li><span class="n">3</span><div><b>Lance le vol</b><div class="muted small">Dans MSFS, place ' + (own ? esc(own.reg) : 'ton avion') + ' à ' + esc(f.from) + ', puis « Démarrer le suivi ». Le vol se coche ✓ tout seul une fois au parking à ' + esc(f.to) + '.</div></div><button class="btn small ' + (planOk ? 'red' : 'ghost') + '" data-daygo>Aller au tracker</button></li>' +
     '</ol></div>';
-  return '<h3 class="caps">Ma journée</h3>' + cards + guide;
+  return head + cards + guide;
 }
 function planSimbrief(f) {
   const own = companyPlane(S.plan2.myReg);
@@ -1450,7 +1451,7 @@ document.addEventListener('click', async (e) => {
   }
 });
 document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'maxDayReg') { S.plan2.myReg = e.target.value || null; S.plan2.myKey = null; S.plan2.variant = 0; S.plan2.book.msg = ''; renderPlanning(); if (companyPlane(S.plan2.myReg)) loadBookings(true); }
+  if (e.target && e.target.id === 'maxDayReg') { S.plan2.myReg = e.target.value || null; try { if (!S.plan2.myReg) localStorage.removeItem('lat.myReg'); } catch (err) { /* rien */ } S.plan2.myKey = null; S.plan2.variant = 0; S.plan2.book.msg = ''; renderPlanning(); if (companyPlane(S.plan2.myReg)) loadBookings(true); }
   if (e.target && e.target.id === 'maxDayBase') { S.plan2.base = e.target.value; S.plan2.variant = 0; renderPlanning(); }
 });
 $('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
@@ -1532,7 +1533,15 @@ function maxDayHtml(all, mine) {
   const company = S.plan2.company || [];
   if (!list.length && !company.length) return '';
   // par défaut : l'avion du premier vol de « Ma journée »
-  if (!S.plan2.myReg || (!regs[S.plan2.myReg] && !companyPlane(S.plan2.myReg))) { const m = mine.find((f) => f.reg); S.plan2.myReg = m ? m.reg : null; S.plan2.myKey = m ? m.key : null; }
+  if (!S.plan2.myReg || (!regs[S.plan2.myReg] && !companyPlane(S.plan2.myReg))) {
+    // l'avion choisi la dernière fois (gardé même après un redémarrage), sinon celui que je pilote, sinon celui du 1er vol de « Ma journée »
+    let saved = null; try { saved = localStorage.getItem('lat.myReg'); } catch (e) { /* stockage indisponible */ }
+    const booked = (S.plan2.book.list || []).find((b) => b.mine && !b.maint && b.until > Date.now());
+    const m = mine.find((f) => f.reg);
+    S.plan2.myReg = booked && companyPlane(booked.reg) ? booked.reg : saved && (companyPlane(saved) || regs[saved]) ? saved : m ? m.reg : null;
+    S.plan2.myKey = !booked && !saved && m ? m.key : null;
+  }
+  try { if (S.plan2.myReg) localStorage.setItem('lat.myReg', S.plan2.myReg); } catch (e) { /* rien */ }
   const byModel = {};
   for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
   const opts = '<option value="">Choisis ton avion…</option>' +
@@ -2300,3 +2309,10 @@ document.addEventListener('click', async (e) => {
 });
 
 document.addEventListener('click', (e) => { const o = e.target.closest('[data-tab-open]'); if (o) showTab(o.dataset.tabOpen); });
+
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-dayclear]')) return;
+  const d = S.plan2.data; if (!d) return;
+  for (const k of d.mine.slice()) S.plan2.data = await afv.togglePlanning(k);
+  renderPlanning();
+});

@@ -19,7 +19,7 @@
   // Plan détaillé quand on zoome : OpenStreetMap servi par EOX (sans clé, même serveur que le satellite), net jusqu'au niveau 16.
   // (CARTO demande maintenant une clé : ses tuiles affichaient « API KEY REQUIRED ».)
   const PLAN = (z, x, y) => 'https://tiles.maps.eox.at/wmts/1.0.0/osm_3857/default/g/' + z + '/' + y + '/' + x + '.jpg';
-  const PLAN_FROM = 6; // en dessous : le fond vectoriel (plus léger, mêmes couleurs)
+  const PLAN_FROM = 1; // carte OpenStreetMap à tous les niveaux de zoom (le fond vectoriel ne sert que hors ligne)
   const SAT_MAX = 18, PLAN_MAX = 16;
   const SAT = [
     [ESRI, 18],

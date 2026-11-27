@@ -37,7 +37,7 @@
       "Succès : 30 défis à relever (premiers vols, heures de vol, atterrissages en douceur, destinations, long-courrier, discipline, carrière), avec annonce de Max au déblocage",
       "Carte de roulage de Max : le chemin des taxiways jusqu’au point d’arrêt de ta piste de départ (plan OpenStreetMap), annoncé par Max au début du roulage",
       "Infos du jour : la carte des pilotes en vol et la liste sont directement sur la page, avec ton prochain vol",
-      "Cartes nettes quand on zoome : satellite Sentinel-2 (EOX) et plan détaillé OpenStreetMap",
+      "Cartes nettes quand on zoome, sans morceaux décalés : satellite détaillé jusqu’aux pistes et taxiways, et carte « Plan » OpenStreetMap (villes, routes, relief) dès l’ouverture, à tous les niveaux de zoom",
       "Carnet de vol imprimable : dans « Mes vols », le bouton « Carnet de vol (PDF) » crée un PDF avec tous tes vols (date, numéro de vol, horaires UTC, avion, immatriculation, temps de bloc et de vol, atterrissage, ponctualité, mission), tes totaux par avion et une ligne de signature",
       "Ponctualité : chaque vol du programme Les Ailes Tricolores est noté à l’arrivée (« à l’heure » si tu arrives au plus 15 minutes après l’horaire). Elle s’affiche dans le rapport de vol, dans « Mes vols » avec ton pourcentage, et dans le carnet de vol",
       "Deux nouveaux succès : « À l’heure » et « Horloge suisse » (10 vols à l’heure)",

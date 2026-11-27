@@ -15,8 +15,9 @@
   // Plusieurs adresses possibles : si une tuile ne charge pas, on essaie la suivante.
   // Satellite net jusqu'au niveau 15 : Sentinel-2 cloudless (EOX), puis les tuiles de la NASA en secours.
   const EOX = (z, x, y) => 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/g/' + z + '/' + y + '/' + x + '.jpg';
-  // Plan détaillé quand on zoome : CARTO (données © OpenStreetMap), net jusqu'au niveau des rues.
-  const PLAN = (z, x, y) => 'https://' + 'abcd'[(x + y) % 4] + '.basemaps.cartocdn.com/light_all/' + z + '/' + x + '/' + y + '.png';
+  // Plan détaillé quand on zoome : OpenStreetMap servi par EOX (sans clé, même serveur que le satellite), net jusqu'au niveau 15.
+  // (CARTO demande maintenant une clé : ses tuiles affichaient « API KEY REQUIRED ».)
+  const PLAN = (z, x, y) => 'https://tiles.maps.eox.at/wmts/1.0.0/osm_3857/default/g/' + z + '/' + y + '/' + x + '.jpg';
   const PLAN_FROM = 6; // en dessous : le fond vectoriel (plus léger, mêmes couleurs)
   const SAT = [
     EOX,
@@ -59,7 +60,7 @@
     let key = '', z = 0, planOn = false;
     if (sat) { const t = tileSet(view, pxPerUnit, 15); z = t.length ? t[0].z : 0; key += 's' + t.map((q) => q.z + '/' + q.x + '/' + q.y).join(','); parts.push(...t.map((q) => ({ q, kind: 'sat' }))); }
     else if (plan) {
-      const t = tileSet(view, pxPerUnit, 18); z = t.length ? t[0].z : 0;
+      const t = tileSet(view, pxPerUnit, 15); z = t.length ? t[0].z : 0;
       if (z >= PLAN_FROM && !state.planFail) { planOn = true; key += 'p' + t.map((q) => q.z + '/' + q.x + '/' + q.y).join(','); parts.push(...t.map((q) => ({ q, kind: 'plan' }))); }
     }
     const r = radar && state.radar;
@@ -95,7 +96,7 @@
   function credit(L, res) {
     const c = ['Fond : Natural Earth'];
     if (L.sat) c.push('Satellite : Sentinel-2 cloudless 2021 (EOX, données Copernicus)');
-    else if (res && res.plan) c.push('Plan : © OpenStreetMap, © CARTO');
+    else if (res && res.plan) c.push('Plan : © contributeurs OpenStreetMap, rendu EOX');
     if (L.radar) c.push('Radar : RainViewer' + (state.radar ? ' (' + new Date(state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : ''));
     return c.join(' · ');
   }

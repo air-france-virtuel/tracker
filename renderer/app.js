@@ -14,7 +14,8 @@ function showTab(name) {
   if (name === 'vols') renderReports();
   if (name === 'vol') renderDayNext(true);
   if (name === 'livrees') loadLiveries(false);
-  if (name === 'ligne') loadLive();
+  if (name === 'infos' || name === 'ligne') loadLive();
+  if (name === 'planning') loadPlanning(false);
   if (name === 'hgc') loadHangar(true);
   if (name === 'sons') loadUa();
   if (name === 'carriere' || name === 'missions' || name === 'infos') refreshCareer();
@@ -295,8 +296,13 @@ function applyLayers(svg, which, m, view, ppu, redraw) {
   const land = svg.querySelector('.landp');
   land.setAttribute('fill', L.sat ? 'none' : '#F7F9FC');
   land.setAttribute('stroke', L.sat ? 'rgba(255,255,255,.55)' : '#B8C4DA');
-  MapLayers.fill(svg.querySelector('.sat'), { view, pxPerUnit: ppu, sat: L.sat, radar: false });
+  const res = MapLayers.fill(svg.querySelector('.sat'), { view, pxPerUnit: ppu, sat: L.sat, plan: !L.sat, radar: false, onReady: redraw }) || {};
   MapLayers.fill(svg.querySelector('.radar'), { view, pxPerUnit: ppu, sat: false, radar: L.radar, onReady: redraw });
+  // zoomé : le plan détaillé ou le satellite remplace les contours simplifiés (qui ne tombent plus pile sur les côtes)
+  if (res.plan) { land.setAttribute('fill', 'none'); land.setAttribute('stroke', 'none'); }
+  else if (L.sat && res.z >= 6) land.setAttribute('stroke', 'none');
+  svg.dataset.credit = MapLayers.credit(L, res);
+  return res;
 }
 function renderMap(t) {
   const pl = S.plan;
@@ -338,7 +344,7 @@ function renderMap(t) {
   }
   if (t) h2 += '<g transform="translate(' + X(t) + ' ' + Y(t) + ') rotate(' + ((t.hdg || 0) - 90).toFixed(0) + ')"><path d="M12 0 L-8 -8 L-4 0 L-8 8 Z" fill="#C8102E" stroke="#fff" stroke-width="1.5"/></g>';
   if (S.layers.vol.radar) h2 += '<text x="592" y="292" text-anchor="end" font-size="10" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="3">Radar : RainViewer' + (MapLayers.state.radar ? ' · ' + new Date(MapLayers.state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '') + '</text>';
-  else if (sat) h2 += '<text x="592" y="292" text-anchor="end" font-size="10" fill="#fff">Images : NASA GIBS</text>';
+  else if (sat) h2 += '<text x="592" y="292" text-anchor="end" font-size="10" fill="#fff">Images : Sentinel-2 cloudless (EOX)</text>';
   fg.innerHTML = h2;
   $('mapFrom').textContent = pl ? pl.origin.icao + (pl.origin.rwy ? ' · piste ' + pl.origin.rwy : '') : '';
   $('mapTo').textContent = pl ? pl.destination.icao + (pl.destination.rwy ? ' · piste ' + pl.destination.rwy : '') : '';
@@ -365,7 +371,7 @@ document.addEventListener('click', (e) => {
 // Carte du vol : zoom (molette, double-clic, boutons + / −) et déplacement (glisser). « Route entière » ou « Suivre l’avion » recentre.
 (function mapNav() {
   const svg = $('map');
-  const MIN = 0.6, MAX = 1500;
+  const MIN = 0.6, MAX = 20000;
   let raf = 0;
   const redraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderMap(null); }); };
   const free = () => {
@@ -1227,7 +1233,7 @@ function renderRealMap(list) {
   mapVB = [x, yy, w, hh];
   const ppu = (svg.clientWidth || 1000) / w;
   applyLayers(svg, 'reels', [1, 0, 0, 1, 0, 0], [x, yy, x + w, yy + hh], ppu, () => renderRealMap(realShown()));
-  const k = Math.pow(w / 360, 0.6);
+  const k = Math.pow(w / 360, 0.6) * (w < 20 ? Math.pow(w / 20, 0.4) : 1);
   const sat = S.layers.reels.sat;
   const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
   let h2 = '';
@@ -1258,10 +1264,7 @@ function renderRealMap(list) {
     h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"' + (sat && !on ? ' style="fill:#fff"' : '') + '/></g>';
   }
   svg.querySelector('.fg').innerHTML = h2;
-  const credit = ['Fond : Natural Earth'];
-  if (sat) credit.push('Satellite : NASA GIBS');
-  if (S.layers.reels.radar) credit.push('Radar : RainViewer' + (MapLayers.state.radar ? ' (' + new Date(MapLayers.state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : ''));
-  const c = $('realCredit'); if (c) c.textContent = credit.join(' · ');
+  const c = $('realCredit'); if (c) c.textContent = svg.dataset.credit || '';
 }
 function setView(vb) {
   mapVB = vb;
@@ -1276,7 +1279,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-vi
     ev.preventDefault();
     const [mx, my] = toMap(ev);
     const f = ev.deltaY > 0 ? 1.25 : 0.8;
-    const w = Math.min(360, Math.max(4, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
+    const w = Math.min(360, Math.max(0.03, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
     setView([mx - (mx - mapVB[0]) * (w / mapVB[2]), my - (my - mapVB[1]) * (h / mapVB[3]), w, h]);
   }, { passive: false });
   let drag = null;
@@ -1640,6 +1643,8 @@ document.addEventListener('change', (e) => {
   if (e.target && e.target.id === 'maxDayBase') { S.plan2.base = e.target.value; S.plan2.variant = 0; renderPlanning(); }
 });
 $('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
+// les statuts (programmé, en vol, arrivé) changent avec l'heure : le planning se met à jour chaque minute s'il est affiché
+setInterval(() => { if ($('tab-planning').classList.contains('on')) loadPlanning(false); }, 60 * 1000);
 
 // Max, rubrique « Ma journée » : avec l'avion choisi, un seul vol ou toute sa journée à respecter ?
 const MAX_AVATAR = '<svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
@@ -2335,7 +2340,7 @@ function renderLive() {
   renderLiveMini();
   const L = S.live.list || [];
   const b = $('liveBadge'); if (b) { const n = L.filter((x) => !x.mine).length; b.hidden = !n; b.textContent = n; }
-  if (!$('tab-ligne').classList.contains('on')) return;
+  if (!$('tab-infos').classList.contains('on')) return;
   const others = L.filter((x) => !x.mine).length;
   $('liveSub').textContent = S.live.error ? 'Connexion : ' + S.live.error
     : !S.live.ready ? 'Connexion aux autres pilotes…'
@@ -2351,7 +2356,7 @@ function renderLive() {
   renderLiveMap();
 }
 function renderLiveMap() {
-  const svg = $('liveMap'); if (!svg || !$('tab-ligne').classList.contains('on')) return;
+  const svg = $('liveMap'); if (!svg || !$('tab-infos').classList.contains('on')) return;
   mapSkeleton(svg);
   if (!liveVB) liveVB = VIEWS.europe.slice();
   const [x, y, w, h] = liveVB;
@@ -2361,7 +2366,7 @@ function renderLiveMap() {
   svg.setAttribute('viewBox', liveVB.join(' '));
   const ppu = (svg.clientWidth || 1000) / w;
   applyLayers(svg, 'ligne', [1, 0, 0, 1, 0, 0], [x, yy, x + w, yy + hh], ppu, () => renderLiveMap());
-  const k = Math.pow(w / 360, 0.6), sat = S.layers.ligne.sat;
+  const k = Math.pow(w / 360, 0.6) * (w < 20 ? Math.pow(w / 20, 0.4) : 1), sat = S.layers.ligne.sat;
   const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
   let h2 = '';
   for (const p of S.live.list || []) {
@@ -2372,10 +2377,7 @@ function renderLiveMap() {
       '<text x="' + (2.6 * k) + '" y="' + (-1.6 * k) + '" font-size="' + (2.6 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.7 * k) + '">' + esc(p.pseudo) + (p.cs ? ' · ' + esc(p.cs) : '') + '</text></g>';
   }
   svg.querySelector('.fg').innerHTML = h2;
-  const credit = ['Fond : Natural Earth'];
-  if (sat) credit.push('Satellite : NASA GIBS');
-  if (S.layers.ligne.radar) credit.push('Radar : RainViewer');
-  $('liveCredit').textContent = credit.join(' · ');
+  $('liveCredit').textContent = svg.dataset.credit || '';
 }
 function setLiveView(vb) {
   liveVB = vb;
@@ -2398,7 +2400,7 @@ document.addEventListener('click', (e) => {
     ev.preventDefault();
     const [mx, my] = toMap(ev);
     const f = ev.deltaY > 0 ? 1.25 : 0.8;
-    const w = Math.min(360, Math.max(2, liveVB[2] * f)); const h = w * (liveVB[3] / liveVB[2]);
+    const w = Math.min(360, Math.max(0.03, liveVB[2] * f)); const h = w * (liveVB[3] / liveVB[2]);
     setLiveView([mx - (mx - liveVB[0]) * (w / liveVB[2]), my - (my - liveVB[1]) * (h / liveVB[3]), w, h]);
   }, { passive: false });
   let drag = null;
@@ -2639,3 +2641,4 @@ function achShowNext() {
 }
 afv.on('ach:new', (list) => { for (const a of list || []) achQueue.push(a); if ($('achToast').hidden) achShowNext(); loadAchievements(); });
 setTimeout(loadAchievements, 2000);
+setTimeout(loadLive, 1500);

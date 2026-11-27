@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://raw.githubusercontent.com https://gibs.earthdata.nasa.gov https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://raw.githubusercontent.com https://gibs.earthdata.nasa.gov https://tiles.maps.eox.at https://*.basemaps.cartocdn.com https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>Les Ailes Tricolores – Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,7 +24,6 @@
     <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta" hidden>BÊTA</span></button>
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
     <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
-    <button class="nav" data-tab="ligne" title="Pilotes en vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span class="lb">Pilotes en vol</span><span class="nbadge" id="liveBadge" hidden></span></button><button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
     <button class="nav" data-tab="reels" title="Vols de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols de la compagnie</span></button>
     <div class="nsec">Carrière</div>
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
@@ -67,11 +66,14 @@
           </div>
           <div class="card" id="dayFlight"></div>
         </div>
-        <div class="card live-mini">
-          <div class="row between"><div><h2 style="margin:0">Pilotes en vol</h2><div class="muted small" id="liveMiniSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>
-            <button class="btn small ghost" data-tab-open="ligne">Ouvrir la carte</button></div>
-          <div class="live-mini-wrap"><svg id="liveMini" viewBox="0 0 360 150" role="img" aria-label="Carte des pilotes de la compagnie en vol" data-tab-open="ligne"></svg><div class="live-mini-empty" id="liveMiniEmpty" hidden>Aucun pilote en vol pour le moment</div></div>
-          <div class="live-mini-list" id="liveMiniList"></div>
+        <div class="card map-card" id="liveCard">
+          <div class="row between wrap"><div><h2 style="margin:0">Pilotes en vol</h2><div class="muted small" id="liveSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>
+            <div class="row wrap"><button class="tag" data-liveview="monde">Monde</button><button class="tag on" data-liveview="europe">Europe</button><button class="tag" data-liveview="atlantique">Atlantique</button>
+            <span style="width:10px"></span><button class="tag on" data-layer="ligne:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="ligne:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="ligne:radar" aria-pressed="false">Radar météo</button></div></div>
+          <svg id="liveMap" viewBox="0 0 360 150" role="img" aria-label="Carte des pilotes de la compagnie en vol"></svg>
+          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="liveCredit">Fond : Natural Earth</span></div>
+          <div id="liveList" style="margin-top:12px"></div>
+          <p class="muted small">Ta position est partagée seulement pendant un vol suivi par le tracker (pas en démo), et disparaît dès que le vol s’arrête. Tu peux ne pas apparaître : Réglages › « Me montrer aux autres pilotes quand je vole ».</p>
         </div>
         <div class="cards2">
           <div class="card"><h2>Bonus et événements</h2><div id="infoEvents"></div></div>
@@ -150,22 +152,6 @@
       </div>
     </section>
 
-    <section class="tab" id="tab-ligne">
-      <header class="top">
-        <div><h1>Pilotes en vol</h1><div class="sub" id="liveSub">Les pilotes des Ailes Tricolores en vol en ce moment</div></div>
-      </header>
-      <div class="body">
-        <div class="card map-card">
-          <div class="row between wrap"><h2>Carte des pilotes en vol</h2>
-            <div class="row wrap"><button class="tag" data-liveview="monde">Monde</button><button class="tag on" data-liveview="europe">Europe</button><button class="tag" data-liveview="atlantique">Atlantique</button>
-            <span style="width:10px"></span><button class="tag on" data-layer="ligne:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="ligne:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="ligne:radar" aria-pressed="false">Radar météo</button></div></div>
-          <svg id="liveMap" viewBox="0 0 360 150" role="img" aria-label="Carte des pilotes de la compagnie en vol"></svg>
-          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="liveCredit">Fond : Natural Earth</span></div>
-        </div>
-        <div id="liveList"></div>
-        <p class="muted small">Ta position est partagée seulement pendant un vol suivi par le tracker (pas en démo), et disparaît dès que le vol s’arrête. Tu peux ne pas apparaître : Réglages › « Me montrer aux autres pilotes quand je vole ».</p>
-      </div>
-    </section>
 
     <section class="tab" id="tab-reels">
       <header class="top">

@@ -472,3 +472,23 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .st-best{margin-top:12px;padding:9px 12px;background:#FFF7DE;border-radius:8px;font-size:13px}
 .st-table{width:100%;font-size:12.5px}.st-table td{padding:5px 4px;border-bottom:1px solid var(--line)}
 @media (max-width:1100px){.st-kpis{grid-template-columns:repeat(3,1fr)}}
+/* planning du jour : générateur de vols */
+.gen-planes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.gen-plane{display:flex;align-items:stretch;gap:0;padding:0;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;text-align:left;overflow:hidden;font:inherit;color:inherit}
+.gen-plane .img{width:120px;min-height:74px;background:#0A1E4A center/cover no-repeat;flex:none}
+.gen-plane .bd{padding:10px 12px;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.gen-plane.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.12)}
+.gen-cat{border:2px solid var(--line);border-radius:10px;background:#fff;padding:9px 16px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;font:inherit;color:var(--navy);min-width:170px}
+.gen-cat span{font-size:12px;color:#5B667D}.gen-cat.on{border-color:var(--navy);background:#0A1E4A;color:#fff}.gen-cat.on span{color:#C9D4EE}
+.gen-cat:disabled{opacity:.45;cursor:not-allowed}
+.gen-from{margin-top:14px;align-items:center;gap:14px}.gen-from select{max-width:260px}
+.gen-warn{width:100%;background:#FFF4E0;color:#8A5300;border-radius:8px;padding:8px 12px;font-size:13px}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-top:16px}
+.gen-f{display:flex;flex-direction:column;gap:8px}.gen-f .n{font-weight:800;color:var(--navy)}
+.gen-route{display:flex;align-items:center;gap:10px;font-size:22px;color:var(--navy)}.gen-route i{flex:1;height:2px;background:repeating-linear-gradient(90deg,#9FB2DA 0 6px,transparent 6px 11px);position:relative}
+.gen-route i::after{content:'✈';position:absolute;left:50%;top:-11px;font-size:15px;font-style:normal;transform:translateX(-50%)}
+.gen-city{color:#5B667D;font-size:13px;margin-top:-4px}
+.gen-facts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-weight:700;color:var(--navy);font-size:13.5px}.gen-facts small{display:block;font-weight:400;color:#5B667D;font-size:11px}
+.gen-f .btn{align-self:flex-start}
+.gen-mine{border-left:4px solid var(--red)}.gen-big{font-size:18px;color:var(--navy);margin:8px 0 2px}
+#tab-planning .body>.card{margin-bottom:14px}

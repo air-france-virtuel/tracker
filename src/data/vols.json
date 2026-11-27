@@ -318,6 +318,402 @@
    "city": "San Francisco",
    "lat": 37.6213,
    "lon": -122.379
+  },
+  "LFLC": {
+   "name": "Clermont-Ferrand Auvergne",
+   "city": "Clermont-Ferrand",
+   "lat": 45.7867,
+   "lon": 3.1692
+  },
+  "LFRN": {
+   "name": "Rennes-Bretagne",
+   "city": "Rennes",
+   "lat": 48.0695,
+   "lon": -1.7348
+  },
+  "LFQQ": {
+   "name": "Lille-Lesquin",
+   "city": "Lille",
+   "lat": 50.5619,
+   "lon": 3.0894
+  },
+  "LFSB": {
+   "name": "Bâle-Mulhouse",
+   "city": "Mulhouse",
+   "lat": 47.59,
+   "lon": 7.5291
+  },
+  "LFTH": {
+   "name": "Toulon-Hyères",
+   "city": "Toulon",
+   "lat": 43.0973,
+   "lon": 6.146
+  },
+  "LFMP": {
+   "name": "Perpignan-Rivesaltes",
+   "city": "Perpignan",
+   "lat": 42.7404,
+   "lon": 2.8707
+  },
+  "LFLB": {
+   "name": "Chambéry-Savoie",
+   "city": "Chambéry",
+   "lat": 45.6381,
+   "lon": 5.8802
+  },
+  "EIDW": {
+   "name": "Dublin",
+   "city": "Dublin",
+   "lat": 53.4213,
+   "lon": -6.2701
+  },
+  "EGCC": {
+   "name": "Manchester",
+   "city": "Manchester",
+   "lat": 53.3537,
+   "lon": -2.275
+  },
+  "EGPH": {
+   "name": "Édimbourg",
+   "city": "Édimbourg",
+   "lat": 55.95,
+   "lon": -3.3725
+  },
+  "EDDB": {
+   "name": "Berlin-Brandebourg",
+   "city": "Berlin",
+   "lat": 52.3667,
+   "lon": 13.5033
+  },
+  "EDDH": {
+   "name": "Hambourg",
+   "city": "Hambourg",
+   "lat": 53.6304,
+   "lon": 9.9882
+  },
+  "LKPR": {
+   "name": "Prague",
+   "city": "Prague",
+   "lat": 50.1008,
+   "lon": 14.26
+  },
+  "LHBP": {
+   "name": "Budapest",
+   "city": "Budapest",
+   "lat": 47.4298,
+   "lon": 19.2611
+  },
+  "LIPZ": {
+   "name": "Venise-Marco Polo",
+   "city": "Venise",
+   "lat": 45.5053,
+   "lon": 12.3519
+  },
+  "LIRN": {
+   "name": "Naples",
+   "city": "Naples",
+   "lat": 40.886,
+   "lon": 14.2908
+  },
+  "LEMG": {
+   "name": "Malaga",
+   "city": "Malaga",
+   "lat": 36.6749,
+   "lon": -4.4991
+  },
+  "LEVC": {
+   "name": "Valence",
+   "city": "Valence",
+   "lat": 39.4893,
+   "lon": -0.4816
+  },
+  "LPPR": {
+   "name": "Porto",
+   "city": "Porto",
+   "lat": 41.2481,
+   "lon": -8.6814
+  },
+  "LPFR": {
+   "name": "Faro",
+   "city": "Faro",
+   "lat": 37.0144,
+   "lon": -7.9659
+  },
+  "LICJ": {
+   "name": "Palerme",
+   "city": "Palerme",
+   "lat": 38.1759,
+   "lon": 13.091
+  },
+  "LICC": {
+   "name": "Catane",
+   "city": "Catane",
+   "lat": 37.4668,
+   "lon": 15.0664
+  },
+  "LDDU": {
+   "name": "Dubrovnik",
+   "city": "Dubrovnik",
+   "lat": 42.5614,
+   "lon": 18.2682
+  },
+  "LGIR": {
+   "name": "Héraklion",
+   "city": "Héraklion",
+   "lat": 35.3397,
+   "lon": 25.1803
+  },
+  "LGRP": {
+   "name": "Rhodes",
+   "city": "Rhodes",
+   "lat": 36.4054,
+   "lon": 28.0862
+  },
+  "LTFM": {
+   "name": "Istanbul",
+   "city": "Istanbul",
+   "lat": 41.2753,
+   "lon": 28.7519
+  },
+  "LTAI": {
+   "name": "Antalya",
+   "city": "Antalya",
+   "lat": 36.8987,
+   "lon": 30.8005
+  },
+  "LCLK": {
+   "name": "Larnaca",
+   "city": "Larnaca",
+   "lat": 34.8751,
+   "lon": 33.6249
+  },
+  "LLBG": {
+   "name": "Tel Aviv-Ben Gourion",
+   "city": "Tel Aviv",
+   "lat": 32.0114,
+   "lon": 34.8867
+  },
+  "HECA": {
+   "name": "Le Caire",
+   "city": "Le Caire",
+   "lat": 30.1219,
+   "lon": 31.4056
+  },
+  "OJAI": {
+   "name": "Amman",
+   "city": "Amman",
+   "lat": 31.7226,
+   "lon": 35.9932
+  },
+  "LROP": {
+   "name": "Bucarest",
+   "city": "Bucarest",
+   "lat": 44.5711,
+   "lon": 26.085
+  },
+  "LBSF": {
+   "name": "Sofia",
+   "city": "Sofia",
+   "lat": 42.6967,
+   "lon": 23.4114
+  },
+  "EFHK": {
+   "name": "Helsinki",
+   "city": "Helsinki",
+   "lat": 60.3172,
+   "lon": 24.9633
+  },
+  "EVRA": {
+   "name": "Riga",
+   "city": "Riga",
+   "lat": 56.9236,
+   "lon": 23.9711
+  },
+  "BIKF": {
+   "name": "Reykjavik-Keflavik",
+   "city": "Reykjavik",
+   "lat": 63.985,
+   "lon": -22.6056
+  },
+  "GCLP": {
+   "name": "Gran Canaria",
+   "city": "Las Palmas",
+   "lat": 27.9319,
+   "lon": -15.3866
+  },
+  "GCTS": {
+   "name": "Tenerife Sud",
+   "city": "Tenerife",
+   "lat": 28.0445,
+   "lon": -16.5725
+  },
+  "GCRR": {
+   "name": "Lanzarote",
+   "city": "Arrecife",
+   "lat": 28.9455,
+   "lon": -13.6052
+  },
+  "LPMA": {
+   "name": "Madère",
+   "city": "Funchal",
+   "lat": 32.6979,
+   "lon": -16.7745
+  },
+  "LPPD": {
+   "name": "Ponta Delgada (Açores)",
+   "city": "Ponta Delgada",
+   "lat": 37.7412,
+   "lon": -25.6979
+  },
+  "GMAD": {
+   "name": "Agadir",
+   "city": "Agadir",
+   "lat": 30.325,
+   "lon": -9.4131
+  },
+  "GMFF": {
+   "name": "Fès",
+   "city": "Fès",
+   "lat": 33.9273,
+   "lon": -4.978
+  },
+  "DTTJ": {
+   "name": "Djerba",
+   "city": "Djerba",
+   "lat": 33.875,
+   "lon": 10.7755
+  },
+  "DAOO": {
+   "name": "Oran",
+   "city": "Oran",
+   "lat": 35.6239,
+   "lon": -0.6212
+  },
+  "GOBD": {
+   "name": "Dakar-Blaise Diagne",
+   "city": "Dakar",
+   "lat": 14.67,
+   "lon": -17.0733
+  },
+  "DIAP": {
+   "name": "Abidjan",
+   "city": "Abidjan",
+   "lat": 5.2614,
+   "lon": -3.9263
+  },
+  "FIMP": {
+   "name": "Maurice",
+   "city": "Port-Louis",
+   "lat": -20.4302,
+   "lon": 57.6836
+  },
+  "HKJK": {
+   "name": "Nairobi",
+   "city": "Nairobi",
+   "lat": -1.3192,
+   "lon": 36.9278
+  },
+  "OTHH": {
+   "name": "Doha",
+   "city": "Doha",
+   "lat": 25.2731,
+   "lon": 51.6081
+  },
+  "VIDP": {
+   "name": "Delhi",
+   "city": "Delhi",
+   "lat": 28.5562,
+   "lon": 77.1
+  },
+  "WSSS": {
+   "name": "Singapour-Changi",
+   "city": "Singapour",
+   "lat": 1.3644,
+   "lon": 103.9915
+  },
+  "VHHH": {
+   "name": "Hong Kong",
+   "city": "Hong Kong",
+   "lat": 22.308,
+   "lon": 113.9185
+  },
+  "RKSI": {
+   "name": "Séoul-Incheon",
+   "city": "Séoul",
+   "lat": 37.4602,
+   "lon": 126.4407
+  },
+  "SOCA": {
+   "name": "Cayenne",
+   "city": "Cayenne",
+   "lat": 4.8198,
+   "lon": -52.3604
+  },
+  "SBGL": {
+   "name": "Rio de Janeiro-Galeão",
+   "city": "Rio de Janeiro",
+   "lat": -22.81,
+   "lon": -43.2506
+  },
+  "SAEZ": {
+   "name": "Buenos Aires-Ezeiza",
+   "city": "Buenos Aires",
+   "lat": -34.8222,
+   "lon": -58.5358
+  },
+  "MMUN": {
+   "name": "Cancún",
+   "city": "Cancún",
+   "lat": 21.0365,
+   "lon": -86.8771
+  },
+  "MDPC": {
+   "name": "Punta Cana",
+   "city": "Punta Cana",
+   "lat": 18.5674,
+   "lon": -68.3634
+  },
+  "KBOS": {
+   "name": "Boston-Logan",
+   "city": "Boston",
+   "lat": 42.3656,
+   "lon": -71.0096
+  },
+  "KIAD": {
+   "name": "Washington-Dulles",
+   "city": "Washington",
+   "lat": 38.9531,
+   "lon": -77.4565
+  },
+  "KATL": {
+   "name": "Atlanta",
+   "city": "Atlanta",
+   "lat": 33.6407,
+   "lon": -84.4277
+  },
+  "KORD": {
+   "name": "Chicago-O’Hare",
+   "city": "Chicago",
+   "lat": 41.9742,
+   "lon": -87.9073
+  },
+  "CYYZ": {
+   "name": "Toronto-Pearson",
+   "city": "Toronto",
+   "lat": 43.6777,
+   "lon": -79.6248
+  },
+  "CYVR": {
+   "name": "Vancouver",
+   "city": "Vancouver",
+   "lat": 49.1967,
+   "lon": -123.1815
+  },
+  "TNCM": {
+   "name": "Saint-Martin (Juliana)",
+   "city": "Saint-Martin",
+   "lat": 18.041,
+   "lon": -63.1089
   }
  },
  "flights": [

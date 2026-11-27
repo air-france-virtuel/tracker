@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('afv', {
   getAchievements: () => ipcRenderer.invoke('ach:get'),
   logbookPdf: () => ipcRenderer.invoke('logbook:pdf'),
   getStats: () => ipcRenderer.invoke('stats:get'),
+  genFlights: (o) => ipcRenderer.invoke('gen:flights', o),
+  genGet: () => ipcRenderer.invoke('gen:get'),
+  genPick: (f) => ipcRenderer.invoke('gen:pick', f),
   getRoulage: (ap, rwy, pos) => ipcRenderer.invoke('roulage:get', ap, rwy, pos),
   openFolder: (w) => ipcRenderer.invoke('folder:open', w),
   getUpdate: () => ipcRenderer.invoke('update:get'),
@@ -84,7 +87,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status', 'ach:new'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status', 'ach:new', 'gen:changed'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

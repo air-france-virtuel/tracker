@@ -20,6 +20,7 @@ const CHANGELOG = require('./changelog.json');
 const achievements = require('./achievements');
 const ponct = require('./ponctualite');
 const carnet = require('./carnet');
+const generateur = require('./generateur');
 // programme de la compagnie connu (serveur ou intégré) pour noter la ponctualité ; journal des vols de la compagnie
 let companyProgram = require('./lat').BUNDLED.flights;
 let onFlightDone = () => {};
@@ -197,7 +198,11 @@ function finishFlight() {
       saveStore();
     }
   }
-  try { rep.ponctualite = ponct.check(rep, companyProgram); } catch (e) { rep.ponctualite = null; }
+  // vol choisi dans le générateur du Planning du jour : il compte pour la ponctualité, puis il est marqué fait
+  const g = store.genFlight && !store.genFlight.doneAt && store.genFlight.from === rep.from && store.genFlight.to === rep.to ? store.genFlight : null;
+  if (g && !rep.flightNumber) rep.flightNumber = g.number;
+  try { rep.ponctualite = ponct.check(rep, (g ? [{ number: g.number, from: g.from, to: g.to, dep: g.dep, block: g.block }] : []).concat(companyProgram)); } catch (e) { rep.ponctualite = null; }
+  if (g) { store.genFlight = Object.assign({}, g, { doneAt: Date.now() }); saveStore(); send('gen:changed', store.genFlight); }
   fs.mkdirSync(reportsDir(), { recursive: true });
   const name = rep.date.slice(0, 19).replace(/[:T]/g, '-') + '_' + (rep.from || 'XXXX') + '-' + (rep.to || 'XXXX') + '.json';
   fs.writeFileSync(path.join(reportsDir(), name), JSON.stringify(rep, null, 2));
@@ -571,6 +576,18 @@ app.whenReady().then(() => {
   setTimeout(flushLog, 20000);
   setInterval(flushLog, 15 * 60 * 1000);
   ipcMain.handle('stats:get', async () => { chatProfile(); flushLog(); return chat.companyStats(); });
+
+  // générateur de vols du Planning du jour
+  ipcMain.handle('gen:flights', async (_e, o) => { const p = await program(false); return generateur.generate(Object.assign({}, o || {}, { now: Date.now(), program: p.list, airports: lat.BUNDLED.airports })); });
+  ipcMain.handle('gen:get', () => ({ flight: store.genFlight || null, airports: lat.BUNDLED.airports }));
+  ipcMain.handle('gen:pick', (_e, f) => {
+    if (f && typeof f === 'object') {
+      const k = ['key', 'number', 'from', 'to', 'fromName', 'toName', 'distKm', 'cat', 'type', 'model', 'blockMin', 'depEst', 'arrEst', 'dep', 'block', 'reg'];
+      store.genFlight = Object.assign(Object.fromEntries(k.map((x) => [x, f[x]])), { pickedAt: Date.now() });
+    } else store.genFlight = null;
+    saveStore();
+    return store.genFlight;
+  });
 
   // carnet de vol imprimable (PDF)
   ipcMain.handle('logbook:pdf', async () => {

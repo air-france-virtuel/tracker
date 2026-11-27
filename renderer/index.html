@@ -240,15 +240,20 @@
     <!-- ===================== PLANNING DU JOUR ===================== -->
     <section class="tab" id="tab-planning">
       <header class="top">
-        <div><h1>Planning du jour</h1><div class="sub" id="planSub">Les vols Les Ailes Tricolores d’aujourd’hui</div></div>
-        <button class="btn ghost" id="btnPlanRefresh">Actualiser</button>
+        <div><h1>Planning du jour</h1><div class="sub" id="planSub">Choisis ton avion et ton type de vol : Max te propose des vols à faire</div></div>
+        <button class="btn ghost" id="btnPlanRefresh">Autres vols</button>
       </header>
       <div class="body">
-        <div class="row wrap" id="planCats"></div>
-        <div class="card" id="planMine"></div>
-        <div class="card" id="planRot" hidden></div>
-        <div class="card" style="padding:0;overflow:hidden"><div id="planTable"></div></div>
-        <p class="muted small">Programme des vols Les Ailes Tricolores (heures UTC). Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km.</p>
+        <div class="card gen-mine" id="genMine" hidden></div>
+        <div class="card">
+          <h3 class="caps">1. Ton avion</h3>
+          <div class="gen-planes" id="genPlanes"></div>
+          <h3 class="caps" style="margin-top:16px">2. Ton type de vol</h3>
+          <div class="row wrap" id="genCats"></div>
+          <div class="row wrap gen-from" id="genFrom"></div>
+        </div>
+        <div id="genList"></div>
+        <p class="muted small">Vols proposés au hasard au départ de l’aéroport où se trouve l’avion (heures UTC). Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km. L’A320 fait du court et du moyen-courrier, le 777-300ER du moyen et du long-courrier.</p>
       </div>
     </section>
 

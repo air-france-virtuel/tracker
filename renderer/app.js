@@ -713,6 +713,15 @@ function answerPrompt(yes) {
   if (yes) p.onYes(); else if (p.onNo) p.onNo();
 }
 async function offerNextLeg(rep) {
+  const g = S.gen && S.gen.flight;
+  if (g && g.from === rep.from && g.to === rep.to) {
+    if (S.flight) return;
+    S.gen.from = null; S.gen.seed++;
+    const text = 'Bien arrivé à ' + rep.to + ' ! ' + (g.reg ? g.reg + ' reste à ' + rep.to + '. ' : '') + 'Je te propose d’autres vols au départ de ' + rep.to + ' ?';
+    maxSays(text);
+    setPrompt({ text: 'Voir les vols au départ de ' + rep.to + ' ?', yes: 'Oui, montre-moi', no: 'Plus tard', onYes: () => { showTab('planning'); genLoad(); }, onNo: () => maxSays('D’accord. Ils t’attendent dans le Planning du jour.') });
+    return;
+  }
   try { S.plan2.data = await afv.getPlanning(false); } catch (e) { /* hors ligne : on garde la dernière journée connue */ }
   const d = S.plan2.data; if (!d || !d.mine || !d.mine.length || S.flight) return;
   const byKey = Object.fromEntries(d.flights.map((f) => [f.key, f]));
@@ -1597,6 +1606,7 @@ function legDone(f) {
 }
 // Prochain vol de « Ma journée » (premier vol pas encore fait)
 function nextDayLeg() {
+  if (S.gen && S.gen.flight && !S.gen.flight.doneAt) return { f: S.gen.flight, i: 0, n: 1 };
   const d = S.plan2.data; if (!d) return null;
   const byKey = Object.fromEntries(d.flights.map((f) => [f.key, f]));
   const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
@@ -1620,29 +1630,6 @@ async function renderDayNext(load) {
       : 'Prépare-le dans SimBrief (« Generate Flight »), puis clique sur « Charger mon plan SimBrief ».') + '</div></div>' +
     (ok ? '' : '<a class="btn small red" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Ouvrir SimBrief</a>');
 }
-function myDayHtml(mine) {
-  if (!mine.length) return '<h3 class="caps">Ma journée</h3><p class="muted">Ajoute des vols avec l’étoile ☆, ou laisse Max te proposer une journée avec l’avion de la compagnie.</p>';
-  const own = companyPlane(S.plan2.myReg);
-  const num = (f) => own ? esc(f.number || f.callsign).replace(/^AF\s?/, 'LAT') : esc(f.number || f.callsign);
-  const nextI = mine.findIndex((f) => !legDone(f));
-  const cards = '<div class="mine">' + mine.map((f, i) => {
-    const done = legDone(f), next = i === nextI;
-    return '<div class="am' + (done ? ' done' : next ? ' next' : '') + '"><div class="row between"><span class="t">' + (i + 1) + '. ' + num(f) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + '</span>' +
-      '<span class="pst ' + (done ? 'arrive' : next ? 'en-vol' : '') + '">' + (done ? '✓ Fait' : next ? '▶ Prochain' : 'À faire') + '</span></div>' +
-      '<div class="muted small">' + (f.depEst ? 'Départ ' + hhZ(f.depEst) + ' · ' : '') + esc(f.type || 'avion inconnu') + ' · ' + hm(f.blockMin) + ' · <button class="linkbtn" data-pmine="' + esc(f.key) + '">Retirer</button></div></div>';
-  }).join('') + '</div>';
-  const head = '<div class="row between"><h3 class="caps" style="margin:0">Ma journée</h3><button class="linkbtn" data-dayclear title="Retire tous les vols de « Ma journée »">Vider ma journée</button></div>';
-  if (nextI < 0) return head + cards + '<div class="day-guide"><b>✓ Journée terminée, bravo commandant !</b> Tes rapports sont dans « Mes vols ».</div>';
-  const f = mine[nextI];
-  const planOk = S.plan && S.plan.origin && S.plan.origin.icao === f.from && S.plan.destination && S.plan.destination.icao === f.to;
-  const guide = '<div class="day-guide"><div class="dg-h">▶ Prochain vol : <b>' + num(f) + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ prévu ' + hhZ(f.depEst) : '') + '</div>' +
-    '<ol class="dg-steps">' +
-    '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">1</span><div><b>Prépare le vol dans SimBrief</b><div class="muted small">Le formulaire s’ouvre déjà rempli' + (own ? ' (indicatif LAT, ' + esc(own.reg) + ')' : '') + ' : clique sur « Generate Flight » en bas de la page SimBrief.</div></div><a class="btn small red" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Ouvrir SimBrief</a></li>' +
-    '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">2</span><div><b>Charge le plan dans le tracker</b><div class="muted small">' + (planOk ? '✓ Plan ' + esc(f.from) + ' → ' + esc(f.to) + ' chargé.' : S.plan2.dayErr ? '<span style="color:var(--red)">' + esc(S.plan2.dayErr) + '</span>' : S.plan && S.plan.origin ? '<span style="color:var(--red)">Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + ' : génère d’abord ' + esc(f.from) + ' → ' + esc(f.to) + ' dans SimBrief.</span>' : 'Le tracker récupère le plan que tu viens de générer.') + '</div></div><button class="btn small ' + (planOk ? 'ghost' : 'red') + '" data-dayload>' + (planOk ? 'Recharger' : 'Charger le plan') + '</button></li>' +
-    '<li><span class="n">3</span><div><b>Lance le vol</b><div class="muted small">Dans MSFS, place ' + (own ? esc(own.reg) : 'ton avion') + ' à ' + esc(f.from) + ', puis « Démarrer le suivi ». Le vol se coche ✓ tout seul une fois au parking à ' + esc(f.to) + '.</div></div><button class="btn small ' + (planOk ? 'red' : 'ghost') + '" data-daygo>Aller au tracker</button></li>' +
-    '</ol></div>';
-  return head + cards + guide;
-}
 // avion de la compagnie pour un vol : celui choisi s'il est du bon type, sinon le premier de ce type (A320 → F-HLAT, 777 → F-HLAU)
 const planeFor = (f) => { const m = companyPlane(S.plan2.myReg); return m && sameFamily(m.type, f.type) ? m : (S.plan2.company || []).find((c) => sameFamily(c.type, f.type)) || null; };
 function planSimbrief(f) {
@@ -1650,257 +1637,122 @@ function planSimbrief(f) {
   const p = Object.assign({ orig: f.from, dest: f.to, airline: 'LAT', fltnum: (f.number || '').replace(/\D/g, '') }, f.type ? { type: f.type } : {}, own ? { reg: own.reg } : {});
   return 'https://dispatch.simbrief.com/options/custom?' + new URLSearchParams(p).toString();
 }
+// ---------------- Planning du jour : générateur de vols ----------------
+// Le pilote choisit l'avion de la compagnie (A320 F-HLAT ou 777 F-HLAU) et court, moyen ou long-courrier :
+// Max propose des vols au hasard au départ de l'aéroport où se trouve l'avion (règle du hangar).
+S.gen = { cat: null, from: null, seed: 0, res: null, flight: null, msg: '', busy: false };
+const GEN_CAT = { court: ['Court-courrier', 'moins de 1 500 km'], moyen: ['Moyen-courrier', '1 500 à 4 000 km'], long: ['Long-courrier', 'plus de 4 000 km'] };
+const GEN_CATS = { A320: ['court', 'moyen'], B77W: ['moyen', 'long'] };
 async function loadPlanning(refresh) {
-  if (refresh) $('planSub').textContent = 'Chargement du programme de la compagnie…';
-  S.plan2.data = await afv.getPlanning(refresh);
+  if (!S.plan2.company.length) await loadCompanyFleet();
+  if (!S.gen.airports) { try { const g = await afv.genGet(); S.gen.flight = g.flight; S.gen.airports = g.airports; } catch (e) { /* rien */ } }
+  if (!S.hg.fleet || !S.hg.fleet.length) await loadHangar(true);
+  if (refresh) S.gen.seed++;
+  await genLoad();
+}
+const genPlane = () => companyPlane(S.plan2.myReg) || (S.plan2.company || [])[0] || null;
+const genFromOf = (p) => { const h = p && hangarState(p.reg); return S.gen.from || (h && h.location) || 'LFPG'; };
+async function genLoad() {
+  const p = genPlane(); if (!p) { renderPlanning(); return; }
+  if (!S.plan2.myReg) S.plan2.myReg = p.reg;
+  const cats = GEN_CATS[p.type] || ['court', 'moyen'];
+  if (!cats.includes(S.gen.cat)) S.gen.cat = cats[0];
+  try { S.gen.res = await afv.genFlights({ type: p.type, cat: S.gen.cat, from: genFromOf(p), seed: S.gen.seed }); } catch (e) { S.gen.res = { ok: false, error: 'Impossible de générer les vols.' }; }
   renderPlanning();
 }
-afv.on('planning:changed', (d) => { S.plan2.data = d; if ($('tab-planning').classList.contains('on')) renderPlanning(); });
+const apName = (icao) => { const a = (S.gen.airports || {})[icao]; return a ? a.city || a.name : ''; };
 function renderPlanning() {
-  const d = S.plan2.data; if (!d) return;
-  const all = d.flights.slice().sort((a, b) => (a.depEst || a.lastSeen) - (b.depEst || b.lastSeen));
-  const count = (c) => all.filter((f) => f.cat === c).length;
-  const dayTxt = new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  $('planSub').textContent = all.length + ' vols Les Ailes Tricolores · ' + dayTxt + ' · ' + (d.source ? d.source.name : '');
-  const cats = [['tous', 'Tous', all.length], ['court', 'Court-courrier', count('court')], ['moyen', 'Moyen-courrier', count('moyen')], ['long', 'Long-courrier', count('long')]];
-  $('planCats').innerHTML = cats.map(([k, l, n]) => '<button class="tag' + (S.plan2.cat === k ? ' on' : '') + '" data-pcat="' + k + '" aria-pressed="' + (S.plan2.cat === k) + '">' + l + ' · ' + n + '</button>').join('');
-  const byKey = Object.fromEntries(all.map((f) => [f.key, f]));
-  const mine = d.mine.map((k) => byKey[k]).filter(Boolean);
-  $('planMine').innerHTML = myDayHtml(mine) + maxDayHtml(all, mine);
-  renderRotation(all, d);
-  const list = all.filter((f) => S.plan2.cat === 'tous' || f.cat === S.plan2.cat);
-  $('planTable').innerHTML = list.length ? '<table class="plan-t"><thead><tr><th>Vol</th><th>Trajet</th><th>Avion</th><th>Catégorie</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
-    list.map((f) => '<tr><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
-      '<td>' + (f.type || f.model ? '<b>' + esc(f.model || f.type) + '</b>' + (f.reg || (f.model && f.type) ? '<div class="muted small">' + esc([f.model ? f.type : '', f.reg].filter(Boolean).join(' · ')) + '</div>' : '') : '<span class="muted">…</span>') + '</td>' +
-      '<td><span class="cat ' + esc(f.cat) + '">' + esc(CAT[f.cat] || f.cat) + '</span>' + (f.distKm != null ? '<div class="muted small">' + fmt(f.distKm) + ' km</div>' : '') + '</td>' +
-      '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td>' +
-      '<td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
-      '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
-      '<td><div class="row"><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a>' +
-      '<button class="star' + (d.mine.includes(f.key) ? ' on' : '') + '" data-pmine="' + esc(f.key) + '" aria-pressed="' + d.mine.includes(f.key) + '" aria-label="Ajouter à ma journée">' + (d.mine.includes(f.key) ? '★' : '☆') + '</button></div></td></tr>').join('') + '</tbody></table>'
-    : '<div class="empty" style="margin:16px">Aucun vol' + (S.plan2.cat !== 'tous' ? ' dans cette catégorie' : '') + ' aujourd’hui.</div>';
+  if (!$('genPlanes')) return;
+  const P = S.plan2.company || [], cur = genPlane();
+  $('genPlanes').innerHTML = P.length ? P.map((p) => {
+    const h = hangarState(p.reg), b = bookingOf(p.reg), st = h ? hgStatus(h) : null;
+    const state = b && !b.mine ? (b.maint ? '🔧 En maintenance jusqu’à ' + hLocal(b.until) : '✈ Piloté par ' + esc(b.pseudo)) : b && b.mine ? '✈ Réservé pour toi' : st && st.k !== 'ok' ? esc(st.t) : '● Disponible';
+    return '<button class="gen-plane' + (cur && cur.reg === p.reg ? ' on' : '') + '" data-genreg="' + esc(p.reg) + '" aria-pressed="' + !!(cur && cur.reg === p.reg) + '">' +
+      (p.image ? '<span class="img" style="background-image:url(\'' + esc(p.image) + '\')"></span>' : '') +
+      '<span class="bd"><b>' + esc(p.reg) + '</b><span>' + esc(p.type === 'B77W' ? 'Boeing 777-300ER' : 'Airbus A320') + (p.name ? ' · ' + esc(p.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'livrée ')) : '') + '</span><span class="muted small">📍 ' + esc(h ? h.location : '—') + ' · ' + state + '</span></span></button>';
+  }).join('') : '<div class="muted">Chargement de la flotte…</div>';
+  const cats = GEN_CATS[cur && cur.type] || ['court', 'moyen'];
+  $('genCats').innerHTML = ['court', 'moyen', 'long'].map((c) => {
+    const ok = cats.includes(c);
+    return '<button class="gen-cat' + (S.gen.cat === c ? ' on' : '') + '" data-gencat="' + c + '"' + (ok ? '' : ' disabled title="' + (c === 'long' ? 'Trop loin pour l’A320' : 'Pas de 777 sur les vols courts') + '"') + ' aria-pressed="' + (S.gen.cat === c) + '"><b>' + GEN_CAT[c][0] + '</b><span>' + GEN_CAT[c][1] + '</span></button>';
+  }).join('');
+  const from = genFromOf(cur), h = cur && hangarState(cur.reg);
+  const opts = Object.keys(S.gen.airports || {}).sort().map((k) => '<option value="' + k + '"' + (k === from ? ' selected' : '') + '>' + k + ' – ' + esc(apName(k)) + '</option>').join('');
+  $('genFrom').innerHTML = '<span>Départ de <b>' + esc(from) + '</b> ' + esc(apName(from)) + (h && h.location === from ? ' <span class="muted small">(là où est ' + esc(cur.reg) + ')</span>' : '') + '</span>' +
+    (opts ? '<label class="muted small">Changer : <select id="genFromSel">' + opts + '</select></label>' : '') +
+    (S.gen.from ? '<button class="linkbtn" data-genfromreset>Revenir à l’aéroport de l’avion</button>' : '');
+  if (h && h.location && from !== h.location) $('genFrom').innerHTML += '<div class="gen-warn">⚠ ' + esc(cur.reg) + ' est à ' + esc(h.location) + ' : avec l’avion de la compagnie, ton vol doit partir de là.</div>';
+  // vol choisi
+  const g = S.gen.flight;
+  $('genMine').hidden = !g;
+  if (g) {
+    const done = !!g.doneAt;
+    const planOk = S.plan && samePlan(S.plan, g);
+    $('genMine').innerHTML = '<div class="row between"><h3 class="caps" style="margin:0">' + (done ? '✓ Vol terminé' : 'Ton vol') + '</h3><button class="linkbtn" data-gencancel>' + (done ? 'Effacer' : 'Annuler ce vol') + '</button></div>' +
+      '<div class="gen-big"><b>' + esc(g.number) + '</b> ' + esc(g.from) + ' → ' + esc(g.to) + ' <span class="muted">' + esc((g.fromName || '') + ' – ' + (g.toName || '')) + '</span></div>' +
+      '<div class="muted small">' + esc(g.reg || '') + ' · ' + esc(g.model || g.type) + ' · ' + fmt(g.distKm) + ' km · ' + hm(g.blockMin) + ' · départ prévu ' + hhZ(g.depEst) + ', arrivée ' + hhZ(g.arrEst) + '</div>' +
+      (done ? '<div class="day-guide"><b>Bravo commandant !</b> ' + esc(g.reg || 'L’avion') + ' est maintenant à ' + esc(g.to) + '. Choisis ton prochain vol ci-dessous, au départ de ' + esc(g.to) + '.</div>'
+        : '<ol class="dg-steps">' +
+        '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">1</span><div><b>Prépare le vol dans SimBrief</b><div class="muted small">Le formulaire s’ouvre déjà rempli (LAT, ' + esc(g.reg || '') + ') : clique sur « Generate Flight ».</div></div><a class="btn small red" href="' + esc(planSimbrief(g)) + '" target="_blank" rel="noopener">Ouvrir SimBrief</a></li>' +
+        '<li class="ok-' + (planOk ? 1 : 0) + '"><span class="n">2</span><div><b>Charge le plan dans le tracker</b><div class="muted small">' + (planOk ? '✓ Plan ' + esc(g.from) + ' → ' + esc(g.to) + ' chargé.' : S.plan2.dayErr ? '<span style="color:var(--red)">' + esc(S.plan2.dayErr) + '</span>' : S.plan && S.plan.origin ? '<span style="color:var(--red)">Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + '.</span>' : 'Le tracker récupère le plan que tu viens de générer.') + '</div></div><button class="btn small ' + (planOk ? 'ghost' : 'red') + '" data-dayload>' + (planOk ? 'Recharger' : 'Charger le plan') + '</button></li>' +
+        '<li><span class="n">3</span><div><b>Lance le vol</b><div class="muted small">Dans MSFS, place ' + esc(g.reg || 'ton avion') + ' à ' + esc(g.from) + ' et pars vers ' + hhZ(g.depEst) + ' pour être à l’heure (15 min de marge à l’arrivée).</div></div><button class="btn small ' + (planOk ? 'red' : 'ghost') + '" data-daygo>Aller au tracker</button></li></ol>');
+  }
+  // vols proposés
+  const r = S.gen.res;
+  $('planSub').textContent = cur ? 'Vols proposés pour ' + cur.reg + ' · ' + (GEN_CAT[S.gen.cat] || [''])[0].toLowerCase() + ' au départ de ' + from : 'Choisis ton avion et ton type de vol';
+  if (!r) { $('genList').innerHTML = '<div class="card muted">Préparation des vols…</div>'; return; }
+  if (!r.ok || !r.flights.length) { $('genList').innerHTML = '<div class="card empty">' + esc(r.error || 'Aucune destination ' + (GEN_CAT[S.gen.cat] || [''])[0].toLowerCase() + ' au départ de ' + from + ' pour cet avion. Choisis un autre type de vol.') + '</div>'; return; }
+  const busy = cur && bookingOf(cur.reg) && !bookingOf(cur.reg).mine;
+  $('genList').innerHTML = (S.gen.msg ? '<div class="gen-warn" style="margin-bottom:10px">' + esc(S.gen.msg) + '</div>' : '') + '<div class="gen-grid">' + r.flights.map((f) =>
+    '<div class="card gen-f"><div class="row between"><span class="n">' + esc(f.number) + '</span><span class="cat ' + esc(f.cat) + '">' + esc(GEN_CAT[f.cat][0]) + '</span></div>' +
+    '<div class="gen-route"><b>' + esc(f.from) + '</b><i></i><b>' + esc(f.to) + '</b></div><div class="gen-city">' + esc(f.fromName) + ' → ' + esc(f.toName) + '</div>' +
+    '<div class="gen-facts"><span><small>Départ</small>' + hhZ(f.depEst) + '</span><span><small>Arrivée</small>' + hhZ(f.arrEst) + '</span><span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div>' +
+    '<button class="btn small red" data-gentake="' + esc(f.key) + '"' + (busy || S.gen.busy ? ' disabled' : '') + '>Prendre ce vol</button></div>').join('') + '</div>' +
+    (busy ? '<p class="muted small">' + esc(cur.reg) + ' est déjà pris : choisis l’autre avion ou attends qu’il soit libre.</p>' : '') +
+    '<p class="muted small">' + r.total + ' destinations possibles · « Autres vols » en haut pour un nouveau tirage.</p>';
+}
+// prendre un vol (générateur ou « Vols de la compagnie ») : l'avion de la compagnie est réservé, puis SimBrief s'ouvre déjà rempli
+async function genTake(f) {
+  const own = planeFor(f) || genPlane();
+  S.gen.busy = true; S.gen.msg = ''; renderPlanning();
+  try {
+    if (own && !(bookingOf(own.reg) || {}).mine) {
+      const r = await afv.fleetTake(own.reg, (f.arrEst || Date.now() + 6 * 3600000) + 2 * 3600000);
+      await loadBookings(true);
+      if (!r || !r.ok) { S.gen.msg = (r && r.error) || 'Réservation de l’avion impossible.'; return; }
+    }
+    S.gen.flight = await afv.genPick(Object.assign({}, f, { reg: own ? own.reg : '', dep: f.dep || new Date(f.depEst).toISOString().slice(11, 16), block: f.block || f.blockMin }));
+    if (own) S.plan2.myReg = own.reg;
+    renderDayNext(false);
+    maxSays('C’est noté : ' + f.number + ', ' + f.from + ' vers ' + f.to + (own ? ' avec ' + own.reg : '') + ', départ prévu ' + sayTime(f.depEst) + '.');
+    loadNextPlan(f, f.number);
+  } finally { S.gen.busy = false; renderPlanning(); }
 }
 document.addEventListener('click', async (e) => {
-  const c = e.target.closest('[data-pcat]'); if (c) { S.plan2.cat = c.dataset.pcat; renderPlanning(); return; }
-  const m = e.target.closest('[data-pmine]'); if (m) { S.plan2.data = await afv.togglePlanning(m.dataset.pmine); renderPlanning(); return; }
-  const r = e.target.closest('[data-prot]'); if (r) { S.plan2.reg = r.dataset.prot; renderPlanning(); $('planRot').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-  if (e.target.closest('[data-maxday-other]')) { S.plan2.variant = (S.plan2.variant || 0) + 1; renderPlanning(); return; }
-  if (e.target.closest('[data-maxday-say]')) { if (S.plan2.maxSay) { maxStop(); maxSpeak(S.plan2.maxSay, true); } return; }
-  const take = e.target.closest('[data-maxday-add], [data-maxday-take]');
-  const own = take && companyPlane(S.plan2.myReg);
-  if (own && !S.plan2.book.error && !(bookingOf(own.reg) || {}).mine) {
-    // l'avion de la compagnie est réservé sur le serveur avant d'ajouter les vols : un seul pilote à la fois
-    take.disabled = true; S.plan2.book.msg = '';
-    const r = await afv.fleetTake(own.reg, S.plan2.until);
-    await loadBookings(true);
-    if (!r || !r.ok) { S.plan2.book.msg = (r && r.error) || 'Réservation impossible.'; renderPlanning(); return; }
-  }
-  if (e.target.closest('[data-maxday-take]')) { renderPlanning(); return; }
-  if (e.target.closest('[data-maxday-release]')) {
-    const o = companyPlane(S.plan2.myReg);
-    if (o) {
-      const flown = S.plan2.flown && S.plan2.flown[o.reg];
-      const r = await afv.fleetRelease(o.reg, flown ? maintMinutes(flown) : 0);
-      if (flown && r && r.ok) delete S.plan2.flown[o.reg];
-      S.plan2.book.msg = r && r.ok ? '' : (r && r.error) || ''; await loadBookings(true);
-    }
-    renderPlanning(); return;
-  }
-  if (e.target.closest('[data-maxday-add]')) {
-    const keys = (S.plan2.maxAdd || []).filter((k) => !S.plan2.data.mine.includes(k));
-    for (const k of keys) S.plan2.data = await afv.togglePlanning(k);
-    renderPlanning(); return;
-  }
-  if (e.target.closest('[data-protclose]')) { S.plan2.reg = null; renderPlanning(); return; }
-  if (e.target.closest('[data-protall]')) {
-    // ajoute toute la journée de l'avion à « Ma journée », dans l'ordre des départs
-    const d = S.plan2.data;
-    const rot = d.flights.filter((f) => f.reg === S.plan2.reg).sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
-    for (const f of rot) if (!S.plan2.data.mine.includes(f.key)) S.plan2.data = await afv.togglePlanning(f.key);
-    renderPlanning();
+  const rg = e.target.closest('[data-genreg]'); if (rg) { S.plan2.myReg = rg.dataset.genreg; try { localStorage.setItem('lat.myReg', S.plan2.myReg); } catch (err) { /* rien */ } S.gen.from = null; S.gen.res = null; renderPlanning(); genLoad(); return; }
+  const c = e.target.closest('[data-gencat]'); if (c && !c.disabled) { S.gen.cat = c.dataset.gencat; S.gen.res = null; renderPlanning(); genLoad(); return; }
+  if (e.target.closest('[data-genfromreset]')) { S.gen.from = null; genLoad(); return; }
+  const t = e.target.closest('[data-gentake]'); if (t) { const f = S.gen.res && S.gen.res.flights.find((x) => x.key === t.dataset.gentake); if (f) genTake(f); return; }
+  if (e.target.closest('[data-gencancel]')) {
+    const g = S.gen.flight;
+    S.gen.flight = await afv.genPick(null);
+    if (g && !g.doneAt && g.reg && (bookingOf(g.reg) || {}).mine) { await afv.fleetRelease(g.reg, 0); await loadBookings(true); }
+    renderPlanning(); renderDayNext(false); return;
   }
 });
 document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'maxDayReg') { S.plan2.myReg = e.target.value || null; try { if (!S.plan2.myReg) localStorage.removeItem('lat.myReg'); } catch (err) { /* rien */ } S.plan2.myKey = null; S.plan2.variant = 0; S.plan2.book.msg = ''; renderPlanning(); if (companyPlane(S.plan2.myReg)) loadBookings(true); }
-  if (e.target && e.target.id === 'maxDayBase') { S.plan2.base = e.target.value; S.plan2.variant = 0; renderPlanning(); }
+  if (e.target && e.target.id === 'genFromSel') { S.gen.from = e.target.value; genLoad(); }
 });
-$('btnPlanRefresh').addEventListener('click', () => loadPlanning(true));
-// les statuts (programmé, en vol, arrivé) changent avec l'heure : le planning se met à jour chaque minute s'il est affiché
-setInterval(() => { if ($('tab-planning').classList.contains('on')) loadPlanning(false); }, 60 * 1000);
+afv.on('gen:changed', (g) => { S.gen.flight = g; renderPlanning(); renderDayNext(false); });
+$('btnPlanRefresh').addEventListener('click', () => { S.gen.seed++; genLoad(); });
+// l'heure de départ conseillée avance avec le temps : nouveau tirage toutes les 10 minutes si l'écran est affiché
+setInterval(() => { if ($('tab-planning').classList.contains('on')) genLoad(); }, 10 * 60 * 1000);
 
 // Max, rubrique « Ma journée » : avec l'avion choisi, un seul vol ou toute sa journée à respecter ?
 const MAX_AVATAR = '<svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
 const hhZ = (ms) => ms ? new Date(ms).toISOString().slice(11, 16) + 'Z' : 'heure inconnue';
 const sayTime = (ms) => ms ? (+new Date(ms).toISOString().slice(11, 13)) + ' heures ' + new Date(ms).toISOString().slice(14, 16) + ' UTC' : '';
-// Journée d'un avion à partir du vol choisi (ou du prochain vol) :
-// kind = 'single' (un seul vol à faire), 'rotation' (planning de l'avion à respecter), 'done' (journée finie), 'none'.
-function aircraftPlan(all, reg, fromKey, now) {
-  const rot = all.filter((f) => f.reg === reg && f.status !== 'Annulé').sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
-  if (!rot.length) return { kind: 'none', rot, todo: [], before: [] };
-  const isDone = (f) => f.status === 'Arrivé' || (f.arrEst && f.arrEst < now && f.status !== 'Programmé' && f.status !== 'En vol');
-  let i = fromKey ? rot.findIndex((f) => f.key === fromKey) : -1;
-  if (i < 0) i = rot.findIndex((f) => !isDone(f));
-  if (i < 0) return { kind: 'done', rot, todo: [], before: rot };
-  const todo = rot.slice(i), before = rot.slice(0, i);
-  let gap = '';
-  for (let k = 1; k < rot.length; k++) if (rot[k].from !== rot[k - 1].to) { gap = rot[k - 1].to + ' → ' + rot[k].from; break; }
-  return { kind: todo.length === 1 ? 'single' : 'rotation', rot, todo, before, gap, last: todo.length === 1 && rot.length > 1, left: todo.reduce((s, f) => s + (f.blockMin || 0), 0) };
-}
-// Texte de Max (HTML court + phrase à dire) pour un avion et un vol de départ.
-function maxPlanText(p, reg, model, mineKeys) {
-  const line = (f) => '<li><b>' + esc(f.number || f.callsign) + '</b> · ' + esc(f.from) + ' → ' + esc(f.to) + ' · départ ' + hhZ(f.depEst) + ' · ' + hm(f.blockMin) + (mineKeys && mineKeys.includes(f.key) ? ' <span class="pst arrive">dans ma journée</span>' : '') + '</li>';
-  const who = esc(reg) + (model ? ' (' + esc(model) + ')' : '');
-  if (p.kind === 'none') return { html: 'Je ne trouve aucun vol pour ' + esc(reg) + ' aujourd’hui.', say: '' };
-  if (p.kind === 'done') return { html: who + ' a déjà terminé sa journée (' + p.rot.length + ' vol' + (p.rot.length > 1 ? 's' : '') + '). Choisis un autre avion.', say: reg + ' a déjà terminé sa journée. Choisis un autre avion.' };
-  const f = p.todo[0];
-  if (p.kind === 'single') {
-    return {
-      html: '<b>Un seul vol</b> avec ' + who + ' : ' + (p.last ? 'c’est le dernier vol de sa journée' : 'c’est son seul vol aujourd’hui') + ', pas de rotation à suivre.<ul class="mday">' + line(f) + '</ul>Tu fais ce vol et ta journée est terminée.',
-      say: 'Avec ' + reg + ', c’est un seul vol : ' + (f.number || f.callsign) + ', de ' + f.from + ' vers ' + f.to + (f.depEst ? ', départ à ' + sayTime(f.depEst) : '') + '. Pas de rotation à suivre.'
-    };
-  }
-  return {
-    html: '<b>Tu devras respecter le planning de l’avion.</b> Après ' + esc(f.number || f.callsign) + ', ' + who + ' enchaîne encore <b>' + (p.todo.length - 1) + ' vol' + (p.todo.length > 2 ? 's' : '') + '</b> aujourd’hui. ' +
-      'Fais ces ' + p.todo.length + ' vols dans l’ordre (' + hm(p.left) + ' de vol) :<ul class="mday">' + p.todo.map(line).join('') + '</ul>' +
-      (p.before.length ? '<span class="muted small">Avant toi, l’avion a déjà ' + (p.before.length > 1 ? 'fait ' + p.before.length + ' vols' : 'fait 1 vol') + ' ce jour-là. </span>' : '') +
-      (p.gap ? '<span class="muted small">Il manque peut-être un vol entre ' + esc(p.gap) + ' (hors de Paris, absent du programme).</span>' : ''),
-    say: 'Avec ' + reg + ', tu devras respecter le planning de l’avion : ' + p.todo.length + ' vols à enchaîner. Tu pars de ' + f.from + (f.depEst ? ' à ' + sayTime(f.depEst) : '') + ', puis ' + p.todo.map((x) => x.to).join(', puis ') + '. Respecte bien l’ordre des vols.'
-  };
-}
-// Journée de l'avion de la compagnie : on part de « base » et on enchaîne des vols de la même famille,
-// chacun partant de l'aéroport d'arrivée du précédent, avec 40 min d'escale minimum (5 vols / 10 h de vol au plus).
-// « variant » change le premier vol pour proposer une autre journée.
-function companyDayPlan(all, type, base, now, variant, long) {
-  const TURN = 40 * 60000, MAXWAIT = 3 * 3600000, home = (ap) => ap === base || /^LFP[GO]$/.test(ap);
-  const open = (f) => sameFamily(f.type, type) && f.depEst && f.arrEst && !['Annulé', 'Arrivé', 'En vol'].includes(f.status);
-  const from = (ap, after, before) => all.filter((f) => open(f) && f.from === ap && f.depEst >= after && (!before || f.depEst <= before)).sort((a, b) => a.depEst - b.depEst);
-  // un vol qui quitte la base doit avoir un retour possible, pour ne pas laisser l'avion loin de Paris
-  const back = (f) => from(f.to, f.arrEst + TURN, f.arrEst + MAXWAIT).find((r) => home(r.to)) || null;
-  if (long) {   // long-courrier : un seul vol, l'avion reste à destination (retour à la prochaine session)
-    const out = from(base, now + 20 * 60000);
-    if (!out.length) return { legs: [], block: 0, end: base, long: true };
-    const f = out[(variant || 0) % out.length];
-    return { legs: [f], block: f.blockMin || 0, end: f.to, long: true };
-  }
-  const firsts = from(base, now + 20 * 60000).filter((f) => home(f.to) || back(f));
-  if (!firsts.length) return { legs: [], block: 0, end: base };
-  const legs = [firsts[(variant || 0) % firsts.length]];
-  let block = legs[0].blockMin || 0;
-  while (legs.length < 6) {
-    const prev = legs[legs.length - 1];
-    const next = from(prev.to, prev.arrEst + TURN, prev.arrEst + MAXWAIT);
-    // loin de Paris : on rentre ; à Paris : un aller qui a son retour, dans le temps de vol restant
-    const n = home(prev.to)
-      ? next.find((f) => { const r = home(f.to) ? null : back(f); return (home(f.to) || r) && block + (f.blockMin || 0) + (r ? r.blockMin || 0 : 0) <= 600; })
-      : next.find((f) => home(f.to) && block + (f.blockMin || 0) <= 600);
-    if (!n) break;
-    legs.push(n); block += n.blockMin || 0;
-  }
-  return { legs, block, end: legs[legs.length - 1].to };
-}
-function maxDayHtml(all, mine) {
-  const regs = {};
-  for (const f of all) if (f.reg) { const r = regs[f.reg] || (regs[f.reg] = { reg: f.reg, model: f.model || f.type || 'Type inconnu', n: 0 }); if (f.status !== 'Annulé') r.n++; }
-  const list = Object.values(regs);
-  const company = S.plan2.company || [];
-  if (!list.length && !company.length) return '';
-  // par défaut : l'avion du premier vol de « Ma journée »
-  if (!S.plan2.myReg || (!regs[S.plan2.myReg] && !companyPlane(S.plan2.myReg))) {
-    // l'avion choisi la dernière fois (gardé même après un redémarrage), sinon celui que je pilote, sinon celui du 1er vol de « Ma journée »
-    let saved = null; try { saved = localStorage.getItem('lat.myReg'); } catch (e) { /* stockage indisponible */ }
-    const booked = (S.plan2.book.list || []).find((b) => b.mine && !b.maint && b.until > Date.now());
-    const m = mine.find((f) => f.reg);
-    S.plan2.myReg = booked && companyPlane(booked.reg) ? booked.reg : saved && (companyPlane(saved) || regs[saved]) ? saved : m ? m.reg : null;
-    S.plan2.myKey = !booked && !saved && m ? m.key : null;
-  }
-  try { if (S.plan2.myReg) localStorage.setItem('lat.myReg', S.plan2.myReg); } catch (e) { /* rien */ }
-  const byModel = {};
-  for (const r of list) (byModel[r.model] = byModel[r.model] || []).push(r);
-  const opts = '<option value="">Choisis ton avion…</option>' +
-    (company.length ? '<optgroup label="Les Ailes Tricolores · nos avions">' + company.map((c) => { const b = bookingOf(c.reg); return '<option value="' + esc(c.reg) + '"' + (c.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(c.reg) + ' · ' + esc(c.label) + ' de la compagnie' + (b ? (b.maint ? ' · en maintenance jusqu’à ' + hLocal(b.until) : b.mine ? ' · piloté par toi' : ' · piloté par ' + esc(b.pseudo)) : '') + '</option>'; }).join('') + '</optgroup>' : '') +
-    (list.length ? '<optgroup label="──────────" disabled></optgroup>' : '') + Object.keys(byModel).sort().map((m) => '<optgroup label="Autres avions · ' + esc(m) + '">' +
-    byModel[m].sort((a, b) => a.reg.localeCompare(b.reg)).map((r) => '<option value="' + esc(r.reg) + '"' + (r.reg === S.plan2.myReg ? ' selected' : '') + '>' + esc(r.reg) + ' · ' + r.n + ' vol' + (r.n > 1 ? 's' : '') + '</option>').join('') + '</optgroup>').join('');
-  const reg = S.plan2.myReg;
-  let booked = '';
-  let t = { html: 'Choisis un vol dans <b>Vols de la compagnie › À venir</b> (bouton « Prendre ce vol »), ou choisis l’avion de la compagnie : je te propose une journée de vols qui s’enchaînent.', say: '' }, add = [];
-  const own = companyPlane(reg);
-  if (own) {
-    // notre propre avion : Max compose une journée de vols qui s'enchaînent (chaque vol part de l'arrivée du précédent)
-    const now = Date.now();
-    const bases = [...new Set(all.filter((f) => sameFamily(f.type, own.type)).map((f) => f.from))].sort((a, b) => (/^LFP[GO]$/.test(b) - /^LFP[GO]$/.test(a)) || a.localeCompare(b));
-    // l'avion part de l'aéroport où il se trouve (hangar)
-    const where = hangarState(own.reg);
-    if (where && where.location) S.plan2.base = where.location;
-    else if (!S.plan2.base || !bases.includes(S.plan2.base)) {
-      const last = (S.reports || []).find((r) => r.mode !== 'demo' && r.to);
-      S.plan2.base = last && bases.includes(last.to) ? last.to : (bases.includes('LFPG') ? 'LFPG' : bases[0]);
-    }
-    const day = companyDayPlan(all, own.type, S.plan2.base, now, S.plan2.variant || 0, own.long);
-    const leg = (f, k) => '<li><b>' + esc(f.number || f.callsign).replace(/^AF/, 'LAT') + '</b> · ' + esc(f.from) + ' → ' + esc(f.to) + ' · ' + hhZ(f.depEst) + ' → ' + hhZ(f.arrEst) + ' · ' + hm(f.blockMin) +
-      (k > 0 ? ' <span class="muted small">(escale ' + hm(Math.round((f.depEst - day.legs[k - 1].arrEst) / 60000)) + ')</span>' : '') + (mine.some((m) => m.key === f.key) ? ' <span class="pst arrive">dans ma journée</span>' : '') + '</li>';
-    const baseSel = where && where.location ? '<b title="L’avion part de l’aéroport où il se trouve (rubrique Hangar)">📍 ' + esc(where.location) + '</b>' : '<select id="maxDayBase" aria-label="Aéroport de départ de l’avion" style="height:32px;border:1px solid var(--line);border-radius:8px;padding:0 6px">' + bases.map((b) => '<option' + (b === S.plan2.base ? ' selected' : '') + '>' + esc(b) + '</option>').join('') + '</select>';
-    t = {
-      html: '<b>Ta journée avec ' + esc(own.reg) + ', ' + (/^A/.test(own.label) ? 'l’' : 'le ') + esc(own.label) + ' de la compagnie</b>' + (own.name ? ' (' + esc(own.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'livrée ')) + ')' : '') + '. L’avion part de ' + baseSel + '.<br>' +
-        (day.legs.length
-          ? 'Je te propose ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's qui s’enchaînent' : '') + ', ' + hm(day.block) + ' de vol' + (day.legs.length > 1 ? ', avec 40 min à 3 h d’escale' : '') + ' :<ol class="mday">' + day.legs.map(leg).join('') + '</ol>' +
-            (day.long ? '<span class="muted small">Long-courrier : l’avion reste à ' + esc(day.end) + ', tu feras le retour à ta prochaine session. </span>' : day.end && !/^LFP[GO]$/.test(day.end) && day.end !== S.plan2.base ? '<span class="muted small">L’avion finit la journée à ' + esc(day.end) + ' : je n’ai pas trouvé de vol retour assez tôt. </span>' : '<span class="muted small">L’avion revient à ' + esc(day.end) + ' en fin de journée. </span>') +
-            '<span class="muted small">SimBrief prépare chaque vol avec l’indicatif LAT et l’immatriculation ' + esc(own.reg) + '.</span>'
-          : planStale() ? 'Le programme des vols n’est pas encore celui d’aujourd’hui (' + esc(planStale()) + ') : il est mis à jour chaque matin. Clique sur « Actualiser » en haut du planning ; s’il ne change pas, réessaie un peu plus tard.'
-          : 'Je ne trouve plus de vol ' + esc(own.label) + ' au départ de ' + esc(S.plan2.base) + ' aujourd’hui. ' + (where && where.location ? 'L’avion est à ' + esc(where.location) + ' : reviens plus tard ou demande à la direction de le déplacer.' : 'Choisis un autre aéroport ou actualise le planning.')) +
-        (own.installed ? '' : '<br><span class="muted small">La livrée n’est pas encore installée : rubrique « Livrées ».</span>'),
-      say: day.legs.length ? 'Voici ta journée avec ' + own.reg + ' : ' + day.legs.length + ' vol' + (day.legs.length > 1 ? 's' : '') + '. Tu pars de ' + day.legs[0].from + (day.legs[0].depEst ? ' à ' + sayTime(day.legs[0].depEst) : '') + ', puis ' + day.legs.map((f) => f.to).join(', puis ') + '. ' + hm(day.block).replace(' h ', ' heures ') + ' de vol au total. Bonne journée !' : ''
-    };
-    add = day.legs.map((f) => f.key);
-    const b = bookingOf(own.reg);
-    if (b && b.maint) {
-      t = { html: '<b>🔧 ' + esc(own.reg) + ' est en maintenance au hangar</b> jusqu’à ' + hLocal(b.until) + '. Personne ne peut le prendre avant la fin : choisis un autre avion, ou reviens à ' + hLocal(b.until) + '.', say: own.reg + ' est en maintenance au hangar jusqu’à ' + hLocal(b.until) + '.' };
-      add = []; booked = 'other';
-    } else if (b && !b.mine) {
-      t = { html: '<b>' + esc(own.reg) + ' est déjà piloté par ' + esc(b.pseudo) + '</b> jusqu’à ' + hLocal(b.until) + ' au plus tard. Tant qu’il l’a, personne d’autre ne peut le prendre : choisis un autre avion, ou reviens quand il l’aura rendu.', say: own.reg + ' est déjà piloté par ' + b.pseudo + '. Choisis un autre avion.' };
-      add = []; booked = 'other';
-    } else if (b) {
-      t.html += '<div class="muted small" style="margin-top:6px">✔ <b>Tu pilotes ' + esc(own.reg) + '</b> jusqu’à ' + hLocal(b.until) + ' : les autres pilotes ne peuvent pas le prendre. Pense à le rendre si tu ne voles plus.</div>';
-      booked = 'mine';
-    } else if (S.plan2.book.error) {
-      t.html += '<div class="muted small" style="margin-top:6px">Réservation impossible pour l’instant : ' + esc(S.plan2.book.error) + '</div>';
-      booked = 'off';
-    }
-    if (S.plan2.book.msg) t.html += '<div class="small" style="margin-top:6px;color:var(--red)">' + esc(S.plan2.book.msg) + '</div>';
-    S.plan2.until = day.legs.length ? day.legs[day.legs.length - 1].arrEst + 2 * 3600000 : Date.now() + 12 * 3600000;
-  } else if (reg) {
-    const p = aircraftPlan(all, reg, S.plan2.myKey, Date.now());
-    t = maxPlanText(p, reg, regs[reg].model, mine.map((m) => m.key));
-    add = p.todo.map((f) => f.key);
-  }
-  S.plan2.maxSay = t.say; S.plan2.maxAdd = add;
-  const missing = add.filter((k) => !mine.some((m) => m.key === k)).length;
-  return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">Max : quel avion prends-tu ?</div><div class="muted small">Un seul vol ou toute la journée de l’avion</div></div>' +
-    '<select id="maxDayReg" aria-label="Avion que je veux prendre">' + opts + '</select></div>' +
-    '<div class="max-say">' + t.html + '</div>' +
-    (reg ? '<div class="row" style="margin-top:8px">' + (missing ? '<button class="btn small red" data-maxday-add>' + (own ? (booked === '' ? 'Prendre ' + own.reg + ' et ajouter ' + (add.length > 1 ? 'cette journée' : 'ce vol') + ' à « Ma journée »' : add.length > 1 ? 'Ajouter cette journée à « Ma journée »' : 'Ajouter ce vol à « Ma journée »') : add.length > 1 ? 'Ajouter ' + (missing === add.length ? 'les ' + missing + ' vols' : 'les ' + missing + ' vols manquants') + ' à « Ma journée »' : 'Ajouter ce vol à « Ma journée »') + '</button>' : (add.length ? '<span class="muted small">Tout est déjà dans « Ma journée ».</span>' : '')) +
-      (t.say ? '<button class="btn small ghost" data-maxday-say>Écouter Max</button>' : '') + (own ? (booked === 'other' ? '' : '<button class="btn small ghost" data-maxday-other>Autre proposition</button>') + (booked === 'mine' ? '<button class="btn small ghost" data-maxday-release>Rendre l’avion</button>' : !missing && booked === '' && add.length ? '<button class="btn small red" data-maxday-take>Prendre ' + esc(own.reg) + '</button>' : '') : '<button class="btn small ghost" data-prot="' + esc(reg) + '">Voir la journée de l’avion</button>') + '</div>' : '') + '</div>';
-}
 
-// Journée d'un avion : tous ses vols du jour, dans l'ordre (rotation)
-function renderRotation(all, d) {
-  const box = $('planRot');
-  if (!S.plan2.reg) { box.hidden = true; return; }
-  const rot = all.filter((f) => f.reg === S.plan2.reg).sort((a, b) => (a.depEst || 0) - (b.depEst || 0));
-  box.hidden = false;
-  const first = rot[0] || {};
-  const total = rot.reduce((a, f) => a + (f.blockMin || 0), 0);
-  let warn = '';
-  for (let i = 1; i < rot.length; i++) if (rot[i].from !== rot[i - 1].to) { warn = 'Il manque peut-être un vol entre ' + rot[i - 1].to + ' et ' + rot[i].from + ' (vol hors de Paris, absent du programme).'; break; }
-  box.innerHTML = '<div class="row between"><h3 class="caps">Journée de l’avion ' + esc(S.plan2.reg) + (first.model || first.type ? ' · ' + esc(first.model || first.type) : '') + '</h3><button class="linkbtn" data-protclose>Fermer</button></div>' +
-    (rot.length ? '<p class="muted small">' + rot.length + ' vol' + (rot.length > 1 ? 's' : '') + ' aujourd’hui · ' + hm(total) + ' de vol au total' + (warn ? ' · ' + esc(warn) : '') + '</p>' +
-      '<table class="plan-t"><thead><tr><th>#</th><th>Vol</th><th>Trajet</th><th>Départ</th><th>Arrivée</th><th>Durée</th><th>Statut</th><th></th></tr></thead><tbody>' +
-      rot.map((f, i) => '<tr><td>' + (i + 1) + '</td><td class="n">' + esc(f.number || f.callsign) + '</td><td class="r"><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><div class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div></td>' +
-        '<td>' + (f.depEst ? new Date(f.depEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + (f.arrEst ? new Date(f.arrEst).toISOString().slice(11, 16) + 'Z' : '—') + '</td><td>' + hm(f.blockMin) + '</td>' +
-        '<td><span class="pst ' + esc((f.status || '').replace(/\s+/g, '-').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()) + '">' + esc(f.status || '') + '</span></td>' +
-        '<td><a class="btn small ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">SimBrief</a></td></tr>').join('') + '</tbody></table>' +
-      '<div class="row" style="margin-top:10px"><button class="btn red" data-protall>Ajouter toute la journée de l’avion à « Ma journée »</button></div>'
-    : '<p class="muted">Aucun autre vol connu pour cet avion aujourd’hui.</p>');
-}
 
 function renderSchedDetail() {
   const f = S.real.sched.find((x) => x.key === S.real.ssel);
@@ -1921,11 +1773,10 @@ function realMaxHtml(f) {
   const next = S.real.sched.filter((x) => sameFamily(x.type, f.type) && x.from === f.to && x.depEst >= f.arrEst + 40 * 60000 && x.depEst <= f.arrEst + 3 * 3600000).sort((a, b) => a.depEst - b.depEst)[0];
   const b = own ? bookingOf(own.reg) : null;
   const body = (own ? 'Ce vol se fait avec <b>' + esc(own.reg) + '</b>, ' + (/^A/.test(own.label) ? 'l’' : 'le ') + esc(own.label) + ' de la compagnie' + (b && !b.mine ? ' — <b>déjà piloté par ' + esc(b.pseudo) + '</b> pour l’instant' : '') + '. ' : 'La compagnie n’a pas encore d’avion de ce type : tu peux voler avec ton propre ' + esc(f.model || f.type) + '. ') +
-    (next ? 'Après ton arrivée à ' + esc(f.to) + ', tu peux enchaîner avec <b>' + esc(next.number) + '</b> vers ' + esc(next.to) + ' à ' + hhZ(next.depEst) + ' : ajoute les deux à ta journée pour suivre le planning de l’avion.' : 'C’est un vol seul : pas d’autre vol à enchaîner juste après.');
+    (next ? 'Après ton arrivée à ' + esc(f.to) + ', tu pourras enchaîner avec <b>' + esc(next.number) + '</b> vers ' + esc(next.to) + ' à ' + hhZ(next.depEst) + '.' : 'Après ton arrivée, le Planning du jour te proposera d’autres vols au départ de ' + esc(f.to) + '.');
   return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">L’avis de Max</div><div class="muted small">Ton avion et la suite de ta journée</div></div></div>' +
     '<div class="max-say">' + body + '</div><div class="row" style="margin-top:8px"><button class="btn small red" data-takeflight="' + esc(f.key) + '">Prendre ce vol</button>' +
-    (next ? '<button class="btn small ghost" data-takeflight="' + esc(f.key) + '" data-takenext="' + esc(next.key) + '">Prendre les deux vols</button>' : '') +
-    '<span class="muted small">Ils sont ajoutés à « Ma journée » dans le Planning du jour.</span></div></div>';
+    '<span class="muted small">Il devient ton vol dans le Planning du jour.</span></div></div>';
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-sreal]');
@@ -1933,18 +1784,7 @@ document.addEventListener('click', (e) => {
   const tk = e.target.closest('[data-takeflight]');
   if (tk) {
     const f = S.real.sched.find((x) => x.key === tk.dataset.takeflight);
-    if (f) {
-      (async () => {
-        let d = await afv.getPlanning(false);
-        for (const k of [f.key, tk.dataset.takenext].filter(Boolean)) if (!d.mine.includes(k)) d = await afv.togglePlanning(k);
-        S.plan2.data = d;
-        const own = planeFor(f);
-        S.plan2.myReg = own ? own.reg : null; S.plan2.myKey = f.key; S.plan2.base = f.from;
-        showTab('planning'); renderPlanning();
-        const box = $('planMine'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const t = S.plan2.maxSay; if (t && S.store && S.store.settings.maxVoice) { maxStop(); maxSpeak(t); }
-      })();
-    }
+    if (f) { genTake(f).then(() => { showTab('planning'); const box = $('genMine'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
     return;
   }
 });

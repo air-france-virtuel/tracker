@@ -16,7 +16,25 @@ const AP = {
   KJFK: ['New York-JFK', 'New York', 40.6413, -73.7781], KLAX: ['Los Angeles', 'Los Angeles', 33.9416, -118.4085], KMIA: ['Miami', 'Miami', 25.7959, -80.287], CYUL: ['Montréal-Trudeau', 'Montréal', 45.4706, -73.7408],
   TFFR: ['Pointe-à-Pitre', 'Pointe-à-Pitre', 16.2653, -61.5318], TFFF: ['Fort-de-France', 'Fort-de-France', 14.591, -61.0032], FMEE: ['La Réunion-Roland Garros', 'Saint-Denis', -20.8871, 55.5103],
   RJTT: ['Tokyo-Haneda', 'Tokyo', 35.5494, 139.7798], FAOR: ['Johannesburg', 'Johannesburg', -26.1392, 28.246], SBGR: ['São Paulo-Guarulhos', 'São Paulo', -23.4356, -46.4731],
-  OMDB: ['Dubaï', 'Dubaï', 25.2532, 55.3657], VTBS: ['Bangkok-Suvarnabhumi', 'Bangkok', 13.69, 100.7501], MMMX: ['Mexico', 'Mexico', 19.4361, -99.0719], KSFO: ['San Francisco', 'San Francisco', 37.6213, -122.379]
+  OMDB: ['Dubaï', 'Dubaï', 25.2532, 55.3657], VTBS: ['Bangkok-Suvarnabhumi', 'Bangkok', 13.69, 100.7501], MMMX: ['Mexico', 'Mexico', 19.4361, -99.0719], KSFO: ['San Francisco', 'San Francisco', 37.6213, -122.379],
+  // destinations du générateur de vols (Planning du jour), sans vol au programme fixe
+  LFLC: ['Clermont-Ferrand Auvergne', 'Clermont-Ferrand', 45.7867, 3.1692], LFRN: ['Rennes-Bretagne', 'Rennes', 48.0695, -1.7348], LFQQ: ['Lille-Lesquin', 'Lille', 50.5619, 3.0894], LFSB: ['Bâle-Mulhouse', 'Mulhouse', 47.59, 7.5291],
+  LFTH: ['Toulon-Hyères', 'Toulon', 43.0973, 6.146], LFMP: ['Perpignan-Rivesaltes', 'Perpignan', 42.7404, 2.8707], LFLB: ['Chambéry-Savoie', 'Chambéry', 45.6381, 5.8802],
+  EIDW: ['Dublin', 'Dublin', 53.4213, -6.2701], EGCC: ['Manchester', 'Manchester', 53.3537, -2.275], EGPH: ['Édimbourg', 'Édimbourg', 55.95, -3.3725], EDDB: ['Berlin-Brandebourg', 'Berlin', 52.3667, 13.5033],
+  EDDH: ['Hambourg', 'Hambourg', 53.6304, 9.9882], LKPR: ['Prague', 'Prague', 50.1008, 14.26], LHBP: ['Budapest', 'Budapest', 47.4298, 19.2611], LIPZ: ['Venise-Marco Polo', 'Venise', 45.5053, 12.3519],
+  LIRN: ['Naples', 'Naples', 40.886, 14.2908], LEMG: ['Malaga', 'Malaga', 36.6749, -4.4991], LEVC: ['Valence', 'Valence', 39.4893, -0.4816], LPPR: ['Porto', 'Porto', 41.2481, -8.6814], LPFR: ['Faro', 'Faro', 37.0144, -7.9659],
+  LICJ: ['Palerme', 'Palerme', 38.1759, 13.091], LICC: ['Catane', 'Catane', 37.4668, 15.0664], LDDU: ['Dubrovnik', 'Dubrovnik', 42.5614, 18.2682], LGIR: ['Héraklion', 'Héraklion', 35.3397, 25.1803],
+  LGRP: ['Rhodes', 'Rhodes', 36.4054, 28.0862], LTFM: ['Istanbul', 'Istanbul', 41.2753, 28.7519], LTAI: ['Antalya', 'Antalya', 36.8987, 30.8005], LCLK: ['Larnaca', 'Larnaca', 34.8751, 33.6249],
+  LLBG: ['Tel Aviv-Ben Gourion', 'Tel Aviv', 32.0114, 34.8867], HECA: ['Le Caire', 'Le Caire', 30.1219, 31.4056], OJAI: ['Amman', 'Amman', 31.7226, 35.9932], LROP: ['Bucarest', 'Bucarest', 44.5711, 26.085],
+  LBSF: ['Sofia', 'Sofia', 42.6967, 23.4114], EFHK: ['Helsinki', 'Helsinki', 60.3172, 24.9633], EVRA: ['Riga', 'Riga', 56.9236, 23.9711], BIKF: ['Reykjavik-Keflavik', 'Reykjavik', 63.985, -22.6056],
+  GCLP: ['Gran Canaria', 'Las Palmas', 27.9319, -15.3866], GCTS: ['Tenerife Sud', 'Tenerife', 28.0445, -16.5725], GCRR: ['Lanzarote', 'Arrecife', 28.9455, -13.6052], LPMA: ['Madère', 'Funchal', 32.6979, -16.7745],
+  LPPD: ['Ponta Delgada (Açores)', 'Ponta Delgada', 37.7412, -25.6979], GMAD: ['Agadir', 'Agadir', 30.325, -9.4131], GMFF: ['Fès', 'Fès', 33.9273, -4.978], DTTJ: ['Djerba', 'Djerba', 33.875, 10.7755],
+  DAOO: ['Oran', 'Oran', 35.6239, -0.6212], GOBD: ['Dakar-Blaise Diagne', 'Dakar', 14.67, -17.0733], DIAP: ['Abidjan', 'Abidjan', 5.2614, -3.9263], FIMP: ['Maurice', 'Port-Louis', -20.4302, 57.6836],
+  HKJK: ['Nairobi', 'Nairobi', -1.3192, 36.9278], OTHH: ['Doha', 'Doha', 25.2731, 51.6081], VIDP: ['Delhi', 'Delhi', 28.5562, 77.1], WSSS: ['Singapour-Changi', 'Singapour', 1.3644, 103.9915],
+  VHHH: ['Hong Kong', 'Hong Kong', 22.308, 113.9185], RKSI: ['Séoul-Incheon', 'Séoul', 37.4602, 126.4407], SOCA: ['Cayenne', 'Cayenne', 4.8198, -52.3604], SBGL: ['Rio de Janeiro-Galeão', 'Rio de Janeiro', -22.81, -43.2506],
+  SAEZ: ['Buenos Aires-Ezeiza', 'Buenos Aires', -34.8222, -58.5358], MMUN: ['Cancún', 'Cancún', 21.0365, -86.8771], MDPC: ['Punta Cana', 'Punta Cana', 18.5674, -68.3634],
+  KBOS: ['Boston-Logan', 'Boston', 42.3656, -71.0096], KIAD: ['Washington-Dulles', 'Washington', 38.9531, -77.4565], KATL: ['Atlanta', 'Atlanta', 33.6407, -84.4277], KORD: ['Chicago-O’Hare', 'Chicago', 41.9742, -87.9073],
+  CYYZ: ['Toronto-Pearson', 'Toronto', 43.6777, -79.6248], CYVR: ['Vancouver', 'Vancouver', 49.1967, -123.1815], TNCM: ['Saint-Martin (Juliana)', 'Saint-Martin', 18.041, -63.1089]
 };
 // [hub, destination, durée aller (min), durée retour (min), heures de départ du hub (UTC)]
 const A320 = [

@@ -45,7 +45,8 @@
       "Planning du jour transformé en générateur de vols : choisis ton avion (F-HLAT A320 ou F-HLAU 777-300ER) et court, moyen ou long-courrier, Max te propose 6 vols au hasard au départ de l’aéroport où se trouve l’avion, avec numéro de vol, horaires, durée et distance. « Autres vols » pour un nouveau tirage, « Prendre ce vol » réserve l’avion et ouvre SimBrief déjà rempli",
       "L’A320 fait du court et du moyen-courrier, le 777-300ER du moyen et du long-courrier. Une fois arrivé, Max te propose les vols suivants au départ de ta destination",
       "66 nouvelles destinations (France, Europe, Méditerranée, Canaries, Afrique, Amériques, Asie) : 119 aéroports en tout",
-      "Le vol pris dans le Planning du jour compte pour la ponctualité (heure de départ prévue affichée)"
+      "Le vol pris dans le Planning du jour compte pour la ponctualité (heure de départ prévue affichée)",
+      "Carte satellite : noms des pays et des villes, frontières et routes par-dessus l’image, comme sur le plan, et les aéroports de la compagnie (code OACI, puis la ville quand on zoome)"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

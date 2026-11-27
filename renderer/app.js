@@ -286,25 +286,47 @@ S.layers = { vol: { sat: false, radar: false }, ligne: { sat: false, radar: fals
 function mapSkeleton(svg) {
   if (svg.querySelector('.fg')) return;
   svg.innerHTML = '<rect class="ocean" x="-2000" y="-2000" width="5000" height="5000" fill="#DCE6F5"/><g class="sat"></g>' +
-    '<path class="landp" d="' + (window.WORLD_PATH || '') + '" fill="#F7F9FC" stroke="#B8C4DA" stroke-width="0.8" vector-effect="non-scaling-stroke"/><g class="radar"></g><g class="fg"></g>';
+    '<path class="landp" d="' + (window.WORLD_PATH || '') + '" fill="#F7F9FC" stroke="#B8C4DA" stroke-width="0.8" vector-effect="non-scaling-stroke"/><g class="radar"></g><g class="labels"></g><g class="apts"></g><g class="fg"></g>';
 }
 // Applique les fonds (plan / satellite / radar) à une carte : m = matrice Mercator → écran, view = zone visible.
 function applyLayers(svg, which, m, view, ppu, redraw) {
   const L = S.layers[which];
   const mat = 'matrix(' + m.join(' ') + ')';
-  for (const sel of ['.sat', '.landp', '.radar']) svg.querySelector(sel).setAttribute('transform', mat);
+  for (const sel of ['.sat', '.landp', '.radar', '.labels', '.apts']) svg.querySelector(sel).setAttribute('transform', mat);
   svg.querySelector('.ocean').setAttribute('fill', L.sat ? '#0B1F3F' : '#DCE6F5');
   const land = svg.querySelector('.landp');
   land.setAttribute('fill', L.sat ? 'none' : '#F7F9FC');
   land.setAttribute('stroke', L.sat ? 'rgba(255,255,255,.55)' : '#B8C4DA');
   const res = MapLayers.fill(svg.querySelector('.sat'), { view, pxPerUnit: ppu, sat: L.sat, plan: !L.sat, radar: false, onReady: redraw }) || {};
   MapLayers.fill(svg.querySelector('.radar'), { view, pxPerUnit: ppu, sat: false, radar: L.radar, onReady: redraw });
+  // satellite : noms des pays et des villes, frontières et routes par-dessus l'image, comme sur le plan, et les aéroports de la compagnie
+  MapLayers.fill(svg.querySelector('.labels'), { view, pxPerUnit: ppu, labels: !!L.sat, onReady: redraw });
+  drawAirports(svg.querySelector('.apts'), L.sat ? view : null, ppu);
   // zoomé : le plan détaillé ou le satellite remplace les contours simplifiés (qui ne tombent plus pile sur les côtes)
   if (res.plan) { land.setAttribute('fill', 'none'); land.setAttribute('stroke', 'none'); }
   else if (L.sat && res.z >= 6) land.setAttribute('stroke', 'none');
   svg.dataset.credit = MapLayers.credit(L, res);
   return res;
 }
+// Aéroports de la compagnie sur la carte satellite : un point et le code OACI, le nom de la ville quand on zoome.
+// Tailles en pixels écran (pxu = pixels par unité Mercator), pour rester lisibles à tous les zooms.
+S.apts = null;
+function drawAirports(g, view, pxu) {
+  if (!view || !S.apts || !pxu) { if (g.dataset.key) { g.textContent = ''; g.dataset.key = ''; } return; }
+  const key = view.map((v) => v.toFixed(4)).join(',') + '|' + pxu.toFixed(3);
+  if (g.dataset.key === key) return;
+  g.dataset.key = key;
+  const u = 1 / pxu, showCode = pxu > 2.5, showCity = pxu > 60;
+  let h = '';
+  for (const [icao, a] of Object.entries(S.apts)) {
+    const x = MapLayers.LX(a.lon), y = MapLayers.LY(a.lat);
+    if (x < view[0] - 1 || x > view[2] + 1 || y < view[1] - 1 || y > view[3] + 1) continue;
+    h += '<g transform="translate(' + x + ' ' + y + ')"><circle r="' + (3.2 * u) + '" fill="#FFD45C" stroke="#0A1E4A" stroke-width="' + (1.2 * u) + '"/>' +
+      (showCode ? '<text x="' + (5 * u) + '" y="' + (3.6 * u) + '" font-size="' + (11 * u) + '" font-weight="700" fill="#fff" stroke="#0A1E4A" stroke-width="' + (2.6 * u) + '" paint-order="stroke">✈ ' + esc(icao) + (showCity ? ' · ' + esc(a.city || a.name) : '') + '</text>' : '') + '</g>';
+  }
+  g.innerHTML = h;
+}
+afv.genGet().then((r) => { S.apts = r && r.airports; }).catch(() => {});
 function renderMap(t) {
   const pl = S.plan;
   const svg = $('map');

@@ -20,7 +20,9 @@
   // (CARTO demande maintenant une clé : ses tuiles affichaient « API KEY REQUIRED ».)
   const PLAN = (z, x, y) => 'https://tiles.maps.eox.at/wmts/1.0.0/osm_3857/default/g/' + z + '/' + y + '/' + x + '.jpg';
   const PLAN_FROM = 1; // carte OpenStreetMap à tous les niveaux de zoom (le fond vectoriel ne sert que hors ligne)
-  const SAT_MAX = 18, PLAN_MAX = 16;
+  const SAT_MAX = 18, PLAN_MAX = 16, LABELS_MAX = 18;
+  const REF = (name) => (z, x, y) => 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/' + name + '/MapServer/tile/' + z + '/' + y + '/' + x;
+  const PLACES = REF('World_Boundaries_and_Places'), ROADS = REF('World_Transportation');
   const SAT = [
     [ESRI, 18],
     [EOX, 15],
@@ -64,6 +66,12 @@
     else if (plan) {
       const t = tileSet(view, pxPerUnit, PLAN_MAX); z = t.length ? t[0].z : 0;
       if (z >= PLAN_FROM && !state.planFail) { planOn = true; key += 'p' + t.map((q) => q.z + '/' + q.x + '/' + q.y).join(','); parts.push(...t.map((q) => ({ q, kind: 'plan' }))); }
+    }
+    // couche de noms par-dessus le satellite : frontières, pays, villes (Esri), et routes quand on zoome
+    if (opts.labels) {
+      const t = tileSet(view, pxPerUnit, LABELS_MAX);
+      key += 'l' + t.map((q) => q.z + '/' + q.x + '/' + q.y).join(',');
+      for (const q of t) { if (q.z >= 7) parts.push({ q, kind: 'roads' }); parts.push({ q, kind: 'places' }); }
     }
     const r = radar && state.radar;
     if (r) { const t = tileSet(view, pxPerUnit, 7); key += 'r' + r.path + t.map((q) => q.z + '/' + q.x + '/' + q.y).join(','); parts.push(...t.map((q) => ({ q, kind: 'radar' }))); }
@@ -109,6 +117,10 @@
         // pas d'internet ou serveur indisponible : retour au fond simple plutôt qu'une carte vide
         t.img.addEventListener('error', () => { if (!state.planFail) { state.planFail = true; g.dataset.key = ''; if (opts.onReady) opts.onReady(); setTimeout(() => { state.planFail = false; }, 5 * 60 * 1000); } });
         g.appendChild(t.box);
+      } else if (kind === 'places' || kind === 'roads') {
+        const t = tile(q, kind === 'places' ? PLACES : ROADS, LABELS_MAX, kind === 'roads' ? '0.8' : '');
+        t.img.addEventListener('error', () => t.box.remove()); // pas de noms plutôt qu'une case vide
+        g.appendChild(t.box);
       } else {
         g.appendChild(tile(q, (z, x, y) => r.host + r.path + '/256/' + z + '/' + x + '/' + y + '/2/1_1.png', 7, '0.75').box);
       }
@@ -118,7 +130,7 @@
   // crédits des fonds de carte affichés
   function credit(L, res) {
     const c = ['Fond : Natural Earth'];
-    if (L.sat) c.push(res && res.z > 12 ? 'Satellite : Esri, Maxar, Earthstar Geographics' : 'Satellite : Esri, Maxar, Earthstar Geographics · Sentinel-2 (EOX)');
+    if (L.sat) c.push('Satellite et noms : Esri, Maxar, Earthstar Geographics' + (res && res.z > 12 ? '' : ' · Sentinel-2 (EOX)'));
     else if (res && res.plan) c.push('Plan : © contributeurs OpenStreetMap, rendu EOX');
     if (L.radar) c.push('Radar : RainViewer' + (state.radar ? ' (' + new Date(state.radar.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : ''));
     return c.join(' · ');

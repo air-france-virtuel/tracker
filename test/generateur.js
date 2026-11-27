@@ -47,3 +47,9 @@ for (const [type, cat, legs, from] of [['A320', 'court', 4, 'LFPG'], ['A320', 'c
 }
 assert.strictEqual(g.day({ type: 'B77W', cat: 'long', from: 'LFPG', legs: 6, now }).legs.length, 2, 'long-courrier : un aller-retour');
 console.log('journée de vols : OK');
+// rotation imposée par la compagnie : 2, 4 ou 6 vols en court-courrier, jamais plus de 13 h de service
+const seen = new Set();
+for (let s = 0; s < 60; s++) { const d = g.day({ type: 'A320', cat: 'court', from: 'LFPG', now, seed: s }); seen.add(d.legs.length); assert.ok(d.end - d.start <= 13 * 3600000); }
+assert.ok(seen.has(4) && seen.size >= 2, 'rotations variées');
+assert.strictEqual(g.day({ type: 'A320', cat: 'moyen', from: 'LFPG', now, seed: 3 }).legs.length, 2);
+console.log('rotation imposée : OK');

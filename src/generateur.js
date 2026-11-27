@@ -76,7 +76,10 @@ function day(opts) {
   const base = generate(Object.assign({}, opts, { count: 40 }));
   if (!base.ok) return base;
   const cat = base.cat;
-  const legs = Math.max(2, Math.min(cat === 'court' ? 6 : 2, Math.round((+opts.legs || 2) / 2) * 2));
+  // c'est la compagnie qui fixe la rotation, comme dans la réalité : en court-courrier 2, 4 ou 6 vols (le plus souvent 4)
+  const pick = rng([base.from, base.type, cat, opts.seed || 0, 'rotation'].join('|'))();
+  const imposed = cat === 'court' ? (pick < 0.2 ? 2 : pick < 0.7 ? 4 : 6) : 2;
+  const legs = Math.max(2, Math.min(cat === 'court' ? 6 : 2, Math.round((+opts.legs || imposed) / 2) * 2));
   // plusieurs allers-retours courts dans la journée : on préfère les destinations proches
   const near = cat === 'court' && legs >= 4 ? base.flights.filter((f) => f.distKm <= (legs >= 6 ? 900 : 1200)) : base.flights;
   const pairs = (near.length >= legs / 2 ? near : base.flights).slice(0, legs / 2);
@@ -100,6 +103,8 @@ function day(opts) {
       t += (block + TURN[cat]) * 60000;
     }
   }
+  // temps de service maximal d'un équipage (environ 13 h) : on retire le dernier aller-retour si la journée est trop longue
+  while (out.length > 2 && out[out.length - 1].arrEst - out[0].depEst > 13 * 3600000 && cat === 'court') out.splice(-2, 2);
   const last = out[out.length - 1];
   return { ok: true, from: base.from, fromName: base.fromName, type: base.type, cat, cats: base.cats, legs: out,
     blockTotal: out.reduce((a, f) => a + f.blockMin, 0), start: out[0].depEst, end: last.arrEst };

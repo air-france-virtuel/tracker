@@ -1486,7 +1486,7 @@ function planSimbrief(f) {
 // ---------------- Planning du jour : générateur de vols ----------------
 // Le pilote choisit l'avion de la compagnie (A320 F-HLAT ou 777 F-HLAU) et court, moyen ou long-courrier :
 // Max propose des vols au hasard au départ de l'aéroport où se trouve l'avion (règle du hangar).
-S.gen = { cat: null, from: null, seed: 0, res: null, flight: null, msg: '', busy: false, mode: 'vol', legs: 4, day: null, dayRes: null };
+S.gen = { cat: null, from: null, seed: 0, res: null, flight: null, msg: '', busy: false, mode: 'vol', day: null, dayRes: null };
 const GEN_CAT = { court: ['Court-courrier', 'moins de 1 500 km'], moyen: ['Moyen-courrier', '1 500 à 4 000 km'], long: ['Long-courrier', 'plus de 4 000 km'] };
 const GEN_CATS = { A320: ['court', 'moyen'], B77W: ['moyen', 'long'] };
 async function loadPlanning(refresh) {
@@ -1506,7 +1506,7 @@ async function genLoad() {
   if (!cats.includes(S.gen.cat)) S.gen.cat = cats[0];
   const o = { type: p.type, cat: S.gen.cat, from: genFromOf(p), seed: S.gen.seed };
   try {
-    if (S.gen.mode === 'jour') S.gen.dayRes = await afv.genDay(Object.assign(o, { legs: S.gen.cat === 'court' ? S.gen.legs : 2 }));
+    if (S.gen.mode === 'jour') S.gen.dayRes = await afv.genDay(o);
     else S.gen.res = await afv.genFlights(o);
   } catch (e) { S.gen[S.gen.mode === 'jour' ? 'dayRes' : 'res'] = { ok: false, error: 'Impossible de générer les vols.' }; }
   renderPlanning();
@@ -1536,7 +1536,7 @@ function renderPlanning() {
   // un vol ou une journée complète
   $('genMode').innerHTML = [['vol', 'Un vol', 'au choix parmi 6'], ['jour', 'Ma journée', S.gen.cat === 'court' ? 'plusieurs vols enchaînés' : 'un aller-retour']].map(([k, l, d]) =>
     '<button class="gen-cat' + (S.gen.mode === k ? ' on' : '') + '" data-genmode="' + k + '" aria-pressed="' + (S.gen.mode === k) + '"><b>' + l + '</b><span>' + d + '</span></button>').join('') +
-    (S.gen.mode === 'jour' && S.gen.cat === 'court' ? '<span class="gen-legs">Nombre de vols : ' + [2, 4, 6].map((n) => '<button class="tag' + (S.gen.legs === n ? ' on' : '') + '" data-genlegs="' + n + '" aria-pressed="' + (S.gen.legs === n) + '">' + n + '</button>').join('') + '</span>' : '');
+    (S.gen.mode === 'jour' ? '<span class="muted small" style="margin-left:10px">La compagnie fixe ta rotation : nombre de vols, destinations et horaires.</span>' : '');
   // vol choisi
   const g = S.gen.flight;
   $('genMine').hidden = !g;
@@ -1579,8 +1579,8 @@ function renderGenDay(cur, from) {
   const busy = cur && bookingOf(cur.reg) && !bookingOf(cur.reg).mine;
   const turn = (a, b) => Math.round((b.depEst - a.arrEst) / 60000);
   $('genList').innerHTML = (S.gen.msg ? '<div class="gen-warn" style="margin:16px 0 0">' + esc(S.gen.msg) + '</div>' : '') +
-    '<div class="card gen-day"><div class="row between wrap"><div><h2 style="margin:0">Ta journée avec ' + esc(cur.reg) + '</h2><div class="muted small">' + r.legs.length + ' vols · ' + hm(r.blockTotal) + ' de vol · de ' + hhZ(r.start) + ' à ' + hhZ(r.end) + ' · retour à ' + esc(r.from) + '</div></div>' +
-    '<div class="row"><button class="btn ghost small" data-genother>Autre journée</button><button class="btn red" data-gentakeday' + (busy || S.gen.busy ? ' disabled' : '') + '>Prendre cette journée</button></div></div>' +
+    '<div class="card gen-day"><div class="row between wrap"><div><h2 style="margin:0">Ta rotation du jour avec ' + esc(cur.reg) + '</h2><div class="muted small">' + r.legs.length + ' vols · ' + hm(r.blockTotal) + ' de vol · de ' + hhZ(r.start) + ' à ' + hhZ(r.end) + ' · retour à ' + esc(r.from) + '</div></div>' +
+    '<div class="row"><button class="btn ghost small" data-genother>Autre rotation</button><button class="btn red" data-gentakeday' + (busy || S.gen.busy ? ' disabled' : '') + '>Prendre cette journée</button></div></div>' +
     '<div class="gen-tl">' + r.legs.map((f, i) => (i ? '<div class="gen-turn">⏱ Escale à ' + esc(f.from) + ' : ' + hm(turn(r.legs[i - 1], f)) + '</div>' : '') +
       '<div class="gen-leg"><span class="i">' + (i + 1) + '</span><div class="m"><div><b>' + esc(f.number) + '</b> <span class="cat ' + esc(f.cat) + '">' + esc(GEN_CAT[f.cat][0]) + '</span></div><div class="gen-route" style="font-size:18px"><b>' + esc(f.from) + '</b><i></i><b>' + esc(f.to) + '</b></div><div class="gen-city">' + esc(f.fromName) + ' → ' + esc(f.toName) + '</div></div>' +
       '<div class="gen-facts" style="grid-template-columns:repeat(4,90px)"><span><small>Départ</small>' + hhZ(f.depEst) + '</span><span><small>Arrivée</small>' + hhZ(f.arrEst) + '</span><span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div></div>').join('') + '</div>' +
@@ -1623,7 +1623,6 @@ async function genTake(f) {
 document.addEventListener('click', async (e) => {
   const rg = e.target.closest('[data-genreg]'); if (rg) { S.plan2.myReg = rg.dataset.genreg; try { localStorage.setItem('lat.myReg', S.plan2.myReg); } catch (err) { /* rien */ } S.gen.from = null; S.gen.res = null; renderPlanning(); genLoad(); return; }
   const md = e.target.closest('[data-genmode]'); if (md) { S.gen.mode = md.dataset.genmode; renderPlanning(); genLoad(); return; }
-  const lg = e.target.closest('[data-genlegs]'); if (lg) { S.gen.legs = +lg.dataset.genlegs; S.gen.dayRes = null; renderPlanning(); genLoad(); return; }
   if (e.target.closest('[data-genother]')) { S.gen.seed++; genLoad(); return; }
   if (e.target.closest('[data-gentakeday]')) { if (S.gen.dayRes && S.gen.dayRes.ok) genTakeDay(S.gen.dayRes.legs); return; }
   const c = e.target.closest('[data-gencat]'); if (c && !c.disabled) { S.gen.cat = c.dataset.gencat; S.gen.res = null; renderPlanning(); genLoad(); return; }

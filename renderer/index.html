@@ -298,6 +298,7 @@
                 <button class="btn small ghost" id="btnMaxMute" aria-pressed="false" hidden>Couper Max</button><button class="btn small red" id="btnMaxOverlay" title="Max reste au premier plan, par-dessus le simulateur">Max par-dessus le simu</button>
               </div>
               <div class="max-say" id="maxSay">Prêt quand tu l’es.</div>
+              <div class="row" style="margin:8px 0 0"><button class="btn small ghost" id="btnTaxi" title="Le chemin des taxiways jusqu’à ta piste de départ">🗺 Carte de roulage</button></div>
               <div class="max-prompt" id="maxPrompt" hidden></div>
               <form class="max-ask" id="maxAskForm" autocomplete="off"><input id="maxAsk" maxlength="160" placeholder="Pose une question à Max : temps restant, carburant, météo à l’arrivée…" aria-label="Question à Max"><button class="btn small red" type="submit">Demander</button></form>
               <p class="muted small" id="maxVoiceHint" hidden>Max peut parler à voix haute : installe sa voix dans <button class="linkbtn" data-goto="reglages">Réglages</button>.</p>
@@ -422,6 +423,17 @@
       <div><div class="max-name" id="briefTitle">Briefing de Max</div><div class="muted small" id="briefSub"></div></div></div>
     <div id="briefBody" class="brief"></div>
     <div class="row" style="margin-top:14px"><button class="btn red" id="btnBriefListen">Écouter Max</button><button class="btn ghost" id="btnBriefClose">Fermer</button></div>
+  </div>
+</div>
+
+<div class="modal" id="taxiModal" hidden>
+  <div class="modal-box taxi-box" role="dialog" aria-labelledby="taxiTitle">
+    <div class="row between"><div><div class="max-name" id="taxiTitle">Carte de roulage</div><div class="muted small" id="taxiSub"></div></div><button class="btn small ghost" id="btnTaxiClose">Fermer</button></div>
+    <div class="taxi-say" id="taxiSay">Chargement du plan de l’aéroport…</div>
+    <div class="taxi-map-wrap"><svg id="taxiMap" viewBox="0 0 1000 600" role="img" aria-label="Plan de l’aéroport avec le chemin de roulage"></svg></div>
+    <div class="row between wrap" style="margin-top:8px"><div class="taxi-legend"><span><i style="background:#C8102E"></i>Ton chemin</span><span><i style="background:#3B4660"></i>Pistes</span><span><i style="background:#C9D2E3"></i>Taxiways</span><span><i style="background:#E0A800"></i>Point d’arrêt</span></div>
+      <div class="row"><button class="btn small ghost" id="btnTaxiAgain">Recalculer depuis ma position</button><button class="btn small red" id="btnTaxiListen">Écouter Max</button></div></div>
+    <p class="muted small" style="margin:6px 0 0">Plan : © contributeurs OpenStreetMap. Le chemin le plus court est une aide : suis toujours les instructions du contrôle (ATC) et la signalisation au sol. Molette : zoom · glisser : déplacer.</p>
   </div>
 </div>
 

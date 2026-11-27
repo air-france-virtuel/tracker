@@ -573,6 +573,38 @@ app.whenReady().then(() => {
     return { dep, arr };
   });
 
+  // ---------- carte de roulage de Max (OpenStreetMap) ----------
+  const roulageMod = require('./roulage');
+  const { runwayEnds } = require('./pistes');
+  const roulage = new roulageMod.Roulage(path.join(dataDir(), 'roulage'), (u, o) => require('electron').net.fetch(u, o));
+  // ap : { icao, lat, lon } ; rwy : piste de départ (ex. 27L) ; pos : position de l'avion (facultative)
+  ipcMain.handle('roulage:get', async (_e, ap, rwy, pos) => {
+    try {
+      if (!ap || !ap.icao) return { ok: false, error: 'Charge d’abord ton plan SimBrief.' };
+      const data = await roulage.airport(ap.icao, +ap.lat, +ap.lon);
+      rwy = String(rwy || '').toUpperCase().replace(/^RWY\s*/, '');
+      let thr = null;
+      try { const e = runwayEnds(await pistes.base(), ap.icao).find((x) => x.ident === rwy); if (e) thr = { ident: rwy, lat: e.lat, lon: e.lon }; } catch (e) { /* base des pistes indisponible */ }
+      if (!thr && rwy) {
+        // secours : l'extrémité de la piste OpenStreetMap d'où l'on décolle vers le cap de la piste
+        const num = parseInt(rwy, 10);
+        for (const w of data.ways.filter((x) => x.k === 'rwy' && x.ref.split('/').map((r) => r.trim()).includes(rwy))) {
+          const A = { lat: w.g[0][0], lon: w.g[0][1] }, B = { lat: w.g[w.g.length - 1][0], lon: w.g[w.g.length - 1][1] };
+          const brg = (Math.atan2(B.lon - A.lon, B.lat - A.lat) * 180 / Math.PI + 360) % 360;
+          const d = Math.abs(((brg - num * 10) % 360 + 540) % 360 - 180);
+          thr = Object.assign({ ident: rwy }, d < 90 ? A : B);
+        }
+      }
+      const base = { ok: true, icao: ap.icao, rwy, thr, ways: data.ways.map((w) => ({ k: w.k, ref: w.ref, g: w.g })), center: { lat: +ap.lat, lon: +ap.lon } };
+      if (!rwy || !thr) return Object.assign(base, { route: null, say: rwy ? 'Je ne trouve pas la piste ' + rwy + ' sur le plan de ' + ap.icao + '.' : 'Je ne connais pas encore ta piste de départ.' });
+      if (!pos || !isFinite(pos.lat) || roulageMod.distM(pos, { lat: +ap.lat, lon: +ap.lon }) > 6000) {
+        return Object.assign(base, { route: null, say: 'Place l’avion au parking de ' + ap.icao + ' et je te montre le chemin jusqu’à la piste ' + rwy + '.' });
+      }
+      const r = roulageMod.route(data, pos, thr);
+      return Object.assign(base, { route: r.ok ? r : null, say: roulageMod.sentence(r, rwy) });
+    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+  });
+
   // ---------- écoute de Max (micro) ----------
   const ecoute = new MaxEcoute(path.join(dataDir(), 'ecoute'));
   // le panneau de Max (fenêtre à part) suit aussi le téléchargement

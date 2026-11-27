@@ -2642,3 +2642,103 @@ function achShowNext() {
 afv.on('ach:new', (list) => { for (const a of list || []) achQueue.push(a); if ($('achToast').hidden) achShowNext(); loadAchievements(); });
 setTimeout(loadAchievements, 2000);
 setTimeout(loadLive, 1500);
+
+// ---------------- carte de roulage de Max ----------------
+S.taxi = { data: null, vb: null, saidFor: '' };
+function taxiInfo() {
+  const p = S.plan; if (!p || !p.origin || !p.origin.icao) return null;
+  const rwy = (S.pistes && S.pistes.dep && S.pistes.dep.rwy) || p.origin.rwy || '';
+  const t = S.lastT && S.lastT.lat != null ? { lat: S.lastT.lat, lon: S.lastT.lon } : null;
+  return { ap: { icao: p.origin.icao, lat: p.origin.lat, lon: p.origin.lon }, rwy, pos: t };
+}
+async function loadTaxi() {
+  const i = taxiInfo();
+  if (!i) { $('taxiSay').textContent = 'Charge d’abord ton plan SimBrief : je trouverai ta piste de départ.'; $('taxiMap').innerHTML = ''; return null; }
+  $('taxiSub').textContent = i.ap.icao + (i.rwy ? ' · piste ' + i.rwy : '');
+  $('taxiSay').textContent = 'Je regarde le plan de ' + i.ap.icao + '…';
+  const d = await afv.getRoulage(i.ap, i.rwy, i.pos);
+  S.taxi.data = d; S.taxi.vb = null;
+  $('taxiSay').textContent = d.ok ? d.say : d.error;
+  renderTaxi();
+  return d;
+}
+function renderTaxi() {
+  const d = S.taxi.data, svg = $('taxiMap');
+  if (!d || !d.ok) { svg.innerHTML = ''; return; }
+  const lat0 = d.center.lat, lon0 = d.center.lon, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
+  const P = (a, b) => [((b - lon0) * kx).toFixed(1), (-(a - lat0) * ky).toFixed(1)];
+  const r = d.route;
+  if (!S.taxi.vb) {
+    // cadrage : le chemin (avec de la marge), sinon tout l'aéroport
+    const pts = r ? r.path.map((p) => P(p.lat, p.lon)).concat(d.thr ? [P(d.thr.lat, d.thr.lon)] : []) : d.ways.flatMap((w) => w.g.map((g) => P(g[0], g[1])));
+    const xs = pts.map((p) => +p[0]), ys = pts.map((p) => +p[1]);
+    let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const pad = Math.max(150, (x1 - x0) * 0.12, (y1 - y0) * 0.12);
+    x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+    const ratio = (svg.clientHeight || 600) / (svg.clientWidth || 1000);
+    let w = x1 - x0, h = y1 - y0;
+    if (h / w < ratio) { const nh = w * ratio; y0 -= (nh - h) / 2; h = nh; } else { const nw = h / ratio; x0 -= (nw - w) / 2; w = nw; }
+    S.taxi.vb = [x0, y0, w, h];
+  }
+  const [vx, vy, vw, vh] = S.taxi.vb;
+  svg.setAttribute('viewBox', S.taxi.vb.join(' '));
+  const px = vw / (svg.clientWidth || 1000); // mètres par pixel écran
+  const line = (g) => g.map((q, i) => (i ? 'L' : 'M') + P(q[0], q[1]).join(' ')).join('');
+  let h = '<rect x="' + vx + '" y="' + vy + '" width="' + vw + '" height="' + vh + '" fill="#EEF2F8"/>';
+  for (const w of d.ways.filter((x) => x.k === 'rwy')) h += '<path d="' + line(w.g) + '" stroke="#3B4660" stroke-width="45" fill="none" stroke-linecap="butt"/><path d="' + line(w.g) + '" stroke="#fff" stroke-width="' + Math.max(1, px * 1.2) + '" stroke-dasharray="' + (30) + ' ' + (25) + '" fill="none"/>';
+  for (const w of d.ways.filter((x) => x.k !== 'rwy')) h += '<path d="' + line(w.g) + '" stroke="' + (w.k === 'lane' ? '#D9DFEA' : '#C9D2E3') + '" stroke-width="' + (w.k === 'lane' ? 10 : 18) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  if (r) {
+    const rp = r.path.map((q) => P(q.lat, q.lon).join(' '));
+    h += '<polyline points="' + rp.join(' ') + '" stroke="#fff" stroke-width="' + Math.max(14, px * 9) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+    h += '<polyline points="' + rp.join(' ') + '" stroke="#C8102E" stroke-width="' + Math.max(8, px * 5) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  // noms des taxiways (une fois par nom visible) et des pistes
+  const fs = Math.max(9, px * 12), seen = new Set();
+  const onRoute = new Set(r ? r.legs.join(', ').split(/, | à /) : []);
+  for (const w of d.ways.slice().sort((a, b) => (onRoute.has(b.ref) - onRoute.has(a.ref)))) {
+    if (!w.ref || seen.has(w.ref) || w.g.length < 2) continue;
+    const m = w.g[Math.floor(w.g.length / 2)], [x, y] = P(m[0], m[1]).map(Number);
+    if (x < vx || x > vx + vw || y < vy || y > vy + vh) continue;
+    seen.add(w.ref);
+    const hot = onRoute.has(w.ref), rw = w.k === 'rwy';
+    const label = rw ? w.ref : w.ref;
+    const bw = (label.length * 0.62 + 0.8) * fs * (rw ? 1.1 : 1);
+    h += '<g transform="translate(' + x + ' ' + y + ')"><rect x="' + (-bw / 2) + '" y="' + (-fs * 0.75) + '" width="' + bw + '" height="' + (fs * 1.5) + '" rx="' + (fs * 0.3) + '" fill="' + (rw ? '#3B4660' : hot ? '#C8102E' : '#FFD45C') + '" stroke="#0A1E4A" stroke-width="' + (px * 0.8) + '"/>' +
+      '<text text-anchor="middle" y="' + (fs * 0.38) + '" font-size="' + (fs * (rw ? 1.05 : 1)) + '" font-weight="800" fill="' + (rw || hot ? '#fff' : '#111') + '">' + esc(label) + '</text></g>';
+  }
+  if (d.thr) { const [x, y] = P(d.thr.lat, d.thr.lon); h += '<g transform="translate(' + x + ' ' + y + ')"><circle r="' + (fs * 0.9) + '" fill="#C8102E" stroke="#fff" stroke-width="' + (px * 2) + '"/><text y="' + (-fs * 1.4) + '" text-anchor="middle" font-size="' + (fs * 1.25) + '" font-weight="800" fill="#C8102E" paint-order="stroke" stroke="#fff" stroke-width="' + (px * 3) + '">Piste ' + esc(d.rwy) + '</text></g>'; }
+  if (r) {
+    const [ex, ey] = P(r.end.lat, r.end.lon); h += '<rect x="' + (+ex - fs * 0.6) + '" y="' + (+ey - fs * 0.6) + '" width="' + (fs * 1.2) + '" height="' + (fs * 1.2) + '" fill="#E0A800" stroke="#0A1E4A" stroke-width="' + (px) + '" transform="rotate(45 ' + ex + ' ' + ey + ')"/>';
+    const [sx, sy] = P(r.path[0].lat, r.path[0].lon), hdg = S.lastT && S.lastT.hdg != null ? S.lastT.hdg : 0;
+    h += '<g transform="translate(' + sx + ' ' + sy + ') rotate(' + hdg + ') scale(' + (fs * 0.35) + ')"><path d="' + PLANE + '" fill="#0A1E4A" stroke="#fff" stroke-width=".7"/></g>';
+  }
+  svg.innerHTML = h;
+}
+async function openTaxi() { $('taxiModal').hidden = false; await loadTaxi(); }
+$('btnTaxi').addEventListener('click', openTaxi);
+$('btnTaxiClose').addEventListener('click', () => { $('taxiModal').hidden = true; });
+$('taxiModal').addEventListener('click', (e) => { if (e.target === $('taxiModal')) $('taxiModal').hidden = true; });
+$('btnTaxiAgain').addEventListener('click', loadTaxi);
+$('btnTaxiListen').addEventListener('click', () => { const d = S.taxi.data; if (d && (d.say || d.error)) { maxStop(); maxSpeak(d.say || d.error, true); } });
+(function taxiControls() {
+  const svg = $('taxiMap');
+  const toMap = (ev) => { const r = svg.getBoundingClientRect(), v = S.taxi.vb; return [v[0] + ((ev.clientX - r.left) / r.width) * v[2], v[1] + ((ev.clientY - r.top) / r.height) * v[3]]; };
+  svg.addEventListener('wheel', (ev) => {
+    if (!S.taxi.vb) return; ev.preventDefault();
+    const [mx, my] = toMap(ev), v = S.taxi.vb, f = ev.deltaY > 0 ? 1.25 : 0.8;
+    const w = Math.min(12000, Math.max(150, v[2] * f)), h = w * (v[3] / v[2]);
+    S.taxi.vb = [mx - (mx - v[0]) * (w / v[2]), my - (my - v[1]) * (h / v[3]), w, h]; renderTaxi();
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener('pointerdown', (ev) => { if (!S.taxi.vb) return; drag = { x: ev.clientX, y: ev.clientY, vb: S.taxi.vb.slice() }; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener('pointermove', (ev) => { if (!drag) return; const r = svg.getBoundingClientRect(); S.taxi.vb = [drag.vb[0] - ((ev.clientX - drag.x) / r.width) * drag.vb[2], drag.vb[1] - ((ev.clientY - drag.y) / r.height) * drag.vb[3], drag.vb[2], drag.vb[3]]; renderTaxi(); });
+  svg.addEventListener('pointerup', () => { drag = null; });
+})();
+// Au roulage, Max annonce une fois le chemin jusqu'à la piste (vol réel, pas en démo)
+setInterval(async () => {
+  if (!S.flight || !S.plan || S.plan.demo || S.phase !== 1) return;
+  const i = taxiInfo(); if (!i || !i.pos || !i.rwy) return;
+  if (S.taxi.saidFlight === S.flight) return; // une fois par vol
+  S.taxi.saidFlight = S.flight;
+  try { const d = await afv.getRoulage(i.ap, i.rwy, i.pos); if (d && d.ok && d.route) { S.taxi.data = d; S.taxi.vb = null; maxSays(d.say); } } catch (e) { /* plan de l'aéroport indisponible */ }
+}, 4000);

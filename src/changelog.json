@@ -1,7 +1,7 @@
 [
   {
     "version": "1.1.0-beta",
-    "date": "2026-11-20",
+    "date": "2026-11-27",
     "added": [
       "Version bêta : toutes ces nouveautés sont à tester, signale tout souci dans « Donner mon avis »",
       "Max par-dessus le simulateur : une petite fenêtre toujours au premier plan s’ouvre au début du vol (déplaçable, réductible, voix coupable). Réglages › « Afficher Max par-dessus le simulateur » pour la désactiver",
@@ -35,12 +35,21 @@
       "Pistes en service comme dans la vraie vie : le tracker regarde les avions réels en approche et au décollage autour de l’aéroport (données ADS-B publiques), écarte les pistes fermées par les NOTAM de ton dossier SimBrief et, sans trafic, prend la piste la plus face au vent. Si ton plan SimBrief prévoit une piste fermée ou dans l’autre sens, Max te prévient. Il annonce la piste de départ au début du vol et celle d’arrivée en croisière, et répond à « quelle piste ? »",
       "« Démarrer un vol » en un clic : le tracker charge ton dernier plan SimBrief puis démarre le suivi tout seul (même chose avec « Démarrer le suivi »). Si ton avion n’est pas à l’aéroport de départ du plan, Max te prévient",
       "« Démarrer un vol » avant d’être dans le simu : le tracker charge le plan puis attend, et démarre le suivi tout seul dès que ton avion est posé à l’aéroport de départ dans MSFS (bouton « Annuler » pour arrêter l’attente)",
-      "Nouvelle livrée A320 « Oiseau » (F-HLAT) dans la rubrique Livrées : oiseau tricolore, rubans en vague, dérive tricolore, ruban sur les moteurs, avec une nouvelle photo. Si tu avais l’ancienne, le tracker te propose la mise à jour"
+      "Nouvelle livrée A320 « Oiseau » (F-HLAT) dans la rubrique Livrées : oiseau tricolore, rubans en vague, dérive tricolore, ruban sur les moteurs, avec une nouvelle photo. Si tu avais l’ancienne, le tracker te propose la mise à jour",
+      "Vols de la compagnie : le programme Les Ailes Tricolores (194 vols par jour au départ de Paris : A320 en France, Europe et Afrique du Nord, 777-300ER en long-courrier), avec carte des avions en vol, vols à venir et précédents",
+      "Planning du jour basé sur les vols Les Ailes Tricolores ; Max te dit quel avion de la compagnie prendre et le vol que tu peux enchaîner",
+      "Direction : ajouter, modifier ou retirer des vols du programme depuis le tracker",
+      "Succès : 30 défis à relever (premiers vols, heures de vol, atterrissages en douceur, destinations, long-courrier, discipline, carrière), avec annonce de Max au déblocage",
+      "Carte de roulage de Max : le chemin des taxiways jusqu’au point d’arrêt de ta piste de départ (plan OpenStreetMap), annoncé par Max au début du roulage",
+      "Infos du jour : la carte des pilotes en vol et la liste sont directement sur la page, avec les prochains départs de la compagnie",
+      "Cartes nettes quand on zoome : satellite Sentinel-2 (EOX) et plan détaillé OpenStreetMap"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",
       "L’ancienne rubrique « Hangar & flotte » (ta liste personnelle d’avions) est remplacée par le Hangar de la compagnie ; le choix « Appareil de la flotte » disparaît de la préparation du vol",
-      "Ancienne livrée A320 « Ruban » (remplacée par la livrée « Oiseau »)"
+      "Ancienne livrée A320 « Ruban » (remplacée par la livrée « Oiseau »)",
+      "Vols réels et programme Air France, actualité Air France",
+      "Page séparée « Pilotes en vol » (tout est maintenant dans Infos du jour)"
     ],
     "fixed": [
       "Altitude : le tracker affiche maintenant la même altitude que l’écran de vol de l’avion (niveau de vol standard au-dessus de 18 000 ft, altitude au calage du pilote en dessous). Avant, il montrait l’altitude géométrique, qui pouvait différer de plus de 1 000 ft (ex. FL298 au lieu de FL310)",

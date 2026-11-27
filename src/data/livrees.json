@@ -6,13 +6,13 @@
       "aircraft": "Fenix A320",
       "engine": "IAE",
       "reg": "F-HLAT",
-      "version": "2.0",
+      "version": "2.1",
       "folder": "les-ailes-tricolores-a320-iae",
       "url": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/les-ailes-tricolores-a320-iae-oiseau.zip",
       "image": "assets/livrees/lat-a320-iae-fhlat.jpg",
-      "description": "Nouvelle livrée officielle de la compagnie : fuselage blanc, titre « Les Ailes Tricolores », oiseau tricolore, rubans bleu et rouge en vague, dérive tricolore et ruban sur les moteurs.",
+      "description": "Nouvelle livrée officielle de la compagnie : fuselage blanc, titre « Les Ailes Tricolores » avec le logo de la compagnie, rubans bleu et rouge en vague, dérive tricolore et vagues sur les moteurs.",
       "requires": "Fenix A320 (MSFS 2024), motorisation IAE",
-      "size": 79550189
+      "size": 79559921
     },
     {
       "id": "lat-b77w-fhlau",

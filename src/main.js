@@ -17,6 +17,7 @@ const career = require('./career');
 const { Liveries } = require('./liveries');
 const ua = require('./ua');
 const CHANGELOG = require('./changelog.json');
+const achievements = require('./achievements');
 
 const VERSION = require('../package.json').version;
 
@@ -170,6 +171,8 @@ function finishFlight() {
     pilot: store.settings.pilot,
     mode: flight.mode,
     callsign: p ? p.callsign : '',
+    flightNumber: p ? p.flightNumber : '',
+    registration: p ? p.registration : '',
     from: p ? p.origin.icao : '',
     to: p ? p.destination.icao : '',
     aircraft: flight.aircraft || (p ? p.aircraft : ''),
@@ -194,6 +197,13 @@ function finishFlight() {
   fs.writeFileSync(path.join(reportsDir(), name), JSON.stringify(rep, null, 2));
   send('flight:report', rep);
   if (rep.mission) send('career:changed', careerState());
+  // succès débloqués par ce vol
+  try {
+    const list = achievements.compute(allReports(), careerState());
+    const seen = new Set(store.achSeen || []);
+    const fresh = list.filter((a) => a.done && !seen.has(a.id));
+    if (fresh.length) { store.achSeen = list.filter((a) => a.done).map((a) => a.id); saveStore(); send('ach:new', fresh); }
+  } catch (e) { console.error('succès :', e); }
 }
 
 function stopFlight(keep) {
@@ -630,6 +640,12 @@ app.whenReady().then(() => {
     return store.feedback;
   });
   ipcMain.handle('reports:list', () => listReports());
+  ipcMain.handle('ach:get', () => {
+    const list = achievements.compute(allReports(), careerState());
+    // premier lancement : les succès déjà gagnés avant cette version ne déclenchent pas d'annonce
+    if (!store.achSeen) { store.achSeen = list.filter((a) => a.done).map((a) => a.id); saveStore(); }
+    return list;
+  });
   // ---------- Universal Announcer ----------
   const uaState = { dir: null, auto: false, running: false };
   async function uaRefresh() {

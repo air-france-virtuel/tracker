@@ -2601,3 +2601,41 @@ document.addEventListener('click', async (e) => {
     await renderFlightAdmin(true); loadReal(false);
   }
 });
+
+// ---------------- succès ----------------
+S.ach = { list: [], cat: 'tous' };
+async function loadAchievements() {
+  try { S.ach.list = await afv.getAchievements(); } catch (e) { S.ach.list = []; }
+  renderAchievements();
+}
+function renderAchievements() {
+  const L = S.ach.list, done = L.filter((a) => a.done);
+  $('chipAch').hidden = !done.length; $('chipAch').textContent = done.length + '/' + L.length;
+  if (!$('tab-succes').classList.contains('on') && L.length) return;
+  $('achCount').textContent = done.length + ' / ' + L.length;
+  $('achBar').style.width = (L.length ? Math.round(done.length / L.length * 100) : 0) + '%';
+  const last = done.filter((a) => a.doneAt).sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)))[0];
+  $('achLast').textContent = last ? 'Dernier succès : ' + last.title + ' (' + new Date(last.doneAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ')' : 'Aucun succès pour le moment : à toi de jouer !';
+  const cats = ['tous', ...new Set(L.map((a) => a.cat))];
+  $('achCats').innerHTML = cats.map((c) => '<button class="tag' + (S.ach.cat === c ? ' on' : '') + '" data-achcat="' + esc(c) + '" aria-pressed="' + (S.ach.cat === c) + '">' + (c === 'tous' ? 'Tous' : esc(c)) + ' · ' + (c === 'tous' ? done.length + '/' + L.length : L.filter((a) => a.cat === c && a.done).length + '/' + L.filter((a) => a.cat === c).length) + '</button>').join('');
+  const show = L.filter((a) => S.ach.cat === 'tous' || a.cat === S.ach.cat).sort((a, b) => (b.done - a.done) || (b.value / b.target - a.value / a.target));
+  $('achGrid').innerHTML = show.map((a) => '<div class="ach' + (a.done ? ' done' : '') + '"><div class="i" aria-hidden="true">' + a.icon + '</div><div style="flex:1;min-width:0"><div class="t">' + esc(a.title) + '</div><div class="d">' + esc(a.desc) + '</div>' +
+    '<div class="p"><i style="width:' + Math.round(a.value / a.target * 100) + '%"></i></div><div class="v">' + (a.done ? '✔ Débloqué' + (a.doneAt ? ' le ' + new Date(a.doneAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '') : fmt(a.value) + ' / ' + fmt(a.target)) + '</div></div></div>').join('');
+}
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-achcat]'); if (c) { S.ach.cat = c.dataset.achcat; renderAchievements(); return; }
+  if (e.target.closest('[data-achclose]')) { $('achToast').hidden = true; return; }
+  if (e.target.closest('[data-achgo]')) { $('achToast').hidden = true; showTab('succes'); }
+});
+document.querySelector('[data-tab=succes]').addEventListener('click', loadAchievements);
+// nouveau succès après un vol : petite annonce + Max
+const achQueue = [];
+function achShowNext() {
+  const a = achQueue.shift(); if (!a) return;
+  $('achToast').innerHTML = '<div class="i" aria-hidden="true">' + a.icon + '</div><div><b>Succès débloqué</b><div class="t">' + esc(a.title) + '</div><div class="d">' + esc(a.desc) + '</div><button class="btn small ghost" data-achgo style="margin-top:8px;color:#fff;border-color:#5F76AD">Voir mes succès</button></div><button data-achclose aria-label="Fermer">×</button>';
+  $('achToast').hidden = false;
+  try { maxSays('Bravo ! Nouveau succès débloqué : ' + a.title + '.'); } catch (e) { /* Max indisponible */ }
+  setTimeout(() => { $('achToast').hidden = true; achShowNext(); }, 9000);
+}
+afv.on('ach:new', (list) => { for (const a of list || []) achQueue.push(a); if ($('achToast').hidden) achShowNext(); loadAchievements(); });
+setTimeout(loadAchievements, 2000);

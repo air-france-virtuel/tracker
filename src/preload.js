@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('afv', {
   stopFlight: () => ipcRenderer.invoke('flight:stop'),
   saveFeedback: (f) => ipcRenderer.invoke('feedback:save', f),
   listReports: () => ipcRenderer.invoke('reports:list'),
+  getAchievements: () => ipcRenderer.invoke('ach:get'),
   openFolder: (w) => ipcRenderer.invoke('folder:open', w),
   getUpdate: () => ipcRenderer.invoke('update:get'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
@@ -80,7 +81,7 @@ contextBridge.exposeInMainWorld('afv', {
   trayStatus: (st) => ipcRenderer.send('tray:status', st),
   fileUrl: (p) => pathToFileURL(p).href,
   on: (ch, fn) => {
-    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status'];
+    const ok = ['sim:status', 'flight:tick', 'flight:event', 'flight:report', 'fleet:changed', 'update:status', 'voice:status', 'ecoute:status', 'career:changed', 'infos:changed', 'compact:state', 'compact:data', 'planning:changed', 'tray:go', 'settings:changed', 'chat:status', 'live:list', 'max:data', 'max:action', 'max:state', 'chat:history', 'chat:message', 'chat:removed', 'livrees:job', 'ua:status', 'ach:new'];
     if (ok.includes(ch)) ipcRenderer.on(ch, (_e, d) => fn(d));
   }
 });

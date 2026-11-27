@@ -28,6 +28,7 @@
     <button class="nav" data-tab="reels" title="Vols de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols de la compagnie</span></button>
     <div class="nsec">Carrière</div>
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
+    <button class="nav" data-tab="succes" title="Succès"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4"/></svg><span class="lb">Succès</span><span class="chip gold" id="chipAch" hidden></span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
     <button class="nav" data-tab="hgc" title="Hangar de la compagnie : la flotte des Ailes Tricolores"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-5 9 5v12"/><path d="M7 21v-7h10v7"/><path d="M7 17h10"/></svg><span class="lb">Hangar</span><span class="nbadge" id="hangarBadge" style="background:#E0A800" hidden></span></button><button class="nav" data-tab="livrees" title="Livrées de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.9 1.8-1.8 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg><span class="lb">Livrées</span><span class="chip gold" id="chipLiv" hidden></span></button>
     <div class="nsec">Communauté</div>
@@ -192,6 +193,17 @@
         </div>
         <div class="card" id="flightAdmin" hidden></div>
         <p class="muted small">Programme des vols Les Ailes Tricolores (horaires UTC). « En vol » montre où seraient les avions de la compagnie à cette heure-ci d’après le programme. A320 : France, Europe et Afrique du Nord · 777-300ER : long-courrier au départ de Paris-CDG.</p>
+      </div>
+    </section>
+
+    <!-- ===================== SUCCÈS ===================== -->
+    <section class="tab" id="tab-succes">
+      <header class="top"><div><h1>Succès</h1><div class="sub" id="achSub">Les défis à relever avec Les Ailes Tricolores</div></div></header>
+      <div class="body">
+        <div class="card ach-head"><div class="ach-count" id="achCount">0 / 0</div><div style="flex:1"><div class="ach-bar"><i id="achBar"></i></div><div class="muted small" id="achLast"></div></div></div>
+        <div class="row wrap" id="achCats"></div>
+        <div class="ach-grid" id="achGrid"></div>
+        <p class="muted small">Les succès sont calculés à partir de tes rapports de vol (les vols de démonstration ne comptent pas).</p>
       </div>
     </section>
 
@@ -400,6 +412,7 @@
   </main>
 </div>
 
+<div class="ach-toast" id="achToast" hidden role="status" aria-live="polite"></div>
 <div class="modal" id="newsModal" hidden>
   <div class="modal-box" role="dialog" aria-label="Nouveautés">
     <h2 id="newsTitle">Nouveautés</h2>

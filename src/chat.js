@@ -218,6 +218,34 @@ class Chat extends EventEmitter {
     } catch (e) { return { ok: false, error: /row-level|permission/i.test(String((e && e.message) || e)) ? 'Réservé à la direction.' : friendlyFleet(e) }; }
   }
 
+  // journal des vols de la compagnie (statistiques) : un vol terminé, hors démo
+  async logFlight(rep) {
+    try {
+      await this.session();
+      const icao = (s) => clean(s, 4).toUpperCase();
+      if (!/^[A-Z0-9]{3,4}$/.test(icao(rep.from)) || !/^[A-Z0-9]{3,4}$/.test(icao(rep.to))) return { ok: false, error: 'aéroports inconnus' };
+      const int = (v, lo, hi) => (typeof v === 'number' && isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : null);
+      const p = rep.ponctualite || null;
+      const row = {
+        flight_number: clean(rep.flightNumber || rep.callsign, 10).toUpperCase(), dep: icao(rep.from), arr: icao(rep.to),
+        aircraft_type: clean(rep.planAircraft || rep.aircraft, 12).toUpperCase(),
+        block_min: int(rep.blockMinutes, 0, 1440), flight_min: int(rep.flightMinutes, 0, 1440), landing_rate: int(rep.landingRate, -3000, 3000),
+        on_time: p ? !!p.onTime : null, delay_min: p ? int(p.arrDelay, -720, 1440) : null, flown_at: rep.date || new Date().toISOString()
+      };
+      const r = await this.sb.from('company_flight_log').insert(row);
+      if (r.error) throw r.error;
+      return { ok: true };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async companyStats() {
+    try {
+      await this.session();
+      const r = await this.sb.rpc('company_stats');
+      if (r.error) throw r.error;
+      return { ok: true, stats: r.data };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+
   async saveProfile() {
     const row = { id: this.me.id, pseudo: this.profile.pseudo, grade: this.profile.grade || null };
     const r = await this.sb.from('pilots').upsert(row, { onConflict: 'id' }).select('id,pseudo,grade,banned,is_admin').single();

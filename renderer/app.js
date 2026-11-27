@@ -12,6 +12,7 @@ function showTab(name) {
   document.querySelectorAll('.nav').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.id === 'tab-' + name));
   if (name === 'vols') renderReports();
+  if (name === 'stats') loadStats();
   if (name === 'vol') renderDayNext(true);
   if (name === 'livrees') loadLiveries(false);
   if (name === 'infos' || name === 'ligne') loadLive();
@@ -742,11 +743,26 @@ async function loadNextPlan(f, num) {
 }
 afv.on('fleet:changed', (f) => { S.store.fleet = f; renderFleet(); renderAircraftSelect(); });
 
+// ---------------- ponctualité ----------------
+const hhmmZ = (t) => new Date(t).toISOString().slice(11, 16) + 'Z';
+function ponctLabel(p) {
+  if (!p) return '';
+  if (p.arrDelay < -1) return 'À l’heure (' + -p.arrDelay + ' min d’avance)';
+  if (p.arrDelay <= 1) return 'Pile à l’heure';
+  if (p.onTime) return 'À l’heure (+' + p.arrDelay + ' min)';
+  return 'En retard de ' + (p.arrDelay >= 60 ? Math.floor(p.arrDelay / 60) + ' h ' + String(p.arrDelay % 60).padStart(2, '0') : p.arrDelay + ' min');
+}
+function ponctBox(p) {
+  if (!p) return '';
+  return '<div class="ponct ' + (p.onTime ? 'ok' : 'late') + '"><b>' + (p.onTime ? '⏱ ' : '⚠ ') + esc(ponctLabel(p)) + '</b><span>' + esc(p.number) + ' prévu ' + hhmmZ(p.schedDep) + ' → ' + hhmmZ(p.schedArr) +
+    ' · réel ' + (p.actualOut ? hhmmZ(p.actualOut) : '—') + ' → ' + hhmmZ(p.actualIn) + (p.depDelay != null ? ' · départ ' + (p.depDelay > 0 ? '+' + p.depDelay + ' min' : p.depDelay < 0 ? p.depDelay + ' min' : 'à l’heure') : '') + '</span></div>';
+}
+
 function showReport(r) {
   const h = (m) => (m == null ? '—' : Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0'));
   $('reportBody').innerHTML = '<div class="muted">' + esc(r.callsign || '') + ' ' + esc(r.from) + ' → ' + esc(r.to) + (r.aircraft ? ' · ' + esc(r.aircraft) : '') + '</div><div class="rep">' +
     [['Temps bloc', h(r.blockMinutes)], ['Temps de vol', h(r.flightMinutes)], ['Distance', fmt(r.distanceNm) + ' NM'], ['Carburant utilisé', r.fuelUsedKg == null ? '—' : fmt(r.fuelUsedKg) + ' kg'], ['Atterrissage', r.landingRate == null ? '—' : r.landingRate + ' ft/min'], ['Altitude max', 'FL' + Math.round(r.maxAlt / 100)]]
-      .map(([k, v]) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('') + '</div>' + missionResult(r.mission) + '<p class="muted small">Rapport enregistré dans « Mes vols ».</p>';
+      .map(([k, v]) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join('') + '</div>' + ponctBox(r.ponctualite) + missionResult(r.mission) + '<p class="muted small">Rapport enregistré dans « Mes vols ».</p>';
   $('reportModal').hidden = false;
 }
 $('btnCloseReport').addEventListener('click', () => { $('reportModal').hidden = true; });
@@ -793,10 +809,76 @@ if ($('btnAddPlane')) $('btnAddPlane').addEventListener('click', async () => {
 async function renderReports() {
   const list = await afv.listReports();
   if (!list.length) { $('reports').innerHTML = '<div class="empty">Aucun vol enregistré pour l’instant.</div>'; return; }
-  $('reports').innerHTML = '<table><thead><tr><th>Date</th><th>Vol</th><th>Trajet</th><th>Appareil</th><th>Temps de vol</th><th>Atterrissage</th><th>Mission</th></tr></thead><tbody>' +
-    list.map((r) => '<tr><td>' + esc(new Date(r.date).toLocaleString('fr-FR')) + (r.mode === 'demo' ? ' (démo)' : '') + '</td><td>' + esc(r.callsign) + '</td><td>' + esc(r.from) + ' → ' + esc(r.to) + '</td><td>' + esc(r.aircraft) + '</td><td>' + (r.flightMinutes == null ? '—' : Math.floor(r.flightMinutes / 60) + ' h ' + String(r.flightMinutes % 60).padStart(2, '0')) + '</td><td>' + (r.landingRate == null ? '—' : r.landingRate + ' ft/min') + '</td><td>' + (r.mission ? (r.mission.validated ? '✓ +' + r.mission.points + ' pts' : 'Non validée') : '—') + '</td></tr>').join('') + '</tbody></table>';
+  const rated = list.filter((r) => r.mode !== 'demo' && r.ponctualite);
+  const ok = rated.filter((r) => r.ponctualite.onTime).length;
+  $('ponctHead').hidden = !rated.length;
+  if (rated.length) {
+    const avg = Math.round(rated.reduce((a, r) => a + r.ponctualite.arrDelay, 0) / rated.length);
+    $('ponctHead').innerHTML = '<div class="ponct-pct">' + Math.round(ok / rated.length * 100) + ' %</div><div><b>Ta ponctualité</b><div class="muted small">' + ok + ' vol' + (ok > 1 ? 's' : '') + ' à l’heure sur ' + rated.length + ' vol' + (rated.length > 1 ? 's' : '') + ' du programme · écart moyen à l’arrivée ' + (avg > 0 ? '+' : '') + avg + ' min</div></div>';
+  }
+  $('reports').innerHTML = '<table><thead><tr><th>Date</th><th>Vol</th><th>Trajet</th><th>Appareil</th><th>Temps de vol</th><th>Atterrissage</th><th>Ponctualité</th><th>Mission</th></tr></thead><tbody>' +
+    list.map((r) => '<tr><td>' + esc(new Date(r.date).toLocaleString('fr-FR')) + (r.mode === 'demo' ? ' (démo)' : '') + '</td><td>' + esc(r.flightNumber || r.callsign) + '</td><td>' + esc(r.from) + ' → ' + esc(r.to) + '</td><td>' + esc(r.aircraft) + '</td><td>' + (r.flightMinutes == null ? '—' : Math.floor(r.flightMinutes / 60) + ' h ' + String(r.flightMinutes % 60).padStart(2, '0')) + '</td><td>' + (r.landingRate == null ? '—' : r.landingRate + ' ft/min') + '</td>' +
+      '<td>' + (r.ponctualite ? '<span class="pz ' + (r.ponctualite.onTime ? 'ok' : 'late') + '">' + esc(ponctLabel(r.ponctualite)) + '</span>' : '<span class="muted">—</span>') + '</td><td>' + (r.mission ? (r.mission.validated ? '✓ +' + r.mission.points + ' pts' : 'Non validée') : '—') + '</td></tr>').join('') + '</tbody></table>';
 }
 $('btnOpenReports').addEventListener('click', () => afv.openFolder('rapports'));
+$('btnLogbook').addEventListener('click', async () => {
+  const b = $('btnLogbook'); b.disabled = true; $('logbookMsg').textContent = 'Préparation du carnet de vol…';
+  try {
+    const r = await afv.logbookPdf();
+    $('logbookMsg').textContent = r.ok ? 'Carnet de vol enregistré (' + r.flights + ' vol' + (r.flights > 1 ? 's' : '') + ') : ' + r.path : r.canceled ? '' : 'Le carnet n’a pas pu être créé : ' + (r.error || 'erreur inconnue');
+    if (r.ok) maxSays('Ton carnet de vol est prêt : ' + r.flights + ' vol' + (r.flights > 1 ? 's' : '') + '. Il s’ouvre pour que tu puisses l’imprimer.');
+  } catch (e) { $('logbookMsg').textContent = 'Le carnet n’a pas pu être créé.'; }
+  b.disabled = false;
+});
+
+// ---------------- statistiques de la compagnie ----------------
+const hmin = (m) => Math.floor((m || 0) / 60).toLocaleString('fr-FR') + ' h ' + String(Math.round(m || 0) % 60).padStart(2, '0');
+async function loadStats() {
+  $('statsSub').textContent = 'Chargement…';
+  let r;
+  try { r = await afv.getStats(); } catch (e) { r = { ok: false, error: String(e) }; }
+  if (!r || !r.ok) {
+    $('statsSub').textContent = 'Statistiques indisponibles pour le moment' + (S.store && S.store.settings.chat === false ? ' (la connexion à la communauté est désactivée dans les réglages)' : '') + '.';
+    if (!$('stKpis').innerHTML) $('stKpis').innerHTML = '<div class="empty">Pas de connexion au serveur de la compagnie. Vérifie ta connexion internet puis clique sur « Actualiser ».</div>';
+    return;
+  }
+  if (!S.latAirports) { try { S.plan2.data = S.plan2.data || await afv.getPlanning(false); S.latAirports = S.plan2.data.airports; } catch (e) { /* noms des villes facultatifs */ } }
+  renderStats(r.stats || {});
+}
+function renderStats(st) {
+  const m = st.month || {}, a = st.all || {};
+  const pct = (o) => (o.rated ? Math.round(o.on_time / o.rated * 100) + ' %' : '—');
+  const mois = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+  $('statsSub').textContent = 'Les vols de tous les pilotes des Ailes Tricolores · mis à jour à ' + new Date(st.generated_at || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  $('stKpis').innerHTML = [
+    ['Vols en ' + mois, (m.flights || 0).toLocaleString('fr-FR'), (a.flights || 0).toLocaleString('fr-FR') + ' depuis le début'],
+    ['Heures en ' + mois, hmin(m.block_min), hmin(a.block_min) + ' au total'],
+    ['Pilotes actifs', String(m.pilots || 0), (a.pilots || 0) + ' pilotes ont volé'],
+    ['Ponctualité', pct(m), pct(a) + ' depuis le début'],
+    ['Atterrissage moyen', m.avg_landing != null ? m.avg_landing + ' ft/min' : '—', a.avg_landing != null ? a.avg_landing + ' ft/min depuis le début' : '']
+  ].map(([k, v, s]) => '<div class="card st-kpi"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div><div class="muted small">' + esc(s) + '</div></div>').join('');
+  const days = st.days || [], max = Math.max(1, ...days.map((d) => d.flights));
+  $('stDays').innerHTML = days.length ? '<div class="st-days">' + days.map((d) => { const dt = new Date(d.d + 'T12:00:00Z'); return '<div title="' + esc(dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) + ' : ' + d.flights + ' vol' + (d.flights > 1 ? 's' : '') + '"><span class="n">' + (d.flights || '') + '</span><i style="height:' + Math.max(2, d.flights / max * 100) + '%"></i><span class="d">' + dt.toLocaleDateString('fr-FR', { weekday: 'narrow' }) + dt.getUTCDate() + '</span></div>'; }).join('') + '</div>' : '<div class="muted">Aucun vol.</div>';
+  const pp = st.punctual_pilots || [];
+  $('stPonct').innerHTML = m.rated ? '<div class="st-donut" style="--p:' + Math.round(m.on_time / m.rated * 100) + '"><span>' + pct(m) + '</span></div><div class="muted small" style="text-align:center;margin:6px 0 10px">' + m.on_time + ' vols à l’heure sur ' + m.rated + ' vols du programme</div>' +
+    (pp.length ? '<div class="st-list">' + pp.map((p) => '<div><span>' + esc(p.pseudo) + '</span><b>' + Math.round(p.on_time / p.rated * 100) + ' %</b><small>' + p.on_time + '/' + p.rated + '</small></div>').join('') + '</div>' : '<div class="muted small">Classement des pilotes ponctuels dès 3 vols du programme dans le mois.</div>')
+    : '<div class="muted">Pas encore de vol du programme ce mois-ci. Prends un vol dans « Vols de la compagnie » pour être noté.</div>';
+  const tp = st.top_pilots || [], tmax = Math.max(1, ...tp.map((p) => p.block_min));
+  $('stPilots').innerHTML = tp.length ? '<div class="st-bars">' + tp.map((p, i) => '<div><span class="r">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1) + '</span><span class="l">' + esc(p.pseudo) + '</span><span class="b"><i style="width:' + (p.block_min / tmax * 100) + '%"></i></span><span class="v">' + hmin(p.block_min) + ' · ' + p.flights + ' vol' + (p.flights > 1 ? 's' : '') + '</span></div>').join('') + '</div>' : '<div class="muted">Personne n’a encore volé ce mois-ci : à toi de jouer !</div>';
+  const bl = st.best_landing;
+  if (bl) $('stPilots').innerHTML += '<div class="st-best">🪶 <b>Meilleur atterrissage de la semaine :</b> ' + esc(bl.pseudo) + ', ' + bl.landing_rate + ' ft/min à ' + esc(bl.arr) + (bl.flight_number ? ' (' + esc(bl.flight_number) + ')' : '') + '</div>';
+  const ap = (icao) => { const x = (S.latAirports || {})[icao]; return x ? x.city || x.name : ''; };
+  const td = st.top_dest || [], dmax = Math.max(1, ...td.map((d) => d.flights));
+  $('stDest').innerHTML = td.length ? '<div class="st-bars">' + td.map((d) => '<div><span class="l"><b>' + esc(d.icao) + '</b> <small class="muted">' + esc(ap(d.icao)) + '</small></span><span class="b"><i style="width:' + (d.flights / dmax * 100) + '%"></i></span><span class="v">' + d.flights + '</span></div>').join('') + '</div>' : '<div class="muted">Aucune destination pour le moment.</div>';
+  const ty = st.types || [];
+  const tname = (t) => (/B77W|777/.test(t) ? 'Boeing 777-300ER' : /A20N/.test(t) ? 'Airbus A320neo' : /A32/.test(t) ? 'Airbus A320' : t);
+  $('stTypes').innerHTML = ty.length ? '<div class="st-list">' + ty.map((t) => '<div><span>' + esc(tname(t.type)) + '</span><b>' + t.flights + ' vol' + (t.flights > 1 ? 's' : '') + '</b><small>' + hmin(t.block_min) + '</small></div>').join('') + '</div>' : '<div class="muted">—</div>';
+  const ro = st.top_routes || [];
+  $('stRoutes').innerHTML = ro.length ? '<div class="st-list">' + ro.map((x) => '<div><span>' + esc(x.dep) + ' → ' + esc(x.arr) + '</span><b>' + x.flights + '</b><small></small></div>').join('') + '</div>' : '<div class="muted">—</div>';
+  const rc = st.recent || [];
+  $('stRecent').innerHTML = rc.length ? '<table class="st-table"><tbody>' + rc.map((x) => '<tr><td>' + esc(new Date(x.flown_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })) + '</td><td><b>' + esc(x.pseudo) + '</b></td><td>' + esc(x.flight_number || '') + '</td><td>' + esc(x.dep) + ' → ' + esc(x.arr) + '</td><td>' + (x.block_min != null ? hmin(x.block_min) : '—') + '</td><td>' + (x.on_time == null ? '' : x.on_time ? '<span class="pz ok">À l’heure</span>' : '<span class="pz late">+' + x.delay_min + ' min</span>') + '</td></tr>').join('') + '</tbody></table>' : '<div class="muted">Aucun vol pour le moment.</div>';
+}
+$('btnStatsRefresh').addEventListener('click', loadStats);
 
 // ---------------- sons (Universal Announcer) ----------------
 // plus de liste des annonces à l'écran : on vérifie seulement s'il existe des sons, pour le message du tracker de vol

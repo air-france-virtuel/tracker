@@ -18,6 +18,11 @@ const { Liveries } = require('./liveries');
 const ua = require('./ua');
 const CHANGELOG = require('./changelog.json');
 const achievements = require('./achievements');
+const ponct = require('./ponctualite');
+const carnet = require('./carnet');
+// programme de la compagnie connu (serveur ou intégré) pour noter la ponctualité ; journal des vols de la compagnie
+let companyProgram = require('./lat').BUNDLED.flights;
+let onFlightDone = () => {};
 
 const VERSION = require('../package.json').version;
 
@@ -192,10 +197,12 @@ function finishFlight() {
       saveStore();
     }
   }
+  try { rep.ponctualite = ponct.check(rep, companyProgram); } catch (e) { rep.ponctualite = null; }
   fs.mkdirSync(reportsDir(), { recursive: true });
   const name = rep.date.slice(0, 19).replace(/[:T]/g, '-') + '_' + (rep.from || 'XXXX') + '-' + (rep.to || 'XXXX') + '.json';
   fs.writeFileSync(path.join(reportsDir(), name), JSON.stringify(rep, null, 2));
   send('flight:report', rep);
+  if (rep.mode !== 'demo') { try { onFlightDone(rep); } catch (e) { console.error('journal :', e); } }
   if (rep.mission) send('career:changed', careerState());
   // succès débloqués par ce vol
   try {
@@ -526,7 +533,7 @@ app.whenReady().then(() => {
     if (!force && Date.now() - prog.at < 10 * 60 * 1000) return prog;
     chatProfile();
     const r = await chat.flightsProgram();
-    if (r.ok && r.list.length) prog = { at: Date.now(), list: lat.fromRows(r.list), rows: r.list, source: 'serveur', admin: r.admin };
+    if (r.ok && r.list.length) { prog = { at: Date.now(), list: lat.fromRows(r.list), rows: r.list, source: 'serveur', admin: r.admin }; companyProgram = prog.list; }
     else prog = Object.assign({}, prog, { at: Date.now() - 8 * 60 * 1000, error: r.ok ? '' : r.error }); // nouvel essai dans 2 min
     return prog;
   }
@@ -541,6 +548,55 @@ app.whenReady().then(() => {
   // direction : ajouter / modifier / retirer un vol du programme
   ipcMain.handle('flights:rows', async () => { const p = await program(true); return { admin: !!p.admin, rows: p.rows || [], source: p.source, error: p.error || '' }; });
   ipcMain.handle('flights:save', async (_e, f) => { const r = await chat.flightSave(f || {}); if (r.ok) await program(true); return r; });
+  // statistiques de la compagnie : chaque vol terminé part dans le journal commun (file d'attente si pas de réseau)
+  let logBusy = false;
+  async function flushLog() {
+    if (logBusy || store.settings.chat === false || !(store.flightLogQueue || []).length) return;
+    logBusy = true;
+    try {
+      chatProfile();
+      while ((store.flightLogQueue || []).length) {
+        const r = await chat.logFlight(store.flightLogQueue[0]);
+        if (!r.ok && !/aéroports inconnus|pilote inconnu|check constraint|violates/i.test(r.error || '')) break; // réseau : on réessaiera
+        store.flightLogQueue.shift(); saveStore();
+      }
+    } finally { logBusy = false; }
+  }
+  onFlightDone = (rep) => {
+    const keep = ['date', 'flightNumber', 'callsign', 'from', 'to', 'aircraft', 'planAircraft', 'blockMinutes', 'flightMinutes', 'landingRate', 'ponctualite'];
+    store.flightLogQueue = (store.flightLogQueue || []).concat([Object.fromEntries(keep.map((k) => [k, rep[k]]))]).slice(-30);
+    saveStore();
+    setTimeout(flushLog, 3000);
+  };
+  setTimeout(flushLog, 20000);
+  setInterval(flushLog, 15 * 60 * 1000);
+  ipcMain.handle('stats:get', async () => { chatProfile(); flushLog(); return chat.companyStats(); });
+
+  // carnet de vol imprimable (PDF)
+  ipcMain.handle('logbook:pdf', async () => {
+    const reports = allReports().filter((r) => r.mode !== 'demo');
+    let grade = ''; try { grade = careerState().gradeName || ''; } catch (e) { /* rien */ }
+    let logo = ''; try { logo = 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, '..', 'renderer', 'assets', 'icon.png')).toString('base64'); } catch (e) { /* sans logo */ }
+    const pilot = (store.settings.pilot || '').trim();
+    const html = carnet.html(reports, { pilot, grade, logo, program: companyProgram });
+    const tmp = path.join(app.getPath('temp'), 'carnet-lat-' + Date.now() + '.html');
+    fs.writeFileSync(tmp, html);
+    const pw = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true } });
+    try {
+      await pw.loadFile(tmp);
+      const pdf = await pw.webContents.printToPDF({ landscape: true, pageSize: 'A4', printBackground: true, displayHeaderFooter: true,
+        headerTemplate: '<span></span>',
+        footerTemplate: '<div style="font-size:8px;color:#5B667D;width:100%;padding:0 12mm;display:flex;justify-content:space-between;font-family:Segoe UI,Arial"><span>Les Ailes Tricolores · carnet de vol de ' + pilot.replace(/[<>&"]/g, '') + '</span><span>Page <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>',
+        margins: { top: 0.5, bottom: 0.6, left: 0.45, right: 0.45 } });
+      const def = path.join(app.getPath('documents'), 'Carnet de vol LAT ' + new Date().toISOString().slice(0, 10) + '.pdf');
+      const r = await dialog.showSaveDialog(win, { title: 'Enregistrer le carnet de vol', defaultPath: def, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(r.filePath, pdf);
+      shell.openPath(r.filePath);
+      return { ok: true, path: r.filePath, flights: reports.length };
+    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+    finally { try { pw.destroy(); } catch (e) { /* rien */ } try { fs.unlinkSync(tmp); } catch (e) { /* rien */ } }
+  });
   ipcMain.handle('flights:remove', async (_e, n) => { const r = await chat.flightRemove(String(n || '')); if (r.ok) await program(true); return r; });
 
   // ---------- voix de Max ----------

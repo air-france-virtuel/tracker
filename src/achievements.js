@@ -48,6 +48,8 @@ const LIST = [
   // discipline
   ['250kt', 'Discipline', '🐢', 'Respect des 250 kt', 'Fais 10 vols sans dépasser 250 kt sous le niveau 100.', 10, (rs) => rs.filter((r) => r.overspeed250 === false).length],
   ['roulage', 'Discipline', '🚦', 'Roulage prudent', 'Fais 10 vols sans dépasser 30 kt au roulage.', 10, (rs) => rs.filter((r) => typeof r.maxTaxiSpeed === 'number' && r.maxTaxiSpeed <= 30).length],
+  ['a-l-heure', 'Discipline', '⏱️', 'À l’heure', 'Arrive à l’heure sur un vol du programme (au plus 15 min après l’horaire).', 1, (rs) => rs.filter((r) => r.ponctualite && r.ponctualite.onTime).length],
+  ['horloge', 'Discipline', '🕰️', 'Horloge suisse', 'Arrive à l’heure sur 10 vols du programme.', 10, (rs) => rs.filter((r) => r.ponctualite && r.ponctualite.onTime).length],
   // journées
   ['rotation', 'Journées', '🔁', 'Rotation complète', 'Fais 3 vols dans la même journée.', 3, (rs) => maxPerDay(rs)],
   ['marathon', 'Journées', '🏃', 'Marathon des airs', 'Fais 5 vols dans la même journée.', 5, (rs) => maxPerDay(rs)],

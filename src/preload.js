@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('afv', {
   saveFeedback: (f) => ipcRenderer.invoke('feedback:save', f),
   listReports: () => ipcRenderer.invoke('reports:list'),
   getAchievements: () => ipcRenderer.invoke('ach:get'),
+  logbookPdf: () => ipcRenderer.invoke('logbook:pdf'),
+  getStats: () => ipcRenderer.invoke('stats:get'),
   getRoulage: (ap, rwy, pos) => ipcRenderer.invoke('roulage:get', ap, rwy, pos),
   openFolder: (w) => ipcRenderer.invoke('folder:open', w),
   getUpdate: () => ipcRenderer.invoke('update:get'),

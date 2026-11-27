@@ -82,6 +82,10 @@ th{background:#F7F8FB;color:var(--muted);font-weight:600}
 .modal{position:fixed;inset:0;background:rgba(10,30,74,.55);display:flex;align-items:center;justify-content:center;z-index:50}
 .modal[hidden]{display:none}
 .modal-box{background:#fff;border-radius:14px;padding:24px 28px;width:520px;max-width:calc(100% - 32px)}
+/* fenêtre trop haute (longue liste de nouveautés) : le contenu défile, le bouton reste visible */
+.modal-box{max-height:calc(100vh - 48px);display:flex;flex-direction:column}
+.modal-box>#newsBody,.modal-box>.modal-scroll{overflow:auto;min-height:0;flex:1 1 auto;padding-right:6px}
+.modal-box>.row{flex-shrink:0;margin-top:12px}
 .rep{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin:12px 0 18px}
 .rep .k{font-size:12px;color:var(--muted)}.rep .v{font-size:18px;font-weight:700;color:var(--navy)}
 [hidden]{display:none!important}
@@ -312,3 +316,107 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .liv .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .liv .err{color:#8A1026;font-size:13px}
 .liv .badge{white-space:nowrap}
+
+/* carte du vol : zoom et déplacement */
+.map-wrap{position:relative}
+.map-card{user-select:none;-webkit-user-select:none}
+#map{cursor:grab;touch-action:none;user-select:none}
+#map.grab{cursor:grabbing}
+.map-zoom{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(10,30,74,.25)}
+.map-zoom button{width:32px;height:32px;border:0;background:#fff;color:#0A1E4A;font-size:18px;font-weight:700;cursor:pointer;line-height:1}
+.map-zoom button+button{border-top:1px solid #DCE3EF}
+.map-zoom button:hover{background:#EEF2F9}
+
+/* pilotes en vol */
+#liveMap{width:100%;height:440px;display:block;background:#DCE6F5;border-radius:8px;cursor:grab;touch-action:none;margin-top:8px;user-select:none}
+#liveMap .pl{cursor:pointer}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:8px;margin-top:12px}
+.live-grid .rt{margin:0}
+.nbadge{margin-left:auto;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+
+/* hangar */
+.hg-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.hg-kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.hg-kpi .k{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.hg-kpi b{font-size:24px;color:var(--navy);display:block;margin-top:2px}
+.hg-kpi span{font-size:12px;color:var(--muted)}
+.hg-fleet{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+.hg-ac{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer}
+.hg-ac.sel{outline:3px solid var(--red);outline-offset:-1px}
+.hg-ac.off{opacity:.6}
+.hg-ac .img{height:150px;background:#0A1E4A center/cover;position:relative}
+.hg-ac .img .st{position:absolute;left:12px;top:12px}
+.hg-st{font-size:12px;font-weight:800;border-radius:14px;padding:5px 11px;display:inline-flex;gap:6px;align-items:center}
+.hg-st.ok{background:#E3F3E8;color:#1B5E32}.hg-st.mt{background:#FFF3D6;color:#7A4B00}.hg-st.fly{background:#FBE9EC;color:#8A1026}.hg-st.off{background:#ECEEF2;color:#4A5568}
+.hg-ac .bd{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.hg-ac .reg{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:.02em}
+.hg-ac .ty{font-size:13px;color:var(--muted)}
+.hg-loc{font-size:13px}.hg-loc b{color:var(--navy)}
+.hg-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hg-g3 div{background:#F5F7FB;border-radius:8px;padding:8px 10px}
+.hg-g3 .k{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.hg-g3 b{font-size:15px;color:var(--navy)}
+.hg-bar{height:9px;border-radius:5px;background:#E6EAF2;overflow:hidden}.hg-bar i{display:block;height:100%;border-radius:5px}
+.hg-cond{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:5px}.hg-cond span{color:var(--muted)}
+.hg-box{border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:center}
+.hg-box.mt{background:#FFF8E6;border:1px solid #F3D48A;color:#5C3A00}
+.hg-box.ok{background:#E3F3E8;border:1px solid #BFE3CB;color:#1B5E32}
+.hg-box.fly{background:#FBE9EC;border:1px solid #F1C3CB;color:#8A1026}
+.hg-cd{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:18px;color:#7A4B00}
+.hg-two{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+.hg-rules .r{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-bottom:1px solid #EEF1F6;padding:6px 0}
+.hg-rules .r span{color:var(--muted);text-align:right}
+.hg-hist{width:100%;border-collapse:collapse;font-size:13px}
+.hg-hist th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+.hg-hist td{padding:9px 10px;border-bottom:1px solid #EEF1F6;white-space:nowrap}
+.hg-hist td:nth-child(2){white-space:normal}.hg-hist .r{text-align:right}
+.hg-dir{background:#0E2558;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hg-dir .t{font-size:11px;letter-spacing:.1em;font-weight:800;color:#9FB0D6}
+.hg-dir button{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;min-height:34px;padding:0 12px;font-weight:700;font-size:12px;cursor:pointer}
+.hg-dir input,.hg-dir select{height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;padding:0 8px;width:90px;text-transform:uppercase}
+.hg-dir select{text-transform:none;width:auto}.hg-dir option{color:#0A1E4A}
+.hg-dir .msg{font-size:12px;color:#FFD27A}
+
+/* ma journée : état de chaque vol et étapes du prochain vol */
+.mine .am.done{background:#F2FAF4;border-color:#BFE3CB}.mine .am.done .t{color:#1B5E32}
+.mine .am.next{border-color:var(--red);box-shadow:0 0 0 1px var(--red)}
+.mine .am .row{gap:8px}
+.day-guide{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#F8FAFD}
+.dg-h{font-size:14px;color:var(--navy);margin-bottom:8px}
+.dg-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.dg-steps li{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.dg-steps li>div{flex:1}
+.dg-steps .n{width:26px;height:26px;border-radius:13px;background:var(--navy);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dg-steps li.ok-1 .n{background:#1B8A4B}
+.dg-steps .btn{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+
+/* petite carte des pilotes en vol (Infos du jour) */
+.live-mini-wrap{position:relative;margin-top:10px}
+#liveMini{width:100%;height:260px;display:block;background:#DCE6F5;border-radius:10px;cursor:pointer}
+.live-mini-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:600;font-size:14px;pointer-events:none}
+.live-mini-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.live-mini-list .lm{font-size:12.5px;background:#F2F4F8;border-radius:12px;padding:4px 10px;color:var(--ink)}
+
+.live-card{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.live-card.on{border-color:var(--red)}
+.live-card .rt{border:none;border-radius:0;width:100%;margin:0}
+.lc-act{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;border-top:1px solid #EEF1F6;background:#F8FAFD}
+.lc-act a{font-weight:700;font-size:12.5px;color:var(--red);text-decoration:none}
+.lc-act a:hover{text-decoration:underline}
+
+.day-next{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:10px 12px;margin:4px 0 10px;font-size:13.5px}
+.day-next.todo{background:#FFF8E6;border:1px solid #F3D48A;color:#5C3A00}
+.day-next.ok{background:#E3F3E8;border:1px solid #BFE3CB;color:#1B5E32}
+.day-next .small{margin-top:3px}
+.day-next .btn{text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
+
+.max-ask{display:flex;gap:8px;margin-top:8px}
+.max-ask input{flex:1;min-width:0;height:36px;border-radius:8px;border:1px solid #C3CBDB;padding:0 10px;font:inherit;font-size:13px}
+
+.max-prompt{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(200,16,46,.12);font-weight:600}
+.max-prompt .row{display:flex;gap:6px}
+
+.pistes{display:flex;flex-direction:column;gap:6px}
+.pistes .pl{padding:6px 8px;border-radius:8px;background:rgba(10,30,74,.05)}
+.pistes .pl.warn{background:rgba(224,168,0,.14)}
+.pistes .pl.bad{background:rgba(200,16,46,.12)}

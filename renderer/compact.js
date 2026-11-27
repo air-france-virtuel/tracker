@@ -4,26 +4,18 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Check-lists courtes par phase (cochées sur ce PC, remises à zéro à chaque phase).
-const CHECKLISTS = [
-  ['Avant le départ', ['Plan SimBrief chargé', 'Carburant embarqué', 'ATIS et clairance obtenus', 'Annonce d’embarquement']],
-  ['Roulage', ['Volets réglés pour le décollage', 'Commandes de vol vérifiées', 'Transpondeur sur TA/RA', 'Briefing décollage']],
-  ['Décollage', ['Phares et feux allumés', 'Piste et finale dégagées', 'Poussée de décollage']],
-  ['Montée', ['Train rentré', 'Volets rentrés', 'Altimètres sur 1013 au niveau de transition', '250 kt sous 10 000 ft']],
-  ['Croisière', ['Niveau de croisière atteint', 'Suivi carburant', 'Préparer l’arrivée (ATIS, STAR, piste)']],
-  ['Avant descente', ['Briefing approche', 'Altimètres QNH prévus', 'Vitesse de descente réglée', 'Annonce de descente']],
-  ['Approche', ['Altimètres sur QNH', 'Volets et train sortis', 'Vitesse d’approche stabilisée']],
-  ['Après atterrissage', ['Spoilers et inverseurs rentrés', 'Volets rentrés', 'Phares éteints']],
-  ['Parking', ['Frein de parking serré', 'Moteurs coupés', 'Ceintures : signal éteint']]
-];
+// mêmes check-lists que Max (renderer/checklists.js), avec la petite explication des points techniques
+const CHECKLISTS = (window.Checklists ? window.Checklists.LISTS : []).map((l) => [l.title, l.items.map((i) => ({ text: i.text, help: i.help || '' }))]);
 let curPhase = -2;
 let pinned = true;
 $('pin').addEventListener('click', async () => { pinned = !pinned; await afv.compactPin(pinned); $('pin').setAttribute('aria-pressed', String(pinned)); $('pin').textContent = pinned ? 'Épinglé' : 'Épingler'; });
 
 function renderChecklist(phase) {
-  const idx = phase == null ? 0 : Math.max(0, Math.min(CHECKLISTS.length - 1, phase === 4 ? 4 : phase));
+  if (!CHECKLISTS.length) return;
+  const idx = phase == null ? 0 : Math.max(0, Math.min(CHECKLISTS.length - 1, phase));
   const [title, items] = CHECKLISTS[idx];
   $('chkT').textContent = 'CHECK-LIST · ' + title.toUpperCase();
-  $('chk').innerHTML = items.map((t) => '<li><button aria-pressed="false"><span class="box"></span><span>' + esc(t) + '</span></button></li>').join('');
+  $('chk').innerHTML = items.map((t) => '<li><button aria-pressed="false" title="' + esc(t.help) + '"><span class="box"></span><span>' + esc(t.text) + (t.help ? '<span class="hp">' + esc(t.help) + '</span>' : '') + '</span></button></li>').join('');
 }
 $('chk').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); });
 

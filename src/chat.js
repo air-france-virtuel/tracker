@@ -32,6 +32,12 @@ const friendly = (e) => {
 const friendlyFleet = (e) => {
   const m = String((e && (e.message || e.error_description || e.msg)) || e || '');
   if (/AVION_PRIS/.test(m)) return 'Trop tard : un autre pilote vient de prendre cet avion.';
+  if (/AVION_CLOUE/.test(m)) return 'Cet avion est cloué au sol (état sous 60 %) : il attend sa remise en état.';
+  if (/AVION_RETIRE/.test(m)) return 'Cet avion a été retiré de la flotte par la direction.';
+  if (/AVION_PAS_A_TOI/.test(m)) return 'Tu n’avais pas pris cet avion : le vol n’est pas compté dans son carnet.';
+  if (/DIRECTION_SEULEMENT/.test(m)) return 'Réservé à la direction.';
+  if (/aircraft_state|aircraft_log|finish_flight|hangar_admin/.test(m)) return 'Le hangar n’est pas encore activé sur le serveur.';
+  if (/AVION_MAINTENANCE/.test(m)) return 'Cet avion est en maintenance au hangar : réessaie quand elle sera terminée.';
   if (/PILOTE_INCONNU/.test(m)) return 'Ton compte pilote n’est pas reconnu par le serveur.';
   if (/aircraft_bookings|take_aircraft|release_aircraft|does not exist|schema cache/i.test(m)) return 'La réservation des avions n’est pas encore activée par la direction.';
   return friendly(e);
@@ -83,7 +89,7 @@ class Chat extends EventEmitter {
         this.setState('connecting');
         await this.session();
         await this.loadHistory();
-        this.subscribe();
+        await this.subscribe();
         this.setState('ready');
       } catch (e) {
         this.setState('error', friendly(e));
@@ -95,7 +101,12 @@ class Chat extends EventEmitter {
   }
 
   // Compte anonyme du pilote (créé une fois), sans forcément ouvrir le chat : sert aussi aux avions de la compagnie.
-  async session() {
+  session() {
+    if (this.me && this.sb) return Promise.resolve(this.me);
+    if (!this.sessionP) this.sessionP = this.openSession().finally(() => { this.sessionP = null; });
+    return this.sessionP;
+  }
+  async openSession() {
     if (!this.cfg) throw new Error('Serveur de la compagnie non configuré.');
     if (this.profile.pseudo.length < 2) throw new Error('Indique ton nom de pilote dans les Réglages.');
     if (this.me && this.sb) return this.me;
@@ -120,9 +131,9 @@ class Chat extends EventEmitter {
     try {
       await this.session();
       // nom affiché = nom de pilote actuel dans le tracker (table des pilotes), même s'il l'a changé depuis
-      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until,pilots(pseudo)').gt('until', new Date().toISOString());
+      const r = await this.sb.from('aircraft_bookings').select('reg,user_id,pseudo,taken_at,until,kind,pilots(pseudo)').gt('until', new Date().toISOString());
       if (r.error) throw r.error;
-      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: (b.pilots && b.pilots.pseudo) || b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id })) };
+      return { ok: true, list: r.data.map((b) => ({ reg: b.reg, pseudo: (b.pilots && b.pilots.pseudo) || b.pseudo, until: Date.parse(b.until), mine: b.user_id === this.me.id, maint: b.kind === 'maintenance' })) };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
   async aircraftTake(reg, until) {
@@ -133,12 +144,45 @@ class Chat extends EventEmitter {
       return { ok: true, until: Date.parse(r.data.until) };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
-  async aircraftRelease(reg) {
+  // maint (minutes) > 0 : après un vol, l'avion rentre au hangar en maintenance au lieu d'être libre tout de suite
+  async aircraftRelease(reg, maint) {
     try {
       await this.session();
-      const r = await this.sb.rpc('release_aircraft', { p_reg: clean(reg, 10).toUpperCase() });
+      const r = await this.sb.rpc('release_aircraft', { p_reg: clean(reg, 10).toUpperCase(), p_maint_minutes: Math.max(0, Math.min(360, Math.round(+maint || 0))) });
       if (r.error) throw r.error;
       return { ok: true };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+
+  // ---------- hangar : état de la flotte, historique, fin de vol, actions de la direction ----------
+  async hangarGet() {
+    try {
+      await this.session();
+      const [st, lg, bk] = await Promise.all([
+        this.sb.from('aircraft_state').select('*').order('reg'),
+        this.sb.from('aircraft_log').select('id,reg,kind,at,pilot,callsign,dep,arr,minutes,rate,cond_before,cond_after,note').order('at', { ascending: false }).limit(120),
+        this.aircraftList()
+      ]);
+      if (st.error) throw st.error;
+      if (lg.error) throw lg.error;
+      return { ok: true, fleet: st.data, log: lg.data, bookings: bk.ok ? bk.list : [], admin: !!(this.me && this.me.admin) };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async finishFlight(o) {
+    try {
+      await this.session();
+      const r = await this.sb.rpc('finish_flight', { p_reg: clean(o.reg, 10).toUpperCase(), p_callsign: clean(o.callsign, 12), p_dep: clean(o.dep, 4), p_arr: clean(o.arr, 4),
+        p_minutes: Math.max(0, Math.round(+o.minutes || 0)), p_rate: Math.round(+o.rate || 0), p_keep: !!o.keep });
+      if (r.error) throw r.error;
+      return Object.assign({ ok: true }, r.data);
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async hangarAdmin(action, reg, value, type) {
+    try {
+      await this.session();
+      const r = await this.sb.rpc('hangar_admin', { p_action: String(action), p_reg: clean(reg, 10).toUpperCase(), p_value: value == null ? null : clean(value, 40), p_type: type == null ? null : clean(type, 8) });
+      if (r.error) throw r.error;
+      return { ok: true, state: r.data };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
 
@@ -158,7 +202,12 @@ class Chat extends EventEmitter {
     this.emit('history', this.messages.filter((m) => !m.deleted));
   }
 
-  subscribe() {
+  async subscribe() {
+    // Supabase réutilise un canal du même nom : après une coupure, on enlève l'ancien avant d'en ouvrir un neuf
+    // (sinon : « cannot add postgres_changes callbacks … after subscribe() »).
+    const old = [this.channel].concat(typeof this.sb.getChannels === 'function' ? this.sb.getChannels().filter((c) => /chat-pilotes$/.test(c.topic || '')) : []);
+    this.channel = null;
+    for (const c of new Set(old.filter(Boolean))) { try { await this.sb.removeChannel(c); } catch (e) { /* déjà fermé */ } }
     const ch = this.sb.channel('chat-pilotes', { config: { presence: { key: this.me.id } } });
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
       const m = p.new; if (!m || this.messages.some((x) => x.id === m.id)) return;
@@ -179,7 +228,10 @@ class Chat extends EventEmitter {
     });
     ch.subscribe((s) => {
       if (s === 'SUBSCRIBED') this.track();
-      else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') this.setState('error', 'Connexion au chat perdue, nouvelle tentative…');
+      else if ((s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') && this.channel === ch) {
+        this.setState('error', 'Connexion au chat perdue, nouvelle tentative…');
+        clearTimeout(this.retry); this.retry = setTimeout(() => { if (this.state === 'error') this.start(); }, 15000);
+      }
     });
     this.channel = ch;
   }

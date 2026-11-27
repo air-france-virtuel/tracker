@@ -135,7 +135,11 @@ class DemoFlight {
       lat: this.lat, lon: this.lon, alt: this.alt, agl, ias: this.alt > 25000 ? this.gs * 0.62 : this.gs * 0.92, gs: this.gs,
       vs: this.vs, hdg: brg, onGround: this.onGround, fuelKg: this.fuel, engOn: eng, parkBrake: brake, gearDown: gear, windDir: 310, windKt: this.alt > 10000 ? 22 : 8,
       tdVel: this.stage === 'rollout' && this.stageT <= 1 && this.vsAtTouch ? -this.vsAtTouch / 60 : 0,
-      title: 'Démonstration A320', time: this.t
+      title: 'Démonstration A320', time: this.t,
+      // check-lists de Max
+      flapsIdx: this.onGround ? (this.stage === 'park' || this.stage === 'rollout' ? 0 : 1) : (this.alt < 3000 && this.vs > 0 ? 1 : this.alt < 2500 && this.vs < 0 ? 3 : 0),
+      landLt: !this.onGround || (eng && !brake && this.gs > 30), beacon: eng, strobe: !this.onGround || this.gs > 30,
+      baroMb: this.alt > 5000 ? 1013.25 : 1018, spoilers: 0, ap: !this.onGround && this.alt > 1500
     };
   }
 }

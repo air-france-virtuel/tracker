@@ -13,6 +13,7 @@ const MODEL_URL = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download
 const MODEL_SIZE = 325532387;
 const MODEL_SHA256 = '7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5';
 const SAMPLE_RATE = 24000;
+const IDLE_MS = 3 * 60000;
 
 // Réglage « Max dynamique 1 » choisi par le pilote : voix française Siwis, plus grave et plus vive.
 // L'audio est joué à 0,82× (hauteur plus grave) ; on le génère donc plus vite pour garder du rythme.
@@ -124,8 +125,21 @@ class MaxVoice extends EventEmitter {
     return this.downloading;
   }
 
+  // Quand Max ne parle plus depuis quelques minutes (croisière), le modèle est retiré de la mémoire.
+  // Il revient tout seul à la phrase suivante (une à deux secondes de plus).
+  keepAlive() {
+    clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => this.unload(), IDLE_MS);
+    if (this.idleTimer.unref) this.idleTimer.unref();
+  }
+  unload() {
+    clearTimeout(this.idleTimer);
+    const s = this.session; this.session = null;
+    if (s && s.release) s.release().catch(() => {});
+  }
+
   remove() {
-    this.session = null;
+    this.unload();
     try { fs.unlinkSync(this.modelPath); } catch (e) { /* déjà supprimé */ }
     this.state.percent = 0;
     return this.status();
@@ -135,14 +149,18 @@ class MaxVoice extends EventEmitter {
     if (this.session) return;
     if (!fs.existsSync(this.modelPath)) throw new Error('La voix de Max n’est pas installée.');
     this.ort = require('onnxruntime-node');
-    this.session = await this.ort.InferenceSession.create(this.modelPath, { graphOptimizationLevel: 'all' });
+    // Sans réserve mémoire d'onnxruntime : environ 160 Mo de moins, même voix.
+    this.session = await this.ort.InferenceSession.create(this.modelPath, { graphOptimizationLevel: 'all', enableCpuMemArena: false, enableMemPattern: false });
     const buf = fs.readFileSync(path.join(DATA, 'max-style.bin'));
     this.style = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4); // 510 × 256
+    this.keepAlive();
   }
 
   // Renvoie l'audio (Float32, 24 kHz) et la vitesse de lecture à appliquer.
   async speak(text) {
     await this.load();
+    this.keepAlive();
+    const session = this.session;
     const phon = await phonemize(speakable(text));
     if (!phon) return null;
     const ids = [...phon].map((c) => VOCAB[c]).filter((x) => x != null).slice(0, 510);
@@ -151,12 +169,12 @@ class MaxVoice extends EventEmitter {
     const row = Math.min(n, 510) - 1;
     const style = this.style.slice(row * 256, row * 256 + 256);
     const ort = this.ort;
-    const res = await this.session.run({
+    const res = await session.run({
       tokens: new ort.Tensor('int64', tokens, [1, tokens.length]),
       style: new ort.Tensor('float32', style, [1, 256]),
       speed: new ort.Tensor('float32', Float32Array.from([this.voice.speed]), [1])
     });
-    const audio = res[this.session.outputNames[0]].data;
+    const audio = res[session.outputNames[0]].data;
     return { sampleRate: SAMPLE_RATE, playbackRate: this.voice.playbackRate, samples: trim(audio) };
   }
 }

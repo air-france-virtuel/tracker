@@ -25,6 +25,7 @@
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
     <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
     <button class="nav" data-tab="ligne" title="Pilotes en vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg><span class="lb">Pilotes en vol</span><span class="nbadge" id="liveBadge" hidden></span></button><button class="nav" data-tab="reels" title="Vols réels"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols réels</span></button>
+    <button class="nav" data-tab="reels" title="Vols de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols de la compagnie</span></button>
     <div class="nsec">Carrière</div>
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="missions" title="Missions &amp; rôles"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span class="lb">Missions &amp; rôles</span><span class="chip gold" id="chipMis" hidden></span></button>
@@ -76,9 +77,8 @@
           <div class="card"><h2>Alertes</h2><div id="infoAlerts"></div></div>
         </div>
         <div class="card">
-          <div class="row between"><h2>Actualité Air France</h2><button class="btn small ghost" id="btnNews">Actualiser</button></div>
-          <div id="news" class="newslist"><p class="muted">Chargement de l’actualité…</p></div>
-          <p class="muted small" id="newsSrc"></p>
+          <div class="row between"><h2>Prochains départs Les Ailes Tricolores</h2><button class="btn small ghost" data-gotab="reels">Tous les vols</button></div>
+          <div id="infoNext" class="newslist"><p class="muted">Chargement du programme…</p></div>
         </div>
         <div class="card">
           <div class="row between"><h2>Météo aux aéroports</h2><button class="btn small ghost" id="btnMetar">Actualiser</button></div>
@@ -168,29 +168,30 @@
 
     <section class="tab" id="tab-reels">
       <header class="top">
-        <div><h1>Vols réels</h1><div class="sub" id="realSub">Vols Air France en cours dans le monde</div></div>
+        <div><h1>Vols de la compagnie</h1><div class="sub" id="realSub">Le programme des vols Les Ailes Tricolores</div></div>
         <button class="btn ghost" id="btnRealRefresh">Actualiser</button>
       </header>
       <div class="body">
         <div class="row wrap">
-          <button class="tag on" data-rmode="live" aria-pressed="true">En cours</button>
+          <button class="tag on" data-rmode="live" aria-pressed="true">En vol</button>
           <button class="tag" data-rmode="next" aria-pressed="false">À venir</button>
           <button class="tag" data-rmode="past" aria-pressed="false">Précédents</button>
           <label class="field inline">Aéroport <select id="realAirport"></select></label>
-          <label class="field inline">Rechercher <input id="realSearch" placeholder="AF 1234, Nice, KJFK…"></label>
+          <label class="field inline">Rechercher <input id="realSearch" placeholder="LAT1002, Nice, KJFK…"></label>
         </div>
         <div class="card map-card">
           <div class="row between wrap"><h2 id="realMapTitle">Carte des vols en cours</h2>
             <div class="row wrap"><button class="tag on" data-view="monde">Monde</button><button class="tag" data-view="europe">Europe</button><button class="tag" data-view="atlantique">Atlantique</button><button class="tag" data-view="antilles">Antilles</button>
             <span style="width:10px"></span><button class="tag on" data-layer="reels:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="reels:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="reels:radar" aria-pressed="false">Radar météo</button></div></div>
-          <svg id="realMap" viewBox="0 0 360 150" role="img" aria-label="Carte des vols Air France en cours"></svg>
+          <svg id="realMap" viewBox="0 0 360 150" role="img" aria-label="Carte des vols de la compagnie"></svg>
           <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="realCredit">Fond : Natural Earth</span></div>
         </div>
         <div class="mis-grid">
           <div id="realList"></div>
           <div class="card mis-detail" id="realDetail"><p class="muted">Choisis un vol dans la liste.</p></div>
         </div>
-        <p class="muted small">Positions : <b>OpenSky Network</b> (usage non commercial). Routes : <b>adsb.lol</b> (données ODbL) et <b>adsbdb.com</b>. Les routes sont estimées à partir de l’indicatif du vol et peuvent être fausses. Actualisation toutes les 5 minutes au plus.</p>
+        <div class="card" id="flightAdmin" hidden></div>
+        <p class="muted small">Programme des vols Les Ailes Tricolores (horaires UTC). « En vol » montre où seraient les avions de la compagnie à cette heure-ci d’après le programme. A320 : France, Europe et Afrique du Nord · 777-300ER : long-courrier au départ de Paris-CDG.</p>
       </div>
     </section>
 
@@ -219,7 +220,7 @@
     <!-- ===================== PLANNING DU JOUR ===================== -->
     <section class="tab" id="tab-planning">
       <header class="top">
-        <div><h1>Planning du jour</h1><div class="sub" id="planSub">Les vrais vols Air France d’aujourd’hui, avec l’avion utilisé</div></div>
+        <div><h1>Planning du jour</h1><div class="sub" id="planSub">Les vols Les Ailes Tricolores d’aujourd’hui</div></div>
         <button class="btn ghost" id="btnPlanRefresh">Actualiser</button>
       </header>
       <div class="body">
@@ -227,7 +228,7 @@
         <div class="card" id="planMine"></div>
         <div class="card" id="planRot" hidden></div>
         <div class="card" style="padding:0;overflow:hidden"><div id="planTable"></div></div>
-        <p class="muted small">La liste se remplit avec les vols Air France vus en l’air aujourd’hui (heure UTC) pendant que le tracker est ouvert : plus tu l’ouvres tôt, plus le planning est complet. Les heures de décollage et les durées sont estimées. Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km.<br><b>Programme des vols : données fournies par AeroDataBox (aerodatabox.com).</b> Vols en direct : OpenSky Network. Avions : adsbdb.com.</p>
+        <p class="muted small">Programme des vols Les Ailes Tricolores (heures UTC). Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km.</p>
       </div>
     </section>
 

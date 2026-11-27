@@ -14,11 +14,8 @@ const { MaxEcoute } = require('./ecoute');
 const { Proc } = require('./proc');
 const { Pistes } = require('./pistes');
 const career = require('./career');
-const real = require('./realflights');
-const newsMod = require('./news');
 const { Liveries } = require('./liveries');
 const ua = require('./ua');
-{ const { net } = require('electron'); if (net && typeof net.fetch === 'function') { real.setFetch((u, o) => net.fetch(u, o)); newsMod.setFetch((u, o) => net.fetch(u, o)); } }
 const CHANGELOG = require('./changelog.json');
 
 const VERSION = require('../package.json').version;
@@ -277,7 +274,7 @@ function trayMenu() {
     { type: 'separator' },
     { label: 'Infos du jour', click: () => showMain('infos') },
     { label: 'Planning du jour', click: () => showMain('planning') },
-    { label: 'Vols réels', click: () => showMain('reels') },
+    { label: 'Vols de la compagnie', click: () => showMain('reels') },
     { label: 'Ma carrière', click: () => showMain('carriere') },
     { label: 'Missions & rôles', click: () => showMain('missions') },
     { type: 'separator' },
@@ -511,49 +508,30 @@ app.whenReady().then(() => {
     } catch (e) { return null; }
   });
 
-  ipcMain.handle('news:get', (_e, force) => newsMod.news(!!force));
-
-  // ---------- vols réels ----------
-  const { Planning } = require('./planning');
-  const planning = new Planning(path.join(dataDir(), 'planning'));
-  const typesFile = path.join(dataDir(), 'planning', 'avions.json');
-  try { real.typeCacheLoad(JSON.parse(fs.readFileSync(typesFile, 'utf8'))); } catch (e) { /* premier lancement */ }
-  let lastRecorded = 0;
-  // À chaque relevé des vols en direct : on complète le type d'avion et on note les vols dans le planning du jour.
-  async function liveAndRecord(force) {
-    const r = await real.live(force);
-    if (r && r.at && r.at !== lastRecorded && r.flights && r.flights.length) {
-      lastRecorded = r.at;
-      planning.record(r.flights, r.at); // tout de suite, sans les types d'avion
-      // les types d'avion arrivent en arrière-plan (jusqu'à 120 nouveaux avions par relevé)
-      recording = real.types(r.flights.filter((f) => f.from), 120).then((withTypes) => {
-        planning.record(withTypes, r.at);
-        fs.mkdirSync(path.dirname(typesFile), { recursive: true });
-        fs.writeFileSync(typesFile, JSON.stringify(real.typeCacheDump()));
-        mergedPlanning().then((d) => send('planning:changed', d));
-      }).catch((e) => console.error('planning :', e));
-    }
-    return r;
+  // ---------- vols de la compagnie Les Ailes Tricolores ----------
+  const lat = require('./lat');
+  const myDay = new lat.MyDay(path.join(dataDir(), 'planning'));
+  let prog = { at: 0, list: lat.BUNDLED.flights, source: 'intégré', admin: false };
+  async function program(force) {
+    if (!force && Date.now() - prog.at < 10 * 60 * 1000) return prog;
+    chatProfile();
+    const r = await chat.flightsProgram();
+    if (r.ok && r.list.length) prog = { at: Date.now(), list: lat.fromRows(r.list), rows: r.list, source: 'serveur', admin: r.admin };
+    else prog = Object.assign({}, prog, { at: Date.now() - 8 * 60 * 1000, error: r.ok ? '' : r.error }); // nouvel essai dans 2 min
+    return prog;
   }
-  let recording = null;
-  ipcMain.handle('real:live', (_e, force) => liveAndRecord(!!force));
-  // Programme officiel du jour, publié une fois par jour par GitHub (branche « donnees »)
-  let sched = null;
-  async function schedule() {
-    if (sched && Date.now() - sched.at < 60 * 60 * 1000) return sched.data;
-    try {
-      const { net } = require('electron');
-      const r = await net.fetch('https://raw.githubusercontent.com/air-france-virtuel/tracker/donnees/planning/latest.json?t=' + Date.now(), { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error(String(r.status));
-      sched = { at: Date.now(), data: await r.json() };
-    } catch (e) { sched = { at: Date.now() - 50 * 60 * 1000, data: sched ? sched.data : null }; } // nouvel essai dans 10 min
-    return sched.data;
+  async function companyDay(force) {
+    const p = await program(force);
+    const now = Date.now();
+    return { day: lat.dayKey(now), flights: lat.dayFlights(p.list, now), mine: myDay.get(now), airports: lat.BUNDLED.airports,
+      source: { name: p.source === 'serveur' ? 'programme de la compagnie' : 'programme intégré au tracker', generatedAt: p.at || now }, admin: !!p.admin, error: p.error || '' };
   }
-  const liveNow = () => { const c = real.lastLive && real.lastLive(); return c && c.flights ? c.flights.map((f) => f.callsign) : []; };
-  const mergedPlanning = async () => planning.merged(await schedule(), liveNow());
-  ipcMain.handle('planning:get', async (_e, refresh) => { if (refresh) await liveAndRecord(false); return mergedPlanning(); });
-  ipcMain.handle('planning:toggle', async (_e, key) => { planning.toggle(String(key || '')); return mergedPlanning(); });
-  ipcMain.handle('real:details', (_e, cs, hex) => real.details(String(cs || ''), String(hex || '')));
+  ipcMain.handle('planning:get', (_e, refresh) => companyDay(!!refresh));
+  ipcMain.handle('planning:toggle', async (_e, key) => { myDay.toggle(String(key || ''), Date.now()); return companyDay(false); });
+  // direction : ajouter / modifier / retirer un vol du programme
+  ipcMain.handle('flights:rows', async () => { const p = await program(true); return { admin: !!p.admin, rows: p.rows || [], source: p.source, error: p.error || '' }; });
+  ipcMain.handle('flights:save', async (_e, f) => { const r = await chat.flightSave(f || {}); if (r.ok) await program(true); return r; });
+  ipcMain.handle('flights:remove', async (_e, n) => { const r = await chat.flightRemove(String(n || '')); if (r.ok) await program(true); return r; });
 
   // ---------- voix de Max ----------
   const voice = new MaxVoice(path.join(dataDir(), 'voix'));

@@ -186,6 +186,38 @@ class Chat extends EventEmitter {
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
 
+  // ---------- programme des vols de la compagnie (lu par tous, modifié par la direction) ----------
+  async flightsProgram() {
+    try {
+      await this.session();
+      const r = await this.sb.from('company_flights').select('number,dep_airport,arr_airport,dep_utc,block_min,aircraft_type,days,active,note');
+      if (r.error) throw r.error;
+      return { ok: true, admin: !!(this.me && this.me.admin), list: r.data };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+  async flightSave(f) {
+    try {
+      await this.session();
+      const row = {
+        number: clean(f.number, 8).toUpperCase(), dep_airport: clean(f.from, 4).toUpperCase(), arr_airport: clean(f.to, 4).toUpperCase(),
+        dep_utc: clean(f.dep, 5), block_min: Math.round(+f.block || 0), aircraft_type: f.type === 'B77W' ? 'B77W' : 'A320',
+        days: Array.isArray(f.days) && f.days.length ? f.days.map(Number).filter((d) => d >= 1 && d <= 7) : [1, 2, 3, 4, 5, 6, 7],
+        active: f.active !== false, note: clean(f.note, 200) || null
+      };
+      const r = await this.sb.from('company_flights').upsert(row, { onConflict: 'number' });
+      if (r.error) throw r.error;
+      return { ok: true };
+    } catch (e) { return { ok: false, error: /row-level|permission/i.test(String((e && e.message) || e)) ? 'Réservé à la direction.' : friendlyFleet(e) }; }
+  }
+  async flightRemove(number) {
+    try {
+      await this.session();
+      const r = await this.sb.from('company_flights').update({ active: false }).eq('number', clean(number, 8).toUpperCase());
+      if (r.error) throw r.error;
+      return { ok: true };
+    } catch (e) { return { ok: false, error: /row-level|permission/i.test(String((e && e.message) || e)) ? 'Réservé à la direction.' : friendlyFleet(e) }; }
+  }
+
   async saveProfile() {
     const row = { id: this.me.id, pseudo: this.profile.pseudo, grade: this.profile.grade || null };
     const r = await this.sb.from('pilots').upsert(row, { onConflict: 'id' }).select('id,pseudo,grade,banned,is_admin').single();

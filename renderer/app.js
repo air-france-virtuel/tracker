@@ -1565,11 +1565,15 @@ function renderPlanning() {
   $('genList').innerHTML = (S.gen.msg ? '<div class="gen-warn" style="margin-bottom:10px">' + esc(S.gen.msg) + '</div>' : '') + '<div class="gen-grid">' + r.flights.map((f) =>
     '<div class="card gen-f"><div class="row between"><span class="n">' + esc(f.number) + '</span><span class="cat ' + esc(f.cat) + '">' + esc(GEN_CAT[f.cat][0]) + '</span></div>' +
     '<div class="gen-route"><b>' + esc(f.from) + '</b><i></i><b>' + esc(f.to) + '</b></div><div class="gen-city">' + esc(f.fromName) + ' → ' + esc(f.toName) + '</div>' +
-    '<div class="gen-facts"><span><small>Départ</small>' + hhZ(f.depEst) + '</span><span><small>Arrivée</small>' + hhZ(f.arrEst) + '</span><span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div>' +
+    '<div class="gen-facts">' + genTimes(f) + '<span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div>' +
     '<button class="btn small red" data-gentake="' + esc(f.key) + '"' + (busy || S.gen.busy ? ' disabled' : '') + '>Prendre ce vol</button></div>').join('') + '</div>' +
     (busy ? '<p class="muted small">' + esc(cur.reg) + ' est déjà pris : choisis l’autre avion ou attends qu’il soit libre.</p>' : '') +
-    '<p class="muted small">' + r.total + ' destinations possibles · « Autres vols » en haut pour un nouveau tirage.</p>';
+    '<p class="muted small">' + r.total + ' destinations possibles · chaque vol part quand les deux aéroports sont ouverts, comme dans la réalité · « Autres vols » en haut pour un nouveau tirage.</p>';
 }
+// heures UTC (et locales en petit) ; « demain » si le vol part un autre jour
+const dayTag = (ms) => { const d = new Date(ms).toDateString(), n = new Date(); const t = new Date(n.getTime() + 86400000).toDateString(); return d === n.toDateString() ? '' : d === t ? 'demain ' : new Date(ms).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }) + ' '; };
+const genTimes = (f) => '<span><small>Départ</small>' + (dayTag(f.depEst) ? '<em class="gen-tom">' + dayTag(f.depEst) + '</em>' : '') + hhZ(f.depEst) + (f.depLocal ? '<small>' + f.depLocal + ' locale</small>' : '') + '</span>' +
+  '<span><small>Arrivée</small>' + (dayTag(f.arrEst) && dayTag(f.arrEst) !== dayTag(f.depEst) ? '<em class="gen-tom">' + dayTag(f.arrEst) + '</em>' : '') + hhZ(f.arrEst) + (f.arrLocal ? '<small>' + f.arrLocal + ' locale</small>' : '') + '</span>';
 // Ma journée : les vols enchaînés, avec les escales, et un bouton pour tout prendre
 function renderGenDay(cur, from) {
   const r = S.gen.dayRes;
@@ -1583,7 +1587,7 @@ function renderGenDay(cur, from) {
     '<div class="row"><button class="btn ghost small" data-genother>Autre rotation</button><button class="btn red" data-gentakeday' + (busy || S.gen.busy ? ' disabled' : '') + '>Prendre cette journée</button></div></div>' +
     '<div class="gen-tl">' + r.legs.map((f, i) => (i ? '<div class="gen-turn">⏱ Escale à ' + esc(f.from) + ' : ' + hm(turn(r.legs[i - 1], f)) + '</div>' : '') +
       '<div class="gen-leg"><span class="i">' + (i + 1) + '</span><div class="m"><div><b>' + esc(f.number) + '</b> <span class="cat ' + esc(f.cat) + '">' + esc(GEN_CAT[f.cat][0]) + '</span></div><div class="gen-route" style="font-size:18px"><b>' + esc(f.from) + '</b><i></i><b>' + esc(f.to) + '</b></div><div class="gen-city">' + esc(f.fromName) + ' → ' + esc(f.toName) + '</div></div>' +
-      '<div class="gen-facts" style="grid-template-columns:repeat(4,90px)"><span><small>Départ</small>' + hhZ(f.depEst) + '</span><span><small>Arrivée</small>' + hhZ(f.arrEst) + '</span><span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div></div>').join('') + '</div>' +
+      '<div class="gen-facts" style="grid-template-columns:repeat(4,110px)">' + genTimes(f) + '<span><small>Durée</small>' + hm(f.blockMin) + '</span><span><small>Distance</small>' + fmt(f.distKm) + ' km</span></div></div>').join('') + '</div>' +
     (busy ? '<p class="muted small">' + esc(cur.reg) + ' est déjà pris : choisis l’autre avion ou attends qu’il soit libre.</p>' : '<p class="muted small">L’avion reste réservé pour toi toute la journée. Chaque vol se coche tout seul une fois au parking, et Max prépare le suivant.</p>') + '</div>';
 }
 async function genTakeDay(legs) {

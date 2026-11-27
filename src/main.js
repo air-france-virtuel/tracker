@@ -296,7 +296,6 @@ function trayMenu() {
     { type: 'separator' },
     { label: 'Infos du jour', click: () => showMain('infos') },
     { label: 'Planning du jour', click: () => showMain('planning') },
-    { label: 'Vols de la compagnie', click: () => showMain('reels') },
     { label: 'Ma carrière', click: () => showMain('carriere') },
     { label: 'Missions & rôles', click: () => showMain('missions') },
     { type: 'separator' },

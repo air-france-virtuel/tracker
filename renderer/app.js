@@ -281,7 +281,7 @@ function renderTelem(t) {
 }
 S.mapMode = 'route';
 S.lastPos = null;
-S.layers = { vol: { sat: false, radar: false }, reels: { sat: false, radar: false }, ligne: { sat: false, radar: false } };
+S.layers = { vol: { sat: false, radar: false }, ligne: { sat: false, radar: false } };
 // Squelette d'une carte : océan, satellite, terres, radar, puis le dessin du vol par-dessus.
 function mapSkeleton(svg) {
   if (svg.querySelector('.fg')) return;
@@ -361,7 +361,7 @@ document.addEventListener('click', (e) => {
     const on = k === 'radar' ? L.radar : (k === 'sat' ? L.sat : !L.sat);
     x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on));
   });
-  if (which === 'vol') renderMap(null); else if (which === 'ligne') renderLiveMap(); else renderRealMap(realShown());
+  if (which === 'vol') renderMap(null); else if (which === 'ligne') renderLiveMap();
 });
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-mapmode]'); if (!b) return;
@@ -871,7 +871,7 @@ function renderStats(st) {
   const pp = st.punctual_pilots || [];
   $('stPonct').innerHTML = m.rated ? '<div class="st-donut" style="--p:' + Math.round(m.on_time / m.rated * 100) + '"><span>' + pct(m) + '</span></div><div class="muted small" style="text-align:center;margin:6px 0 10px">' + m.on_time + ' vols à l’heure sur ' + m.rated + ' vols du programme</div>' +
     (pp.length ? '<div class="st-list">' + pp.map((p) => '<div><span>' + esc(p.pseudo) + '</span><b>' + Math.round(p.on_time / p.rated * 100) + ' %</b><small>' + p.on_time + '/' + p.rated + '</small></div>').join('') + '</div>' : '<div class="muted small">Classement des pilotes ponctuels dès 3 vols du programme dans le mois.</div>')
-    : '<div class="muted">Pas encore de vol du programme ce mois-ci. Prends un vol dans « Vols de la compagnie » pour être noté.</div>';
+    : '<div class="muted">Pas encore de vol du programme ce mois-ci. Prends un vol dans le Planning du jour pour être noté.</div>';
   const tp = st.top_pilots || [], tmax = Math.max(1, ...tp.map((p) => p.block_min));
   $('stPilots').innerHTML = tp.length ? '<div class="st-bars">' + tp.map((p, i) => '<div><span class="r">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1) + '</span><span class="l">' + esc(p.pseudo) + '</span><span class="b"><i style="width:' + (p.block_min / tmax * 100) + '%"></i></span><span class="v">' + hmin(p.block_min) + ' · ' + p.flights + ' vol' + (p.flights > 1 ? 's' : '') + '</span></div>').join('') + '</div>' : '<div class="muted">Personne n’a encore volé ce mois-ci : à toi de jouer !</div>';
   const bl = st.best_landing;
@@ -1193,203 +1193,15 @@ async function loadMetar() {
 }
 $('btnMetar').addEventListener('click', loadMetar);
 
-// ---------------- vols de la compagnie (programme Les Ailes Tricolores) ----------------
-S.real = { flights: [], sel: null, det: {}, mode: 'live', sched: [], ssel: null };
-let realTimer = null;
-// position estimée d'un vol en cours : sur l'orthodromie, au prorata du temps écoulé
-function gcPoint(a, b, f) {
-  const r = Math.PI / 180, [la1, lo1, la2, lo2] = [a[0] * r, a[1] * r, b[0] * r, b[1] * r];
-  const d = 2 * Math.asin(Math.sqrt(Math.sin((la2 - la1) / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin((lo2 - lo1) / 2) ** 2));
-  if (!d) return a.slice();
-  const A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
-  const x = A * Math.cos(la1) * Math.cos(lo1) + B * Math.cos(la2) * Math.cos(lo2), y = A * Math.cos(la1) * Math.sin(lo1) + B * Math.cos(la2) * Math.sin(lo2), z = A * Math.sin(la1) + B * Math.sin(la2);
-  return [Math.atan2(z, Math.sqrt(x * x + y * y)) / r, Math.atan2(y, x) / r];
-}
-function bearing(a, b) {
-  const r = Math.PI / 180, y = Math.sin((b[1] - a[1]) * r) * Math.cos(b[0] * r);
-  const x = Math.cos(a[0] * r) * Math.sin(b[0] * r) - Math.sin(a[0] * r) * Math.cos(b[0] * r) * Math.cos((b[1] - a[1]) * r);
-  return Math.round((Math.atan2(y, x) / r + 360) % 360);
-}
-function airborne(sched, now) {
-  return sched.filter((f) => f.status === 'En vol' && f.fromPos && f.toPos).map((f) => {
-    const k = Math.min(1, Math.max(0, (now - f.depEst) / (f.arrEst - f.depEst)));
-    const p = gcPoint(f.fromPos, f.toPos, k), p2 = gcPoint(f.fromPos, f.toPos, Math.min(1, k + 0.01));
-    // profil simple : montée 20 min, croisière, descente 25 min
-    const sinceDep = (now - f.depEst) / 60000, toArr = (f.arrEst - now) / 60000;
-    const cruise = f.type === 'B77W' ? 37000 : 36000;
-    const altFt = Math.round(Math.min(cruise, sinceDep / 20 * cruise, toArr / 25 * cruise) / 100) * 100;
-    return Object.assign({}, f, { lat: p[0], lon: p[1], track: bearing(p, p2), altFt, gsKt: f.distKm ? Math.round(f.distKm / 1.852 / (f.blockMin / 60) * 1.12) : null, progress: Math.round(k * 100) });
-  });
-}
-async function loadReal(force) {
-  $('realSub').textContent = 'Chargement du programme de la compagnie…';
-  const d = await afv.getPlanning(!!force);
-  S.real.data = d;
-  S.real.sched = d.flights || [];
-  S.real.at = Date.now();
-  S.real.flights = airborne(S.real.sched, Date.now());
-  const list = realSource();
-  const label = { live: 'en vol en ce moment', next: 'à venir aujourd’hui', past: 'déjà arrivés aujourd’hui' }[S.real.mode];
-  $('realSub').textContent = list.length + ' vols Les Ailes Tricolores ' + label + ' · ' + (d.source ? d.source.name : '');
-  fillAirports(list);
-  renderReal();
-  renderFlightAdmin();
-}
-function realSource() {
-  if (S.real.mode === 'live') return S.real.flights;
-  const now = Date.now();
-  if (S.real.mode === 'next') return S.real.sched.filter((f) => f.depEst > now).sort((a, b) => a.depEst - b.depEst);
-  return S.real.sched.filter((f) => f.arrEst < now).sort((a, b) => b.arrEst - a.arrEst);
-}
-const loadSched = () => loadReal(false);
-function fillAirports(list) {
-  const aps = [...new Set(list.flatMap((f) => [f.from, f.to]).filter(Boolean))].sort();
-  const cur = $('realAirport').value || 'all';
-  $('realAirport').innerHTML = '<option value="all">Tous</option>' + aps.map((a) => '<option>' + esc(a) + '</option>').join('');
-  $('realAirport').value = aps.includes(cur) ? cur : 'all';
-}
-document.addEventListener('click', (e) => {
-  const g = e.target.closest('[data-gotab]'); if (g) { showTab(g.dataset.gotab); if (g.dataset.gotab === 'reels') loadReal(false); return; }
-  const b = e.target.closest('[data-rmode]'); if (!b) return;
-  S.real.mode = b.dataset.rmode;
-  document.querySelectorAll('[data-rmode]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
-  loadReal(false);
-});
-function realShown() {
-  const ap = $('realAirport').value;
-  const q = $('realSearch').value.trim().toUpperCase().replace(/\s+/g, '');
-  return realSource().filter((f) => (ap === 'all' || f.from === ap || f.to === ap) &&
-    (!q || [f.callsign, f.number, f.from, f.to, f.fromName, f.toName].some((x) => String(x || '').toUpperCase().replace(/\s+/g, '').includes(q))));
-}
 const hhmm = (t) => (t ? new Date(t).toISOString().slice(11, 16) + 'Z' : '—');
-function renderReal() {
-  const list = realShown();
-  renderRealMap(list);
-  $('realMapTitle').textContent = S.real.mode === 'live' ? 'Avions de la compagnie en vol' : S.real.mode === 'next' ? 'Vols à venir' : 'Vols précédents';
-  if (S.real.mode !== 'live') {
-    $('realList').innerHTML = list.length ? list.slice(0, 250).map((f) => '<button class="rt' + (f.key === S.real.ssel ? ' on' : '') + '" data-sreal="' + esc(f.key) + '">' +
-      '<span class="n">' + esc(f.number) + '</span><span><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><br><span class="c">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + ' · ' + esc(f.model || f.type) + '</span></span>' +
-      '<span class="a">' + (S.real.mode === 'next' ? 'Départ<br>' + hhmm(f.depEst) : 'Arrivé<br>' + hhmm(f.arrEst)) + '</span></button>').join('')
-      : '<div class="empty">Aucun vol ne correspond à ces filtres.</div>';
-    renderSchedDetail();
-    return;
-  }
-  $('realList').innerHTML = list.length ? list.slice(0, 200).map((f) => '<button class="rt' + (f.callsign === S.real.sel ? ' on' : '') + '" data-real="' + esc(f.callsign) + '">' +
-    '<span class="n">' + esc(f.number) + '</span><span><b>' + esc(f.from) + ' → ' + esc(f.to) + '</b><br><span class="c">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + ' · ' + esc(f.model || f.type) + '</span></span>' +
-    '<span class="a">' + f.progress + ' %<br>arr. ' + hhmm(f.arrEst) + '</span></button>').join('')
-    : '<div class="empty">Aucun avion de la compagnie en vol à cette heure-ci.</div>';
-  renderRealDetail();
-}
-function renderRealDetail() {
-  const f = S.real.flights.find((x) => x.callsign === S.real.sel);
-  if (!f) { $('realDetail').innerHTML = '<p class="muted">Choisis un vol dans la liste.</p>'; return; }
-  const kv = (k, v) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
-  $('realDetail').innerHTML = '<div class="muted small">' + esc(f.number) + ' · en vol (position estimée d’après le programme)</div><h2>' + esc(f.from) + ' → ' + esc(f.to) + '</h2>' +
-    '<div style="font-weight:600">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div>' +
-    '<div class="kv">' + kv('Appareil', esc(f.model || f.type)) + kv('Parcouru', f.progress + ' %') + kv('Départ', hhmm(f.depEst)) + kv('Arrivée prévue', hhmm(f.arrEst)) +
-    kv('Altitude', f.altFt >= 18000 ? 'FL' + Math.round(f.altFt / 100) : fmt(f.altFt) + ' ft') + kv('Durée', hm(f.blockMin)) + '</div>' +
-    '<p class="muted small">Ce vol est déjà parti aujourd’hui. Tu peux quand même le refaire dans le simulateur, ou choisir un vol dans « À venir ».</p>' +
-    '<a class="btn ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Préparer sur SimBrief</a>';
-}
-$('realList').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-real]'); if (!b) return;
-  S.real.sel = b.dataset.real; renderReal();
-});
-$('realAirport').addEventListener('change', renderReal);
-$('realSearch').addEventListener('input', renderReal);
-$('btnRealRefresh').addEventListener('click', () => loadReal(true));
-document.querySelector('[data-tab=reels]').addEventListener('click', () => {
-  loadReal(false);
-  clearInterval(realTimer);
-  // les avions avancent : la carte « En vol » est recalculée chaque minute
-  realTimer = setInterval(() => { if ($('tab-reels').classList.contains('on')) { S.real.flights = airborne(S.real.sched, Date.now()); renderReal(); } else clearInterval(realTimer); }, 60 * 1000);
-});
+document.addEventListener('click', (e) => { const g = e.target.closest('[data-gotab]'); if (g) showTab(g.dataset.gotab); });
 
 // ---------------- carte des vols réels ----------------
 // Vues prédéfinies, données en lon/lat puis converties en Mercator.
 const vbox = (lon0, lat1, lon1, lat0) => [MapLayers.LX(lon0), MapLayers.LY(lat1), MapLayers.LX(lon1) - MapLayers.LX(lon0), MapLayers.LY(lat0) - MapLayers.LY(lat1)];
 const VIEWS = { monde: vbox(-180, 78, 180, -58), europe: vbox(-12, 60, 32, 34), atlantique: vbox(-85, 58, 35, 5), antilles: vbox(-72, 22, -55, 10) };
-let mapVB = VIEWS.monde.slice();
 const MX = (lon) => MapLayers.LX(lon); const MY = (lat) => MapLayers.LY(lat);
 const PLANE = 'M0 -5 L1 -1.5 L5 1 L5 2 L1 1 L0.8 3.6 L2 4.6 L2 5.2 L0 4.6 L-2 5.2 L-2 4.6 L-0.8 3.6 L-1 1 L-5 2 L-5 1 L-1 -1.5 Z';
-function renderRealMap(list) {
-
-  const svg = $('realMap'); if (!svg) return;
-  mapSkeleton(svg);
-  const [x, y, w, h] = mapVB;
-  // la carte garde le rapport largeur/hauteur de l'écran
-  const ratio = (svg.clientHeight || 420) / (svg.clientWidth || 1000);
-  const hh = w * ratio, yy = y + h / 2 - hh / 2;
-  svg.setAttribute('viewBox', x + ' ' + yy + ' ' + w + ' ' + hh);
-  mapVB = [x, yy, w, hh];
-  const ppu = (svg.clientWidth || 1000) / w;
-  applyLayers(svg, 'reels', [1, 0, 0, 1, 0, 0], [x, yy, x + w, yy + hh], ppu, () => renderRealMap(realShown()));
-  const k = Math.pow(w / 360, 0.6) * (w < 20 ? Math.pow(w / 20, 0.4) : 1);
-  const sat = S.layers.reels.sat;
-  const ink = sat ? '#fff' : '#0A1E4A', halo = sat ? '#0A1E4A' : '#fff';
-  let h2 = '';
-  const sel = S.real.mode === 'live' ? S.real.flights.find((f) => f.callsign === S.real.sel) : null;
-  if (sel) {
-    const d = S.real.det[sel.callsign] || {};
-    const fp = sel.fromPos || d.fromPos; const tp = sel.toPos || d.toPos;
-    const pts = [fp, [sel.lat, sel.lon], tp].filter(Boolean);
-    if (pts.length > 1) h2 += '<polyline fill="none" stroke="#F0374E" stroke-width="' + (0.35 * k) + '" stroke-dasharray="' + (1.6 * k) + ' ' + (1 * k) + '" points="' + pts.map((p) => MX(p[1]) + ',' + MY(p[0])).join(' ') + '"/>';
-    for (const [p, code] of [[fp, sel.from || d.from], [tp, sel.to || d.to]]) if (p) {
-      h2 += '<circle cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" fill="' + halo + '" stroke="#F0374E" stroke-width="' + (0.35 * k) + '"/>' +
-        '<text x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.6 * k) + '">' + esc(code || '') + '</text>';
-    }
-  }
-  const sz = 0.33 * k;
-  if (S.real.mode !== 'live') {
-    // programme : une ligne par vol (départ → arrivée), le vol choisi en rouge
-    for (const f of list.slice(0, 250)) {
-      if (!f.fromPos || !f.toPos) continue;
-      const on = f.key === S.real.ssel;
-      h2 += '<line x1="' + MX(f.fromPos[1]) + '" y1="' + MY(f.fromPos[0]) + '" x2="' + MX(f.toPos[1]) + '" y2="' + MY(f.toPos[0]) + '" stroke="' + (on ? '#F0374E' : (sat ? 'rgba(255,255,255,.45)' : 'rgba(10,30,74,.28)')) + '" stroke-width="' + ((on ? 0.45 : 0.18) * k) + '"/>';
-      if (on) for (const [p, c] of [[f.fromPos, f.from], [f.toPos, f.to]]) h2 += '<circle cx="' + MX(p[1]) + '" cy="' + MY(p[0]) + '" r="' + (1 * k) + '" fill="' + halo + '" stroke="#F0374E" stroke-width="' + (0.35 * k) + '"/><text x="' + (MX(p[1]) + 1.6 * k) + '" y="' + (MY(p[0]) - 1.2 * k) + '" font-size="' + (3.4 * k) + '" font-weight="700" fill="' + ink + '" paint-order="stroke" stroke="' + halo + '" stroke-width="' + (0.6 * k) + '">' + esc(c) + '</text>';
-    }
-    list = [];
-  }
-  for (const f of list) {
-    const on = f.callsign === S.real.sel;
-    h2 += '<g class="pl' + (on ? ' on' : '') + '" data-real="' + esc(f.callsign) + '" transform="translate(' + MX(f.lon).toFixed(2) + ' ' + MY(f.lat).toFixed(2) + ') rotate(' + (f.track || 0) + ') scale(' + (on ? sz * 1.5 : sz) + ')"><title>' + esc((f.number || f.callsign) + (f.from ? ' · ' + f.from + ' → ' + f.to : '')) + '</title><circle r="7" fill="transparent"/><path d="' + PLANE + '"' + (sat && !on ? ' style="fill:#fff"' : '') + '/></g>';
-  }
-  svg.querySelector('.fg').innerHTML = h2;
-  const c = $('realCredit'); if (c) c.textContent = svg.dataset.credit || '';
-}
-function setView(vb) {
-  mapVB = vb;
-  document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', VIEWS[b.dataset.view] && VIEWS[b.dataset.view].join() === vb.join()));
-  renderRealMap(realShown());
-}
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) setView(VIEWS[b.dataset.view].slice()); });
-(function mapControls() {
-  const svg = $('realMap');
-  const toMap = (ev) => { const r = svg.getBoundingClientRect(); return [mapVB[0] + ((ev.clientX - r.left) / r.width) * mapVB[2], mapVB[1] + ((ev.clientY - r.top) / r.height) * mapVB[3]]; };
-  svg.addEventListener('wheel', (ev) => {
-    ev.preventDefault();
-    const [mx, my] = toMap(ev);
-    const f = ev.deltaY > 0 ? 1.25 : 0.8;
-    const w = Math.min(360, Math.max(0.03, mapVB[2] * f)); const h = w * (mapVB[3] / mapVB[2]);
-    setView([mx - (mx - mapVB[0]) * (w / mapVB[2]), my - (my - mapVB[1]) * (h / mapVB[3]), w, h]);
-  }, { passive: false });
-  let drag = null;
-  svg.addEventListener('pointerdown', (ev) => { if (ev.target.closest('.pl')) return; drag = { x: ev.clientX, y: ev.clientY, vb: mapVB.slice() }; svg.setPointerCapture(ev.pointerId); });
-  svg.addEventListener('pointermove', (ev) => {
-    if (!drag) return;
-    const r = svg.getBoundingClientRect();
-    setView([drag.vb[0] - ((ev.clientX - drag.x) / r.width) * drag.vb[2], drag.vb[1] - ((ev.clientY - drag.y) / r.height) * drag.vb[3], drag.vb[2], drag.vb[3]]);
-  });
-  svg.addEventListener('pointerup', () => { drag = null; });
-  svg.addEventListener('click', (ev) => {
-    const g = ev.target.closest('.pl'); if (!g) return;
-    const f = S.real.flights.find((x) => x.callsign === g.dataset.real); if (!f) return;
-    S.real.sel = f.callsign;
-    renderReal();
-    const el = document.querySelector('#realList [data-real="' + CSS.escape(f.callsign) + '"]'); if (el) el.scrollIntoView({ block: 'nearest' });
-  });
-})();
-
 // ---------------- tracker « centre des opérations » ----------------
 const R_NM = 3440.065;
 function hav(a, b) {
@@ -1548,16 +1360,16 @@ function pushCompact() {
   });
 }
 
-// ---------------- infos du jour : prochains départs de la compagnie ----------------
+// ---------------- infos du jour : ton prochain vol (pris dans le Planning du jour) ----------------
 async function loadInfosNext() {
-  try {
-    const d = await afv.getPlanning(false);
-    const now = Date.now();
-    const next = (d.flights || []).filter((f) => f.depEst > now).slice(0, 6);
-    $('infoNext').innerHTML = next.length ? next.map((f) => '<button class="nw" data-gotab="planning" style="text-align:left;border:none;background:none;cursor:pointer;font:inherit"><span class="t">' + esc(f.number) + ' · ' + esc(f.from) + ' → ' + esc(f.to) + ' · départ ' + hhmm(f.depEst) + '</span>' +
-      '<span class="muted small">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + ' · ' + esc(f.model) + ' · ' + hm(f.blockMin) + '</span></button>').join('')
-      : '<p class="muted">Plus de départ aujourd’hui : rendez-vous demain matin.</p>';
-  } catch (e) { $('infoNext').innerHTML = '<p class="muted">Programme indisponible pour le moment.</p>'; }
+  if (!$('infoNext')) return;
+  try { if (!S.gen.flight) S.gen.flight = (await afv.genGet()).flight; } catch (e) { /* rien */ }
+  const g = S.gen.flight;
+  $('infoNext').innerHTML = g && !g.doneAt
+    ? '<div class="gen-big"><b>' + esc(g.number) + '</b> ' + esc(g.from) + ' → ' + esc(g.to) + ' <span class="muted">' + esc((g.fromName || '') + ' – ' + (g.toName || '')) + '</span></div>' +
+      '<div class="muted small">' + esc(g.reg || '') + ' · ' + esc(g.model || g.type) + ' · départ prévu ' + hhZ(g.depEst) + ' · ' + hm(g.blockMin) + '</div>'
+    : '<p class="muted">Pas de vol prévu. Choisis ton avion et ton type de vol dans le Planning du jour : Max te propose des vols à faire.</p>' +
+      '<button class="btn small red" data-gotab="planning">Choisir un vol</button>';
 }
 setTimeout(loadInfosNext, 1500);
 setInterval(loadInfosNext, 5 * 60 * 1000);
@@ -1624,7 +1436,7 @@ async function renderDayNext(load) {
   const ok = S.plan && S.plan.origin && S.plan.origin.icao === f.from && S.plan.destination && S.plan.destination.icao === f.to;
   box.hidden = false;
   box.className = 'day-next ' + (ok ? 'ok' : 'todo');
-  box.innerHTML = '<div><b>▶ Vol ' + (nx.i + 1) + '/' + nx.n + ' de ta journée : ' + num + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ ' + hhZ(f.depEst) : '') +
+  box.innerHTML = '<div><b>▶ ' + (nx.n > 1 ? 'Vol ' + (nx.i + 1) + '/' + nx.n + ' de ta journée : ' : 'Ton vol : ') + num + ' ' + esc(f.from) + ' → ' + esc(f.to) + '</b>' + (own ? ' avec ' + esc(own.reg) : '') + (f.depEst ? ' · départ ' + hhZ(f.depEst) : '') +
     '<div class="small">' + (ok ? '✓ Le plan SimBrief chargé correspond à ce vol : tu peux démarrer.'
       : S.plan && S.plan.origin ? '⚠ Le plan chargé est ' + esc(S.plan.origin.icao) + ' → ' + esc(S.plan.destination.icao) + '. Prépare ' + esc(f.from) + ' → ' + esc(f.to) + ' dans SimBrief, puis « Charger mon plan SimBrief ».'
       : 'Prépare-le dans SimBrief (« Generate Flight »), puis clique sur « Charger mon plan SimBrief ».') + '</div></div>' +
@@ -1649,6 +1461,7 @@ async function loadPlanning(refresh) {
   if (!S.hg.fleet || !S.hg.fleet.length) await loadHangar(true);
   if (refresh) S.gen.seed++;
   await genLoad();
+  renderFlightAdmin();
 }
 const genPlane = () => companyPlane(S.plan2.myReg) || (S.plan2.company || [])[0] || null;
 const genFromOf = (p) => { const h = p && hangarState(p.reg); return S.gen.from || (h && h.location) || 'LFPG'; };
@@ -1711,7 +1524,7 @@ function renderPlanning() {
     (busy ? '<p class="muted small">' + esc(cur.reg) + ' est déjà pris : choisis l’autre avion ou attends qu’il soit libre.</p>' : '') +
     '<p class="muted small">' + r.total + ' destinations possibles · « Autres vols » en haut pour un nouveau tirage.</p>';
 }
-// prendre un vol (générateur ou « Vols de la compagnie ») : l'avion de la compagnie est réservé, puis SimBrief s'ouvre déjà rempli
+// prendre un vol (générateur du Planning du jour) : l'avion de la compagnie est réservé, puis SimBrief s'ouvre déjà rempli
 async function genTake(f) {
   const own = planeFor(f) || genPlane();
   S.gen.busy = true; S.gen.msg = ''; renderPlanning();
@@ -1723,7 +1536,7 @@ async function genTake(f) {
     }
     S.gen.flight = await afv.genPick(Object.assign({}, f, { reg: own ? own.reg : '', dep: f.dep || new Date(f.depEst).toISOString().slice(11, 16), block: f.block || f.blockMin }));
     if (own) S.plan2.myReg = own.reg;
-    renderDayNext(false);
+    renderDayNext(false); loadInfosNext();
     maxSays('C’est noté : ' + f.number + ', ' + f.from + ' vers ' + f.to + (own ? ' avec ' + own.reg : '') + ', départ prévu ' + sayTime(f.depEst) + '.');
     loadNextPlan(f, f.number);
   } finally { S.gen.busy = false; renderPlanning(); }
@@ -1743,7 +1556,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('change', (e) => {
   if (e.target && e.target.id === 'genFromSel') { S.gen.from = e.target.value; genLoad(); }
 });
-afv.on('gen:changed', (g) => { S.gen.flight = g; renderPlanning(); renderDayNext(false); });
+afv.on('gen:changed', (g) => { S.gen.flight = g; renderPlanning(); renderDayNext(false); loadInfosNext(); });
 $('btnPlanRefresh').addEventListener('click', () => { S.gen.seed++; genLoad(); });
 // l'heure de départ conseillée avance avec le temps : nouveau tirage toutes les 10 minutes si l'écran est affiché
 setInterval(() => { if ($('tab-planning').classList.contains('on')) genLoad(); }, 10 * 60 * 1000);
@@ -1752,42 +1565,6 @@ setInterval(() => { if ($('tab-planning').classList.contains('on')) genLoad(); }
 const MAX_AVATAR = '<svg class="max-avatar" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#0A1E4A"/><rect x="11" y="15" width="22" height="13" rx="6" fill="#fff"/><circle class="blink" cx="17" cy="21" r="2.4" fill="#0A1E4A"/><circle class="blink" cx="27" cy="21" r="2.4" fill="#0A1E4A"/><path d="M17 31 Q22 34 27 31" stroke="#C8102E" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>';
 const hhZ = (ms) => ms ? new Date(ms).toISOString().slice(11, 16) + 'Z' : 'heure inconnue';
 const sayTime = (ms) => ms ? (+new Date(ms).toISOString().slice(11, 13)) + ' heures ' + new Date(ms).toISOString().slice(14, 16) + ' UTC' : '';
-
-
-function renderSchedDetail() {
-  const f = S.real.sched.find((x) => x.key === S.real.ssel);
-  if (!f) { $('realDetail').innerHTML = '<p class="muted">Choisis un vol dans la liste.</p>'; return; }
-  const own = planeFor(f);
-  const kv = (k, v) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
-  $('realDetail').innerHTML = '<div class="muted small">' + esc(f.number) + ' · ' + esc(f.status === 'Programmé' ? 'à venir' : f.status === 'En vol' ? 'en vol' : 'arrivé') + '</div><h2>' + esc(f.from) + ' → ' + esc(f.to) + '</h2>' +
-    '<div style="font-weight:600">' + esc((f.fromName || '') + ' – ' + (f.toName || '')) + '</div>' +
-    '<div class="kv">' + kv('Départ prévu', hhZ(f.depEst)) + kv('Arrivée prévue', hhmm(f.arrEst)) + kv('Durée', hm(f.blockMin)) + kv('Distance', f.distKm != null ? fmt(f.distKm) + ' km' : '—') +
-    kv('Appareil', esc(f.model || f.type)) + kv('Avion de la compagnie', own ? esc(own.reg) : '—') + '</div>' +
-    (f.note ? '<p class="muted small">Note de la direction : ' + esc(f.note) + '</p>' : '') +
-    '<div class="row wrap"><a class="btn ghost" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(planSimbrief(f)) + '" target="_blank" rel="noopener">Préparer sur SimBrief</a></div>' + realMaxHtml(f);
-}
-// Avis de Max sur un vol à venir : l'avion de la compagnie et le vol qu'il peut enchaîner ensuite.
-function realMaxHtml(f) {
-  if (S.real.mode !== 'next') return '';
-  const own = planeFor(f);
-  const next = S.real.sched.filter((x) => sameFamily(x.type, f.type) && x.from === f.to && x.depEst >= f.arrEst + 40 * 60000 && x.depEst <= f.arrEst + 3 * 3600000).sort((a, b) => a.depEst - b.depEst)[0];
-  const b = own ? bookingOf(own.reg) : null;
-  const body = (own ? 'Ce vol se fait avec <b>' + esc(own.reg) + '</b>, ' + (/^A/.test(own.label) ? 'l’' : 'le ') + esc(own.label) + ' de la compagnie' + (b && !b.mine ? ' — <b>déjà piloté par ' + esc(b.pseudo) + '</b> pour l’instant' : '') + '. ' : 'La compagnie n’a pas encore d’avion de ce type : tu peux voler avec ton propre ' + esc(f.model || f.type) + '. ') +
-    (next ? 'Après ton arrivée à ' + esc(f.to) + ', tu pourras enchaîner avec <b>' + esc(next.number) + '</b> vers ' + esc(next.to) + ' à ' + hhZ(next.depEst) + '.' : 'Après ton arrivée, le Planning du jour te proposera d’autres vols au départ de ' + esc(f.to) + '.');
-  return '<div class="maxday"><div class="max-head">' + MAX_AVATAR + '<div><div class="max-name">L’avis de Max</div><div class="muted small">Ton avion et la suite de ta journée</div></div></div>' +
-    '<div class="max-say">' + body + '</div><div class="row" style="margin-top:8px"><button class="btn small red" data-takeflight="' + esc(f.key) + '">Prendre ce vol</button>' +
-    '<span class="muted small">Il devient ton vol dans le Planning du jour.</span></div></div>';
-}
-document.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-sreal]');
-  if (b) { S.real.ssel = b.dataset.sreal; renderReal(); return; }
-  const tk = e.target.closest('[data-takeflight]');
-  if (tk) {
-    const f = S.real.sched.find((x) => x.key === tk.dataset.takeflight);
-    if (f) { genTake(f).then(() => { showTab('planning'); const box = $('genMine'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); }
-    return;
-  }
-});
 
 // ---------------- briefing de Max (après le chargement du plan SimBrief) ----------------
 // Décode un METAR en français : vent, visibilité, nuages, température, QNH.
@@ -2475,8 +2252,9 @@ document.addEventListener('click', async (e) => {
 S.fadm = { rows: [], q: '', edit: null, msg: '' };
 const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 async function renderFlightAdmin(reload) {
-  const box = $('flightAdmin');
-  if (!S.real.data || !S.real.data.admin) { box.hidden = true; return; }
+  const box = $('flightAdmin'); if (!box) return;
+  if (!S.plan2.data) { try { S.plan2.data = await afv.getPlanning(false); } catch (e) { /* hors ligne */ } }
+  if (!S.plan2.data || !S.plan2.data.admin) { box.hidden = true; return; }
   box.hidden = false;
   if (reload || !S.fadm.loaded) { const r = await afv.flightRows(); S.fadm.rows = r.rows || []; S.fadm.loaded = true; if (r.error) S.fadm.msg = r.error; }
   const e = S.fadm.edit || { number: '', from: 'LFPG', to: '', dep: '08:00', block: 90, type: 'A320', days: [1, 2, 3, 4, 5, 6, 7], note: '' };
@@ -2507,9 +2285,9 @@ document.addEventListener('click', async (e) => {
   if (ed) { const r = S.fadm.rows.find((x) => x.number === ed.dataset.faedit); S.fadm.edit = { existing: true, number: r.number, from: r.dep_airport, to: r.arr_airport, dep: r.dep_utc, block: r.block_min, type: r.aircraft_type, days: r.days || [], note: r.note || '' }; S.fadm.msg = ''; renderFlightAdmin(); $('flightAdmin').scrollIntoView({ behavior: 'smooth' }); return; }
   if (e.target.closest('[data-facancel]')) { S.fadm.edit = null; S.fadm.msg = ''; renderFlightAdmin(); return; }
   const off = e.target.closest('[data-faoff]');
-  if (off) { if (!window.confirm('Retirer le vol ' + off.dataset.faoff + ' du programme ? Tu pourras le remettre plus tard.')) return; const r = await afv.flightRemove(off.dataset.faoff); S.fadm.msg = r.ok ? '' : r.error; await renderFlightAdmin(true); loadReal(false); return; }
+  if (off) { if (!window.confirm('Retirer le vol ' + off.dataset.faoff + ' du programme ? Tu pourras le remettre plus tard.')) return; const r = await afv.flightRemove(off.dataset.faoff); S.fadm.msg = r.ok ? '' : r.error; await renderFlightAdmin(true); return; }
   const on = e.target.closest('[data-faon]');
-  if (on) { const r0 = S.fadm.rows.find((x) => x.number === on.dataset.faon); const r = await afv.flightSave({ number: r0.number, from: r0.dep_airport, to: r0.arr_airport, dep: r0.dep_utc, block: r0.block_min, type: r0.aircraft_type, days: r0.days, note: r0.note, active: true }); S.fadm.msg = r.ok ? '' : r.error; await renderFlightAdmin(true); loadReal(false); return; }
+  if (on) { const r0 = S.fadm.rows.find((x) => x.number === on.dataset.faon); const r = await afv.flightSave({ number: r0.number, from: r0.dep_airport, to: r0.arr_airport, dep: r0.dep_utc, block: r0.block_min, type: r0.aircraft_type, days: r0.days, note: r0.note, active: true }); S.fadm.msg = r.ok ? '' : r.error; await renderFlightAdmin(true); return; }
   if (e.target.closest('[data-fasave]')) {
     const f = { number: $('faNum').value.trim().toUpperCase().replace(/\s+/g, ''), from: $('faFrom').value.trim().toUpperCase(), to: $('faTo').value.trim().toUpperCase(), dep: $('faDep').value.trim(), block: +$('faBlock').value, type: $('faType').value,
       days: [...document.querySelectorAll('[data-faday]')].filter((x) => x.checked).map((x) => +x.dataset.faday), note: $('faNote').value.trim() };
@@ -2522,7 +2300,7 @@ document.addEventListener('click', async (e) => {
     const r = await afv.flightSave(f);
     if (!r.ok) { $('faMsg').textContent = r.error; return; }
     S.fadm.edit = null; S.fadm.msg = '';
-    await renderFlightAdmin(true); loadReal(false);
+    await renderFlightAdmin(true);
   }
 });
 

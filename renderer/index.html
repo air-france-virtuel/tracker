@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://raw.githubusercontent.com https://gibs.earthdata.nasa.gov https://tiles.maps.eox.at https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https://raw.githubusercontent.com https://gibs.earthdata.nasa.gov https://tiles.maps.eox.at https://server.arcgisonline.com https://tilecache.rainviewer.com; media-src 'self' file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
 <title>Les Ailes Tricolores – Tracker</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,7 +24,6 @@
     <button class="nav" data-tab="vol" title="Tracker de vol"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13l8-2 4-8h2l-2 8 6 1v2l-6 1 2 7h-2l-4-7-8-1z"/></svg><span class="lb">Tracker de vol</span><span class="chip red" id="chipFly" hidden>EN VOL</span><span class="chip beta" id="chipBeta" hidden>BÊTA</span></button>
     <button class="nav" id="navBrief" title="Briefing de Max" disabled><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg><span class="lb">Briefing de Max</span></button>
     <button class="nav" data-tab="vols" title="Mes vols"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span class="lb">Mes vols</span></button>
-    <button class="nav" data-tab="reels" title="Vols de la compagnie"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="lb">Vols de la compagnie</span></button>
     <div class="nsec">Carrière</div>
     <button class="nav" data-tab="carriere" title="Ma carrière"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lb">Ma carrière</span></button>
     <button class="nav" data-tab="succes" title="Succès"><svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4"/></svg><span class="lb">Succès</span><span class="chip gold" id="chipAch" hidden></span></button>
@@ -81,8 +80,8 @@
           <div class="card"><h2>Alertes</h2><div id="infoAlerts"></div></div>
         </div>
         <div class="card">
-          <div class="row between"><h2>Prochains départs Les Ailes Tricolores</h2><button class="btn small ghost" data-gotab="reels">Tous les vols</button></div>
-          <div id="infoNext" class="newslist"><p class="muted">Chargement du programme…</p></div>
+          <div class="row between"><h2>Ton prochain vol</h2><button class="btn small ghost" data-gotab="planning">Planning du jour</button></div>
+          <div id="infoNext"><p class="muted">Chargement…</p></div>
         </div>
         <div class="card">
           <div class="row between"><h2>Météo aux aéroports</h2><button class="btn small ghost" id="btnMetar">Actualiser</button></div>
@@ -154,34 +153,6 @@
     </section>
 
 
-    <section class="tab" id="tab-reels">
-      <header class="top">
-        <div><h1>Vols de la compagnie</h1><div class="sub" id="realSub">Le programme des vols Les Ailes Tricolores</div></div>
-        <button class="btn ghost" id="btnRealRefresh">Actualiser</button>
-      </header>
-      <div class="body">
-        <div class="row wrap">
-          <button class="tag on" data-rmode="live" aria-pressed="true">En vol</button>
-          <button class="tag" data-rmode="next" aria-pressed="false">À venir</button>
-          <button class="tag" data-rmode="past" aria-pressed="false">Précédents</button>
-          <label class="field inline">Aéroport <select id="realAirport"></select></label>
-          <label class="field inline">Rechercher <input id="realSearch" placeholder="LAT1002, Nice, KJFK…"></label>
-        </div>
-        <div class="card map-card">
-          <div class="row between wrap"><h2 id="realMapTitle">Carte des vols en cours</h2>
-            <div class="row wrap"><button class="tag on" data-view="monde">Monde</button><button class="tag" data-view="europe">Europe</button><button class="tag" data-view="atlantique">Atlantique</button><button class="tag" data-view="antilles">Antilles</button>
-            <span style="width:10px"></span><button class="tag on" data-layer="reels:plan" aria-pressed="true">Plan</button><button class="tag" data-layer="reels:sat" aria-pressed="false">Satellite</button><button class="tag" data-layer="reels:radar" aria-pressed="false">Radar météo</button></div></div>
-          <svg id="realMap" viewBox="0 0 360 150" role="img" aria-label="Carte des vols de la compagnie"></svg>
-          <div class="map-legend"><span>Clique sur un avion pour voir le vol. Molette : zoom · glisser : déplacer.</span><span id="realCredit">Fond : Natural Earth</span></div>
-        </div>
-        <div class="mis-grid">
-          <div id="realList"></div>
-          <div class="card mis-detail" id="realDetail"><p class="muted">Choisis un vol dans la liste.</p></div>
-        </div>
-        <div class="card" id="flightAdmin" hidden></div>
-        <p class="muted small">Programme des vols Les Ailes Tricolores (horaires UTC). « En vol » montre où seraient les avions de la compagnie à cette heure-ci d’après le programme. A320 : France, Europe et Afrique du Nord · 777-300ER : long-courrier au départ de Paris-CDG.</p>
-      </div>
-    </section>
 
     <!-- ===================== SUCCÈS ===================== -->
     <section class="tab" id="tab-succes">
@@ -253,6 +224,7 @@
           <div class="row wrap gen-from" id="genFrom"></div>
         </div>
         <div id="genList"></div>
+        <div class="card" id="flightAdmin" hidden></div>
         <p class="muted small">Vols proposés au hasard au départ de l’aéroport où se trouve l’avion (heures UTC). Court-courrier : moins de 1 500 km · moyen-courrier : 1 500 à 4 000 km · long-courrier : plus de 4 000 km. L’A320 fait du court et du moyen-courrier, le 777-300ER du moyen et du long-courrier.</p>
       </div>
     </section>

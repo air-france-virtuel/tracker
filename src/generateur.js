@@ -69,4 +69,40 @@ function generate(opts) {
   return { ok: true, from, fromName: dep.city || dep.name, type, cat, cats: spec.cats, total: cands.length, flights };
 }
 
-module.exports = { generate, TYPES, CAT_KM, WIDE, blockMin, flightNumber };
+// Journée complète : des allers-retours au départ de l'aéroport de l'avion, enchaînés avec un temps d'escale réaliste.
+// opts : comme generate, plus legs (nombre de vols, pair). Court : 2, 4 ou 6 vols ; moyen et long : un aller-retour.
+const TURN = { court: 45, moyen: 60, long: 90 }; // minutes entre l'arrivée et le départ suivant
+function day(opts) {
+  const base = generate(Object.assign({}, opts, { count: 40 }));
+  if (!base.ok) return base;
+  const cat = base.cat;
+  const legs = Math.max(2, Math.min(cat === 'court' ? 6 : 2, Math.round((+opts.legs || 2) / 2) * 2));
+  // plusieurs allers-retours courts dans la journée : on préfère les destinations proches
+  const near = cat === 'court' && legs >= 4 ? base.flights.filter((f) => f.distKm <= (legs >= 6 ? 900 : 1200)) : base.flights;
+  const pairs = (near.length >= legs / 2 ? near : base.flights).slice(0, legs / 2);
+  if (pairs.length < legs / 2) return { ok: false, error: 'Pas assez de destinations pour cette journée.' };
+  const airports = opts.airports || lat.BUNDLED.airports;
+  const dep0 = airports[base.from];
+  const out = [];
+  let t = base.flights[0].depEst;
+  const used = new Set();
+  const num = (from, to) => { let n = flightNumber(from, to, cat, opts.program); while (used.has(n)) n = n.slice(0, 4) + String((+n.slice(4) + 1) % 1000).padStart(3, '0'); used.add(n); return n; };
+  for (const f of pairs) {
+    for (const [from, to, A, B] of [[base.from, f.to, dep0, airports[f.to]], [f.to, base.from, airports[f.to], dep0]]) {
+      const prog = (opts.program || []).find((x) => x.from === from && x.to === to);
+      const block = prog && prog.block ? prog.block : blockMin(f.distKm, base.type);
+      const number = num(from, to);
+      out.push({
+        key: 'gen-' + number + '-' + t, number, from, to, fromName: A.city || A.name, toName: B.city || B.name, fromPos: [A.lat, A.lon], toPos: [B.lat, B.lon],
+        distKm: f.distKm, cat, type: base.type, model: f.model, blockMin: block, depEst: t, arrEst: t + block * 60000,
+        dep: new Date(t).toISOString().slice(11, 16), block, generated: true
+      });
+      t += (block + TURN[cat]) * 60000;
+    }
+  }
+  const last = out[out.length - 1];
+  return { ok: true, from: base.from, fromName: base.fromName, type: base.type, cat, cats: base.cats, legs: out,
+    blockTotal: out.reduce((a, f) => a + f.blockMin, 0), start: out[0].depEst, end: last.arrEst };
+}
+
+module.exports = { generate, day, TURN, TYPES, CAT_KM, WIDE, blockMin, flightNumber };

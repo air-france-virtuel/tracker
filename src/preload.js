@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('afv', {
   genFlights: (o) => ipcRenderer.invoke('gen:flights', o),
   genGet: () => ipcRenderer.invoke('gen:get'),
   genPick: (f) => ipcRenderer.invoke('gen:pick', f),
+  genDay: (o) => ipcRenderer.invoke('gen:day', o),
+  genPickDay: (legs) => ipcRenderer.invoke('gen:pickDay', legs),
   getRoulage: (ap, rwy, pos) => ipcRenderer.invoke('roulage:get', ap, rwy, pos),
   openFolder: (w) => ipcRenderer.invoke('folder:open', w),
   getUpdate: () => ipcRenderer.invoke('update:get'),

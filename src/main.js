@@ -202,7 +202,15 @@ function finishFlight() {
   const g = store.genFlight && !store.genFlight.doneAt && store.genFlight.from === rep.from && store.genFlight.to === rep.to ? store.genFlight : null;
   if (g && !rep.flightNumber) rep.flightNumber = g.number;
   try { rep.ponctualite = ponct.check(rep, (g ? [{ number: g.number, from: g.from, to: g.to, dep: g.dep, block: g.block }] : []).concat(companyProgram)); } catch (e) { rep.ponctualite = null; }
-  if (g) { store.genFlight = Object.assign({}, g, { doneAt: Date.now() }); saveStore(); send('gen:changed', store.genFlight); }
+  if (g) {
+    store.genFlight = Object.assign({}, g, { doneAt: Date.now() });
+    // journée : le vol est coché et le suivant devient le vol en cours
+    if (Array.isArray(store.genDay)) {
+      const i = store.genDay.findIndex((x) => x.key === g.key);
+      if (i >= 0) { store.genDay[i].doneAt = Date.now(); if (store.genDay[i + 1]) store.genFlight = Object.assign({}, store.genDay[i + 1], { pickedAt: Date.now() }); }
+    }
+    saveStore(); send('gen:changed', { flight: store.genFlight, day: store.genDay || null });
+  }
   fs.mkdirSync(reportsDir(), { recursive: true });
   const name = rep.date.slice(0, 19).replace(/[:T]/g, '-') + '_' + (rep.from || 'XXXX') + '-' + (rep.to || 'XXXX') + '.json';
   fs.writeFileSync(path.join(reportsDir(), name), JSON.stringify(rep, null, 2));
@@ -578,12 +586,22 @@ app.whenReady().then(() => {
 
   // générateur de vols du Planning du jour
   ipcMain.handle('gen:flights', async (_e, o) => { const p = await program(false); return generateur.generate(Object.assign({}, o || {}, { now: Date.now(), program: p.list, airports: lat.BUNDLED.airports })); });
-  ipcMain.handle('gen:get', () => ({ flight: store.genFlight || null, airports: lat.BUNDLED.airports }));
+  ipcMain.handle('gen:day', async (_e, o) => { const p = await program(false); return generateur.day(Object.assign({}, o || {}, { now: Date.now(), program: p.list, airports: lat.BUNDLED.airports })); });
+  ipcMain.handle('gen:get', () => ({ flight: store.genFlight || null, day: store.genDay || null, airports: lat.BUNDLED.airports }));
+  // journée complète : tous les vols sont gardés, le premier devient le vol en cours
+  ipcMain.handle('gen:pickDay', (_e, legs) => {
+    const k = ['key', 'number', 'from', 'to', 'fromName', 'toName', 'distKm', 'cat', 'type', 'model', 'blockMin', 'depEst', 'arrEst', 'dep', 'block', 'reg'];
+    store.genDay = Array.isArray(legs) && legs.length ? legs.slice(0, 8).map((f) => Object.fromEntries(k.map((x) => [x, f[x]]))) : null;
+    store.genFlight = store.genDay ? Object.assign({}, store.genDay[0], { pickedAt: Date.now() }) : null;
+    saveStore();
+    return { flight: store.genFlight, day: store.genDay };
+  });
   ipcMain.handle('gen:pick', (_e, f) => {
     if (f && typeof f === 'object') {
       const k = ['key', 'number', 'from', 'to', 'fromName', 'toName', 'distKm', 'cat', 'type', 'model', 'blockMin', 'depEst', 'arrEst', 'dep', 'block', 'reg'];
       store.genFlight = Object.assign(Object.fromEntries(k.map((x) => [x, f[x]])), { pickedAt: Date.now() });
     } else store.genFlight = null;
+    store.genDay = null; // un vol seul remplace une journée
     saveStore();
     return store.genFlight;
   });

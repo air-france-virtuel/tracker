@@ -31,3 +31,19 @@ assert.ok(!g.generate({ type: 'A320', cat: 'court', from: 'XXXX', now }).ok);
 for (const k of g.WIDE) assert.ok(A[k], 'aéroport gros-porteur inconnu ' + k);
 for (let s = 0; s < 40; s++) for (const f of g.generate({ type: 'B77W', cat: 'long', from: 'KJFK', now, seed: s }).flights) assert.ok(g.WIDE.has(f.to));
 console.log('générateur de vols : OK');
+// journée complète : allers-retours enchaînés, escales, retour à la base
+for (const [type, cat, legs, from] of [['A320', 'court', 4, 'LFPG'], ['A320', 'court', 6, 'LFMN'], ['A320', 'moyen', 2, 'LFPG'], ['B77W', 'long', 2, 'LFPG'], ['B77W', 'moyen', 2, 'KJFK']]) {
+  const d = g.day({ type, cat, from, legs, now, program: prog });
+  assert.ok(d.ok, type + cat); assert.strictEqual(d.legs.length, legs);
+  d.legs.forEach((f, i) => {
+    assert.strictEqual(f.from, i ? d.legs[i - 1].to : from, 'enchaînement');
+    if (i) assert.strictEqual(f.depEst - d.legs[i - 1].arrEst, g.TURN[cat] * 60000, 'escale');
+    if (i % 2) assert.strictEqual(f.to, from, 'retour à la base');
+    assert.strictEqual(lat.category(f.distKm), cat);
+  });
+  assert.strictEqual(new Set(d.legs.map((f) => f.number)).size, legs, 'numéros uniques');
+  assert.strictEqual(new Set(d.legs.filter((f, i) => i % 2 === 0).map((f) => f.to)).size, legs / 2, 'destinations différentes');
+  if (cat === 'court' && legs >= 6) assert.ok(d.legs.every((f) => f.distKm <= 900), 'journée de 6 vols : destinations proches');
+}
+assert.strictEqual(g.day({ type: 'B77W', cat: 'long', from: 'LFPG', legs: 6, now }).legs.length, 2, 'long-courrier : un aller-retour');
+console.log('journée de vols : OK');

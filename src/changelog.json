@@ -46,7 +46,8 @@
       "L’A320 fait du court et du moyen-courrier, le 777-300ER du moyen et du long-courrier. Une fois arrivé, Max te propose les vols suivants au départ de ta destination",
       "66 nouvelles destinations (France, Europe, Méditerranée, Canaries, Afrique, Amériques, Asie) : 119 aéroports en tout",
       "Le vol pris dans le Planning du jour compte pour la ponctualité (heure de départ prévue affichée)",
-      "Carte satellite : noms des pays et des villes, frontières et routes par-dessus l’image, comme sur le plan, et les aéroports de la compagnie (code OACI, puis la ville quand on zoome)"
+      "Carte satellite : noms des pays et des villes, frontières et routes par-dessus l’image, comme sur le plan, et les aéroports de la compagnie (code OACI, puis la ville quand on zoome)",
+      "Planning du jour, « Ma journée » : Max compose une journée complète avec l’avion choisi, en allers-retours au départ de son aéroport, avec les escales (45 min en court-courrier, 1 h en moyen, 1 h 30 en long). Court-courrier : 2, 4 ou 6 vols ; moyen et long-courrier : un aller-retour. Chaque vol se coche tout seul à l’arrivée et Max prépare le suivant ; l’avion reste réservé pour toi toute la journée"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

@@ -1139,7 +1139,7 @@ async function loadReal(force) {
   S.real.flights = airborne(S.real.sched, Date.now());
   const list = realSource();
   const label = { live: 'en vol en ce moment', next: 'à venir aujourd’hui', past: 'déjà arrivés aujourd’hui' }[S.real.mode];
-  $('realSub').textContent = list.length + ' vols Les Ailes Tricolores ' + label + ' · ' + (d.source ? d.source.name : '') + (d.error ? ' · ' + d.error : '');
+  $('realSub').textContent = list.length + ' vols Les Ailes Tricolores ' + label + ' · ' + (d.source ? d.source.name : '');
   fillAirports(list);
   renderReal();
   renderFlightAdmin();
@@ -1579,7 +1579,7 @@ function renderPlanning() {
   const all = d.flights.slice().sort((a, b) => (a.depEst || a.lastSeen) - (b.depEst || b.lastSeen));
   const count = (c) => all.filter((f) => f.cat === c).length;
   const dayTxt = new Date(d.day + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  $('planSub').textContent = all.length + ' vols Les Ailes Tricolores · ' + dayTxt + ' · ' + (d.source ? d.source.name : '') + (d.error ? ' · ' + d.error : '');
+  $('planSub').textContent = all.length + ' vols Les Ailes Tricolores · ' + dayTxt + ' · ' + (d.source ? d.source.name : '');
   const cats = [['tous', 'Tous', all.length], ['court', 'Court-courrier', count('court')], ['moyen', 'Moyen-courrier', count('moyen')], ['long', 'Long-courrier', count('long')]];
   $('planCats').innerHTML = cats.map(([k, l, n]) => '<button class="tag' + (S.plan2.cat === k ? ' on' : '') + '" data-pcat="' + k + '" aria-pressed="' + (S.plan2.cat === k) + '">' + l + ' · ' + n + '</button>').join('');
   const byKey = Object.fromEntries(all.map((f) => [f.key, f]));

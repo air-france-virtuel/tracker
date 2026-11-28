@@ -909,6 +909,14 @@ app.whenReady().then(() => {
     } else { const h = hiddenLiv(); if (!h.includes(id)) h.push(id); saveStore(); }
     return { ok: true, uninstalled, manual, definitive: !!definitive || !!l.perso };
   });
+  // l'admin peut remettre une livrée supprimée définitivement (une par une)
+  ipcMain.handle('livrees:restore', async (_e, id) => {
+    if (!(await isAdmin())) return false;
+    id = String(id || '');
+    store.settings.deletedLiveries = (store.settings.deletedLiveries || []).filter((x) => x !== id);
+    store.settings.hiddenLiveries = hiddenLiv().filter((x) => x !== id);
+    saveStore(); return true;
+  });
   ipcMain.handle('livrees:unhideAll', async () => {
     if (!(await isAdmin())) return false;
     store.settings.hiddenLiveries = []; saveStore(); return true;

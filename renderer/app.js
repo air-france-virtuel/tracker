@@ -2023,6 +2023,8 @@ function renderLiveries() {
   const upd = shown.filter((l) => l.outdated).length;
   $('chipLiv').hidden = !upd; $('chipLiv').textContent = upd ? 'MAJ' : '';
   // livrées supprimées de la liste : un lien pour les faire revenir
+  const gone = d.livrees.filter((l) => l.deleted);
+  $('livGone').innerHTML = S.hg.admin && gone.length ? '<b>Supprimées définitivement</b> : ' + gone.map((l) => '<span class="liv-gone">' + esc(l.name) + ' <span class="muted">(' + esc(l.aircraft || '') + ')</span> <button class="linkbtn" data-livrestore="' + esc(l.id) + '">Remettre</button></span>').join('') : '';
   $('livHidden').innerHTML = d.hiddenCount && S.hg.admin ? d.hiddenCount + ' livrée' + (d.hiddenCount > 1 ? 's supprimées' : ' supprimée') + ' de ta liste · <button class="linkbtn" id="btnLivUnhide">Les réafficher</button>' : '';
   if (!shown.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée dans ta liste.</div>'; return; }
   $('livList').innerHTML = shown.map((l) => {
@@ -2666,3 +2668,10 @@ async function doLivDelete(definitive) {
 $('btnLivDelSoft').addEventListener('click', () => doLivDelete(false));
 $('btnLivDelHard').addEventListener('click', () => doLivDelete(true));
 $('btnLivDelCancel').addEventListener('click', () => { $('livDelModal').hidden = true; });
+
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-livrestore]'); if (!b) return;
+  b.disabled = true; await afv.liveryRestore(b.dataset.livrestore);
+  $('livAddMsg').style.color = ''; $('livAddMsg').textContent = 'Livrée remise dans ta liste.';
+  await loadLiveries(false);
+});

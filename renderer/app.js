@@ -2023,7 +2023,7 @@ function renderLiveries() {
   const upd = shown.filter((l) => l.outdated).length;
   $('chipLiv').hidden = !upd; $('chipLiv').textContent = upd ? 'MAJ' : '';
   // livrées supprimées de la liste : un lien pour les faire revenir
-  $('livHidden').innerHTML = d.hiddenCount ? d.hiddenCount + ' livrée' + (d.hiddenCount > 1 ? 's supprimées' : ' supprimée') + ' de ta liste · <button class="linkbtn" id="btnLivUnhide">Les réafficher</button>' : '';
+  $('livHidden').innerHTML = d.hiddenCount && S.hg.admin ? d.hiddenCount + ' livrée' + (d.hiddenCount > 1 ? 's supprimées' : ' supprimée') + ' de ta liste · <button class="linkbtn" id="btnLivUnhide">Les réafficher</button>' : '';
   if (!shown.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée dans ta liste.</div>'; return; }
   $('livList').innerHTML = shown.map((l) => {
     const j = l.job || {};
@@ -2052,7 +2052,8 @@ function renderLiveries() {
       acts += '<label class="small muted">Avion : <select data-livtype="' + esc(l.id) + '">' + [['A320', 'Airbus A320'], ['B77W', 'Boeing 777-300ER'], ['AUTRE', 'Autre avion']].map(([k, n]) => '<option value="' + k + '"' + (l.type === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
         '';
     }
-    if (!busy) acts += '<button class="btn small ghost liv-del" data-livdel="' + esc(l.id) + '" title="Désinstaller et retirer de ta liste">🗑 Supprimer</button>';
+    // supprimer une livrée : réservé à la direction (l'admin du tracker)
+    if (S.hg.admin && !busy) acts += '<button class="btn small ghost liv-del" data-livdel="' + esc(l.id) + '" title="Désinstaller et retirer de ta liste">🗑 Supprimer</button>';
     return '<div class="liv' + (l.perso ? ' perso' : '') + '">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '<div class="liv-noimg">✈</div>') +
       '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + (l.perso ? ' <span class="tg perso-tg">Perso' + (d.livrees.some((x) => x.shared && x.folder === l.folder) ? ' · partagée' : '') + '</span>' : l.shared ? ' <span class="tg shared-tg">Partagée par ' + esc(l.sharedBy || 'la direction') + '</span>' : '') + '</span>' + state + '</div>' +
       '<div class="tags">' + [l.aircraft, l.engine, l.version && !l.perso && !l.shared ? 'v' + l.version : '', l.shared && l.size ? mo(l.size) : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +

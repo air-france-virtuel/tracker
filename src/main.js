@@ -882,7 +882,10 @@ app.whenReady().then(() => {
     return r;
   });
   // « Supprimer » : désinstalle de MSFS (si le tracker l'a installée) et retire la livrée de la liste
+  // statut de direction, vérifié auprès du serveur de la compagnie
+  const isAdmin = async () => { try { chatProfile(); await chat.session(); return !!(chat.me && chat.me.admin); } catch (e) { return false; } };
   ipcMain.handle('livrees:delete', async (_e, id, definitive) => {
+    if (!(await isAdmin())) return { ok: false, error: 'Réservé à la direction.' };
     id = String(id || '');
     const cat = await liv.catalogue(false);
     const l = cat.find((x) => x.id === id);
@@ -906,7 +909,10 @@ app.whenReady().then(() => {
     } else { const h = hiddenLiv(); if (!h.includes(id)) h.push(id); saveStore(); }
     return { ok: true, uninstalled, manual, definitive: !!definitive || !!l.perso };
   });
-  ipcMain.handle('livrees:unhideAll', () => { store.settings.hiddenLiveries = []; saveStore(); return true; });
+  ipcMain.handle('livrees:unhideAll', async () => {
+    if (!(await isAdmin())) return false;
+    store.settings.hiddenLiveries = []; saveStore(); return true;
+  });
   ipcMain.handle('livrees:install', (_e, id) => { liv.install(String(id || '')); return true; });
   ipcMain.handle('livrees:remove', async (_e, id) => liv.remove(String(id || ''), await liv.catalogue(false)));
   ipcMain.handle('livrees:pickCommunity', async () => {

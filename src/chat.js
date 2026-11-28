@@ -237,6 +237,54 @@ class Chat extends EventEmitter {
       return { ok: true };
     } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
   }
+  // ---------- livrées partagées par la direction (stockage « livrees » + table shared_liveries) ----------
+  liveryFileUrl(id, file) { return this.cfg.url.replace(/\/$/, '') + '/storage/v1/object/public/livrees/' + encodeURIComponent(id) + '/' + file; }
+  async sharedLiveries() {
+    try {
+      await this.session();
+      const r = await this.sb.from('shared_liveries').select('*').eq('active', true).order('created_at');
+      if (r.error) throw r.error;
+      return { ok: true, list: (r.data || []).map((l) => ({
+        id: l.id, name: l.name, type: l.type, creator: l.creator, folder: l.folder, version: l.version, size: Number(l.size), shared: true, sharedBy: l.shared_by,
+        aircraft: l.type === 'B77W' ? 'Boeing 777-300ER' : l.type === 'A320' ? 'Airbus A320' : 'Avion',
+        description: 'Livrée partagée par la direction' + (l.creator ? ' · auteur : ' + l.creator : '') + '.',
+        image: l.image ? this.liveryFileUrl(l.id, 'apercu') + '?v=' + encodeURIComponent(l.version) : '',
+        parts: Array.from({ length: l.parts }, (_, i) => this.liveryFileUrl(l.id, 'part-' + String(i).padStart(3, '0')))
+      })), admin: !!(this.me && this.me.admin) };
+    } catch (e) { return { ok: false, list: [], error: friendlyFleet(e) }; }
+  }
+  // envoi par la direction : le .zip en morceaux de 40 Mo, l'aperçu, puis la fiche (visible par tous à la fin seulement)
+  async shareLivery(info, zipBuf, image, onProgress) {
+    try {
+      await this.session();
+      if (!(this.me && this.me.admin)) throw new Error('DIRECTION_SEULEMENT');
+      const CH = 40 * 1024 * 1024, parts = Math.ceil(zipBuf.length / CH);
+      if (parts > 10) throw new Error('Livrée trop lourde (400 Mo maximum).');
+      const store = this.sb.storage.from('livrees');
+      for (let i = 0; i < parts; i++) {
+        const r = await store.upload(info.id + '/part-' + String(i).padStart(3, '0'), zipBuf.subarray(i * CH, (i + 1) * CH), { contentType: 'application/octet-stream', upsert: true, cacheControl: '60' });
+        if (r.error) throw r.error;
+        if (onProgress) onProgress(Math.round(((i + 1) / parts) * 95));
+      }
+      if (image) { const r = await store.upload(info.id + '/apercu', image.data, { contentType: image.type, upsert: true, cacheControl: '60' }); if (r.error) throw r.error; }
+      const row = { id: info.id, name: clean(info.name, 80) || info.folder, type: info.type, creator: clean(info.creator, 60), folder: info.folder, version: info.version, parts, size: zipBuf.length, image: !!image, active: true };
+      const r = await this.sb.from('shared_liveries').upsert(row);
+      if (r.error) throw r.error;
+      if (onProgress) onProgress(100);
+      return { ok: true, id: info.id, parts };
+    } catch (e) { return { ok: false, error: /DIRECTION_SEULEMENT|row-level security|violates row/i.test(String(e && e.message)) ? 'Réservé à la direction.' : friendlyFleet(e) }; }
+  }
+  async unshareLivery(id) {
+    try {
+      await this.session();
+      const r = await this.sb.from('shared_liveries').delete().eq('id', id);
+      if (r.error) throw r.error;
+      const ls = await this.sb.storage.from('livrees').list(id);
+      if (ls.data && ls.data.length) await this.sb.storage.from('livrees').remove(ls.data.map((f) => id + '/' + f.name));
+      return { ok: true };
+    } catch (e) { return { ok: false, error: friendlyFleet(e) }; }
+  }
+
   async companyStats() {
     try {
       await this.session();

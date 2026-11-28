@@ -113,6 +113,8 @@ class Liveries extends EventEmitter {
     this.remote = null; this.remoteAt = 0;
     this.jobs = {};                         // id -> { state, percent, error }
     this.perso = opts.perso || null;        // livrées perso ajoutées depuis le PC du pilote
+    this.sharedFn = opts.shared || null;    // livrées partagées par la direction (serveur de la compagnie)
+    this.shared = []; this.sharedAt = 0;
   }
   community() { return this.getCommunity() || findCommunity(); }
   async catalogue(force) {
@@ -127,7 +129,11 @@ class Liveries extends EventEmitter {
     // le catalogue en ligne complète / remplace celui livré avec le tracker
     const byId = new Map(this.bundled.map((l) => [l.id, l]));
     for (const l of this.remote || []) byId.set(l.id, Object.assign({}, byId.get(l.id) || {}, l));
-    return [...byId.values()].concat(this.perso ? this.perso.list() : []);
+    if (this.sharedFn && (force || Date.now() - this.sharedAt > 10 * 60 * 1000)) {
+      this.sharedAt = Date.now();
+      try { const r = await this.sharedFn(); if (r && r.ok) this.shared = r.list || []; } catch (e) { /* hors ligne : on garde la dernière liste */ }
+    }
+    return [...byId.values()].concat(this.shared, this.perso ? this.perso.list() : []);
   }
   installed(l, com) {
     if (!com || !l.folder) return null;
@@ -161,31 +167,37 @@ class Liveries extends EventEmitter {
     const l = cat.find((x) => x.id === id);
     if (!l) throw new Error('Livrée introuvable.');
     if (l.perso) return this.installPerso(l);
-    if (!l.url) throw new Error('Cette livrée n’est pas encore disponible au téléchargement.');
+    if (!l.url && !(l.parts && l.parts.length)) throw new Error('Cette livrée n’est pas encore disponible au téléchargement.');
     const com = this.community();
     if (!com) throw new Error('Dossier Community introuvable : choisis-le avec le bouton « Changer ».');
     if (this.jobs[id] && ['download', 'extract'].includes(this.jobs[id].state)) return;
     fs.mkdirSync(this.tmpDir, { recursive: true });
     const zip = path.join(this.tmpDir, l.id + '.zip');
     const staging = path.join(com, '.' + l.folder + '.installation');
+    let out = null;
     try {
       // 1. téléchargement
+      // (une livrée partagée par la direction arrive en plusieurs morceaux, recollés dans l'ordre)
       this.setJob(id, { state: 'download', percent: 0 });
-      const r = await this.fetch(l.url);
-      if (!r.ok || !r.body) throw new Error('Téléchargement impossible (' + r.status + ').');
-      const total = +r.headers.get('content-length') || l.size || 0;
-      const out = fs.createWriteStream(zip);
-      let got = 0, last = 0;
-      const reader = r.body.getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        got += value.length;
-        if (!out.write(Buffer.from(value))) await new Promise((res) => out.once('drain', res));
-        const pc = total ? Math.min(99, Math.floor((got / total) * 100)) : 0;
-        if (pc !== last) { last = pc; this.setJob(id, { state: 'download', percent: pc, got, total }); }
+      const urls = l.parts && l.parts.length ? l.parts : [l.url];
+      let got = 0, last = 0, total = l.size || 0;
+      for (const u of urls) {
+        const r = await this.fetch(u);
+        if (!r.ok || !r.body) throw new Error('Téléchargement impossible (' + r.status + ').');
+        if (!out) { out = fs.createWriteStream(zip); out.on('error', () => {}); }
+        if (urls.length === 1) total = +r.headers.get('content-length') || total;
+        const reader = r.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          got += value.length;
+          if (!out.write(Buffer.from(value))) await new Promise((res) => out.once('drain', res));
+          const pc = total ? Math.min(99, Math.floor((got / total) * 100)) : 0;
+          if (pc !== last) { last = pc; this.setJob(id, { state: 'download', percent: pc, got, total }); }
+        }
       }
       await new Promise((res, rej) => out.end((e) => (e ? rej(e) : res())));
+      if (l.size && got !== l.size) throw new Error('Téléchargement incomplet, réessaie.');
       // 2. décompression à côté, puis remplacement de l'ancienne version d'un coup
       this.setJob(id, { state: 'extract', percent: 0 });
       fs.rmSync(staging, { recursive: true, force: true });
@@ -197,6 +209,7 @@ class Liveries extends EventEmitter {
       fs.renameSync(staging, dir);
       this.setJob(id, { state: 'done', percent: 100 });
     } catch (e) {
+      if (out && !out.closed) { await new Promise((res) => { out.once('close', res); out.destroy(); }); }
       try { fs.rmSync(staging, { recursive: true, force: true }); } catch (err) { /* rien */ }
       this.setJob(id, { state: 'error', error: String((e && e.message) || e).slice(0, 300) });
     } finally {

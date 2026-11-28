@@ -71,6 +71,28 @@ function inspectFolder(dir) {
   return { folder: path.basename(pkg), pkg, title, creator, type: typeFrom(cfgTxt + ' ' + title + ' ' + path.basename(pkg)), thumb: thumb ? { ext: path.extname(thumb).toLowerCase(), data: () => fs.readFileSync(thumb) } : null };
 }
 
+// ---------- petit créateur de .zip (pour partager une livrée qui est un dossier) ----------
+const CRC_T = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return t; })();
+const crc32 = (buf) => { if (zlib.crc32) return zlib.crc32(buf) >>> 0; let c = -1; for (let i = 0; i < buf.length; i++) c = CRC_T[(c ^ buf[i]) & 0xff] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+function zipFolder(dir, top) {
+  const files = walk(dir, 20, []), chunks = [], central = [];
+  let off = 0;
+  for (const f of files) {
+    const name = Buffer.from((top ? top + '/' : '') + path.relative(dir, f).split(path.sep).join('/'));
+    const data = fs.readFileSync(f), comp = zlib.deflateRawSync(data, { level: 6 });
+    const useComp = comp.length < data.length, body = useComp ? comp : data;
+    const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x800, 6); lh.writeUInt16LE(useComp ? 8 : 0, 8);
+    lh.writeUInt32LE(crc32(data), 14); lh.writeUInt32LE(body.length, 18); lh.writeUInt32LE(data.length, 22); lh.writeUInt16LE(name.length, 26);
+    const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x800, 8); ch.writeUInt16LE(useComp ? 8 : 0, 10);
+    ch.writeUInt32LE(crc32(data), 16); ch.writeUInt32LE(body.length, 20); ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(name.length, 28); ch.writeUInt32LE(off, 42);
+    chunks.push(lh, name, body); central.push(ch, name); off += 30 + name.length + body.length;
+    if (off > 400 * 1024 * 1024) throw new Error('Livrée trop lourde (400 Mo maximum).');
+  }
+  const cd = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16);
+  return Buffer.concat([...chunks, cd, end]);
+}
+
 class Perso {
   constructor(dir, zip) { this.dir = dir; this.zip = zip; this.file = path.join(dir, 'livrees-perso.json'); }
   load() { try { return JSON.parse(fs.readFileSync(this.file, 'utf8')).livrees || []; } catch (e) { return []; } }
@@ -118,6 +140,16 @@ class Perso {
     if (l.imageFile) { try { fs.unlinkSync(path.join(this.dir, l.imageFile)); } catch (e) { /* rien */ } }
     this.save(list.filter((x) => x.id !== id)); return true;
   }
+  // ce qu'il faut envoyer pour partager la livrée : le .zip (fabriqué si c'est un dossier) et l'aperçu
+  bundle(id) {
+    const l = this.load().find((x) => x.id === id);
+    if (!l) throw new Error('Livrée introuvable.');
+    if (!fs.existsSync(l.source)) throw new Error('La livrée n’est plus à cet endroit sur ton PC : ' + l.source);
+    if (l.sourceKind === 'zip' && fs.statSync(l.source).size > 400 * 1024 * 1024) throw new Error('Livrée trop lourde (400 Mo maximum).');
+    const zip = l.sourceKind === 'zip' ? fs.readFileSync(l.source) : zipFolder(l.source, l.folder);
+    const img = l.imageFile && fs.existsSync(path.join(this.dir, l.imageFile)) ? { data: fs.readFileSync(path.join(this.dir, l.imageFile)), type: /\.png$/i.test(l.imageFile) ? 'image/png' : 'image/jpeg' } : null;
+    return { entry: l, zip, image: img };
+  }
   // copie dans Community (dossier « staging » puis remplacement d'un coup, avec la marque du tracker)
   install(l, com, mark, onProgress) {
     if (!fs.existsSync(l.source)) throw new Error('La livrée n’est plus à cet endroit sur ton PC : ' + l.source);
@@ -134,4 +166,4 @@ class Perso {
   }
 }
 
-module.exports = { Perso, inspectZip, inspectFolder, typeFrom, slug };
+module.exports = { Perso, inspectZip, inspectFolder, typeFrom, slug, zipFolder, crc32 };

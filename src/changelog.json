@@ -52,7 +52,8 @@
       "Hangar, barre de la direction : choisir la livrée de chaque avion de la compagnie (réservé à la direction). La photo de l’avion change partout dans le tracker, et la rubrique Livrées indique la livrée actuelle de chaque avion",
       "La livrée A320 « Ruban » revient dans la rubrique Livrées (au choix avec « Oiseau »)",
       "Fond d’écran : nouveau bouton en bas du menu pour choisir le fond (Cockpit, Ciel, Tricolore, Nuit, Uni) ou mettre ta propre photo, et régler le voile pour que le texte reste lisible",
-      "Livrées : « Ajouter une livrée de mon PC » (fichier .zip ou dossier) : le tracker l’installe dans MSFS, lit son nom et sa photo d’aperçu et l’ajoute à ta liste avec l’étiquette « Perso ». Tu choisis pour quel avion elle est, tu peux la désinstaller ou la retirer de ta liste. Rien n’est envoyé en ligne"
+      "Livrées : « Ajouter une livrée de mon PC » (fichier .zip ou dossier) : le tracker l’installe dans MSFS, lit son nom et sa photo d’aperçu et l’ajoute à ta liste avec l’étiquette « Perso ». Tu choisis pour quel avion elle est, tu peux la désinstaller ou la retirer de ta liste. Rien n’est envoyé en ligne",
+      "Livrées partagées par la direction : la direction peut envoyer une livrée perso à tous les pilotes (« Partager avec les pilotes »). Elle apparaît dans la rubrique Livrées de chacun avec l’étiquette « Partagée par … », s’installe en un clic, et peut être mise sur un avion de la flotte. « Retirer pour tous » l’enlève de la liste"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

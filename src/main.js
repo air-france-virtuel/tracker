@@ -830,8 +830,30 @@ app.whenReady().then(() => {
     tmpDir: path.join(dataDir(), 'telechargements'),
     getCommunity: () => (store.settings.community && fs.existsSync(store.settings.community) ? store.settings.community : null),
     fetch: (u, o) => require('electron').net.fetch(u, o),
-    perso: new (require('./livperso').Perso)(dataDir(), require('./liveries'))
+    perso: new (require('./livperso').Perso)(dataDir(), require('./liveries')),
+    shared: () => (store.settings.chat === false ? { ok: false } : (chatProfile(), chat.sharedLiveries()))
   });
+  // direction : partager une livrée perso avec tous les pilotes (envoi sur le serveur de la compagnie)
+  ipcMain.handle('livrees:share', async (_e, id) => {
+    id = String(id || '');
+    try {
+      chatProfile();
+      const b = liv.perso.bundle(id);
+      const sid = 'partage-' + require('./livperso').slug(b.entry.folder).slice(0, 50);
+      const version = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      liv.setJob(id, { state: 'upload', percent: 0, total: b.zip.length });
+      const r = await chat.shareLivery({ id: sid, name: b.entry.name, type: b.entry.type, creator: b.entry.creator, folder: b.entry.folder, version }, b.zip, b.image,
+        (pc) => liv.setJob(id, { state: 'upload', percent: pc, total: b.zip.length }));
+      liv.setJob(id, r.ok ? { state: 'shared', percent: 100 } : { state: 'error', error: r.error });
+      liv.sharedAt = 0;
+      return Object.assign(r, { sharedId: sid });
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      liv.setJob(id, { state: 'error', error: msg });
+      return { ok: false, error: msg };
+    }
+  });
+  ipcMain.handle('livrees:unshare', async (_e, sid) => { chatProfile(); const r = await chat.unshareLivery(String(sid || '')); liv.sharedAt = 0; return r; });
   liv.on('job', (j) => send('livrees:job', j));
   // livrée perso depuis le PC : un .zip ou un dossier, installée tout de suite dans Community
   ipcMain.handle('livrees:addPerso', async (_e, kind) => {

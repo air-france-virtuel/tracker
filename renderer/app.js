@@ -2024,13 +2024,13 @@ function renderLiveries() {
   if (!d.livrees.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée disponible pour le moment.</div>'; return; }
   $('livList').innerHTML = d.livrees.map((l) => {
     const j = l.job || {};
-    const busy = j.state === 'download' || j.state === 'extract';
+    const busy = j.state === 'download' || j.state === 'extract' || j.state === 'upload';
     let state = '<span class="badge">' + (l.outdated ? 'Mise à jour disponible' : 'Installée') + '</span>';
     if (!l.installed) state = '<span class="badge red">Non installée</span>';
     if (l.outdated) state = '<span class="badge red">Mise à jour disponible</span>';
     let acts = '';
     if (busy) {
-      const lab = j.state === 'download' ? 'Téléchargement… ' + (j.percent || 0) + ' %' + (j.total ? ' · ' + mo(j.got) + ' / ' + mo(j.total) : '') : 'Installation… ' + (j.percent || 0) + ' %';
+      const lab = j.state === 'upload' ? 'Envoi aux pilotes… ' + (j.percent || 0) + ' %' + (j.total ? ' · ' + mo(j.total) : '') : j.state === 'download' ? 'Téléchargement… ' + (j.percent || 0) + ' %' + (j.total ? ' · ' + mo(j.got) + ' / ' + mo(j.total) : '') : 'Installation… ' + (j.percent || 0) + ' %';
       acts = '<div style="flex:1"><div class="muted small">' + esc(lab) + '</div><div class="progress"><i style="width:' + (j.percent || 0) + '%"></i></div></div>';
     } else {
       if (!l.installed) acts += '<button class="btn red" data-inst="' + esc(l.id) + '"' + (d.community ? '' : ' disabled') + '>Installer</button>';
@@ -2038,16 +2038,20 @@ function renderLiveries() {
       else acts += '<button class="btn small ghost" data-inst="' + esc(l.id) + '">Réinstaller</button>';
       if (l.installed && !l.manual) acts += '<button class="btn small ghost" data-rem="' + esc(l.id) + '">Désinstaller</button>';
     }
-    const msg = j.state === 'error' ? '<div class="err">' + esc(j.error) + '</div>' : (j.state === 'done' ? '<div class="muted small">Installée ! Redémarre MSFS 2024 pour la voir dans la sélection de l’avion.</div>' : '');
+    const msg = j.state === 'error' ? '<div class="err">' + esc(j.error) + '</div>' : j.state === 'shared' ? '<div class="liv-cur">✓ Partagée ! Les pilotes la voient dans leur rubrique Livrées.</div>' : (j.state === 'done' ? '<div class="muted small">Installée ! Redémarre MSFS 2024 pour la voir dans la sélection de l’avion.</div>' : '');
     const manual = l.manual ? '<div class="muted small">Déjà présente dans ton dossier Community (installée à la main).</div>' : '';
     // livrée perso : choix du type d'avion (pour le Hangar) et retrait de la liste
+    // direction : partager une livrée perso avec tous les pilotes, ou retirer une livrée partagée
+    const sharedTwin = l.perso ? d.livrees.find((x) => x.shared && x.folder === l.folder) : null;
+    if (S.hg.admin && l.perso && !busy) acts += '<button class="btn small ' + (sharedTwin ? 'ghost' : 'red') + '" data-livshare="' + esc(l.id) + '">' + (sharedTwin ? 'Renvoyer aux pilotes' : 'Partager avec les pilotes') + '</button>';
+    if (S.hg.admin && l.shared && !busy) acts += '<button class="btn small ghost" data-livunshare="' + esc(l.id) + '">Retirer pour tous</button>';
     if (l.perso && !busy) {
       acts += '<label class="small muted">Avion : <select data-livtype="' + esc(l.id) + '">' + [['A320', 'Airbus A320'], ['B77W', 'Boeing 777-300ER'], ['AUTRE', 'Autre avion']].map(([k, n]) => '<option value="' + k + '"' + (l.type === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
         '<button class="btn small ghost" data-livforget="' + esc(l.id) + '">Retirer de ma liste</button>';
     }
     return '<div class="liv' + (l.perso ? ' perso' : '') + '">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '<div class="liv-noimg">✈</div>') +
-      '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + (l.perso ? ' <span class="tg perso-tg">Perso</span>' : '') + '</span>' + state + '</div>' +
-      '<div class="tags">' + [l.aircraft, l.engine, l.version && !l.perso ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
+      '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + (l.perso ? ' <span class="tg perso-tg">Perso' + (d.livrees.some((x) => x.shared && x.folder === l.folder) ? ' · partagée' : '') + '</span>' : l.shared ? ' <span class="tg shared-tg">Partagée par ' + esc(l.sharedBy || 'la direction') + '</span>' : '') + '</span>' + state + '</div>' +
+      '<div class="tags">' + [l.aircraft, l.engine, l.version && !l.perso && !l.shared ? 'v' + l.version : '', l.shared && l.size ? mo(l.size) : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
       (() => {
         // l'avion de la compagnie qui porte cette livrée (choix de la direction dans le Hangar)
         const used = (S.plan2.company || []).filter((c) => c.liveryId === l.id).map((c) => c.reg);
@@ -2622,6 +2626,10 @@ $('livList').addEventListener('change', async (e) => {
   await afv.liveryPersoType(t.dataset.livtype, t.value); await loadLiveries(false);
 });
 $('livList').addEventListener('click', async (e) => {
+  const sh = e.target.closest('[data-livshare]');
+  if (sh) { sh.disabled = true; const r = await afv.liveryShare(sh.dataset.livshare); if (r && r.ok) maxSays('C’est envoyé : tous les pilotes peuvent maintenant installer cette livrée depuis leur rubrique Livrées.'); await loadLiveries(true); return; }
+  const un = e.target.closest('[data-livunshare]');
+  if (un) { un.disabled = true; const r = await afv.liveryUnshare(un.dataset.livunshare); if (r && !r.ok) $('livAddMsg').textContent = r.error || 'Échec.'; await loadLiveries(true); return; }
   const f = e.target.closest('[data-livforget]'); if (!f) return;
   f.disabled = true; await afv.liveryForgetPerso(f.dataset.livforget); await loadLiveries(true);
 });

@@ -68,6 +68,29 @@ function makeZip(file, entries) {
   assert.throws(() => perso.add(bad), /manifest\.json/);
   fs.mkdirSync(path.join(tmp, 'vide')); assert.throws(() => perso.add(path.join(tmp, 'vide')), /manifest\.json/);
   assert.strictEqual(typeFrom('Boeing 777-300ER'), 'B77W'); assert.strictEqual(typeFrom('A20N'), 'A320');
+  // 5. partage : un dossier devient un .zip lisible, et une livrée partagée en 3 morceaux se réinstalle telle quelle
+  const { zipFolder } = require('../src/livperso');
+  const big = Buffer.alloc(300000); for (let i = 0; i < big.length; i++) big[i] = (i * 7919) % 251;
+  fs.writeFileSync(path.join(pkg, 'SimObjects', 'a', 'texture.bin'), big);
+  const z = zipFolder(pkg, 'lat-a320-perso');
+  const zf = path.join(tmp, 'refait.zip'); fs.writeFileSync(zf, z);
+  const back = path.join(tmp, 'relu'); extractZip(zf, back, 'lat-a320-perso');
+  assert.ok(fs.readFileSync(path.join(back, 'SimObjects', 'a', 'texture.bin')).equals(big), 'zip du dossier relu à l’identique');
+  const parts = [z.subarray(0, 100000), z.subarray(100000, 200000), z.subarray(200000)];
+  const urls = parts.map((_, i) => 'https://exemple/livrees/partage-x/part-00' + i);
+  const fakeFetch = async (u) => { const b = parts[urls.indexOf(u)]; return { ok: true, status: 200, headers: { get: () => String(b.length) }, body: { getReader() { let done = false; return { read: async () => (done ? { done: true } : (done = true, { done: false, value: new Uint8Array(b) })) }; } } }; };
+  const shared = [{ id: 'partage-lat-a320-perso', name: 'A320 Été', folder: 'lat-a320-perso', parts: urls, size: z.length, shared: true, version: '202611280900' }];
+  const liv2 = new Liveries({ bundled: [], tmpDir: path.join(tmp, 't2'), getCommunity: () => com, fetch: fakeFetch, perso, shared: async () => ({ ok: true, list: shared }) });
+  fs.rmSync(path.join(com, 'lat-a320-perso'), { recursive: true, force: true });
+  await liv2.install('partage-lat-a320-perso');
+  assert.strictEqual(liv2.jobs['partage-lat-a320-perso'].state, 'done', JSON.stringify(liv2.jobs['partage-lat-a320-perso']));
+  assert.ok(fs.readFileSync(path.join(com, 'lat-a320-perso', 'SimObjects', 'a', 'texture.bin')).equals(big), 'morceaux recollés');
+  const l2 = (await liv2.list(false)).livrees.find((x) => x.id === 'partage-lat-a320-perso');
+  assert.ok(l2.installed && l2.shared, 'livrée partagée installée');
+  // morceau manquant → erreur claire, rien d'installé à moitié
+  shared[0].size = z.length + 5; fs.rmSync(path.join(com, 'lat-a320-perso'), { recursive: true, force: true });
+  await liv2.install('partage-lat-a320-perso');
+  assert.strictEqual(liv2.jobs['partage-lat-a320-perso'].state, 'error'); assert.ok(!fs.existsSync(path.join(com, 'lat-a320-perso')));
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log('livrées perso : OK');
 })().catch((e) => { console.error(e); process.exit(1); });

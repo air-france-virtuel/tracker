@@ -112,6 +112,7 @@ class Liveries extends EventEmitter {
     this.fetch = opts.fetch || ((u, o) => fetch(u, o));
     this.remote = null; this.remoteAt = 0;
     this.jobs = {};                         // id -> { state, percent, error }
+    this.perso = opts.perso || null;        // livrées perso ajoutées depuis le PC du pilote
   }
   community() { return this.getCommunity() || findCommunity(); }
   async catalogue(force) {
@@ -126,7 +127,7 @@ class Liveries extends EventEmitter {
     // le catalogue en ligne complète / remplace celui livré avec le tracker
     const byId = new Map(this.bundled.map((l) => [l.id, l]));
     for (const l of this.remote || []) byId.set(l.id, Object.assign({}, byId.get(l.id) || {}, l));
-    return [...byId.values()];
+    return [...byId.values()].concat(this.perso ? this.perso.list() : []);
   }
   installed(l, com) {
     if (!com || !l.folder) return null;
@@ -159,6 +160,7 @@ class Liveries extends EventEmitter {
     const cat = await this.catalogue(false);
     const l = cat.find((x) => x.id === id);
     if (!l) throw new Error('Livrée introuvable.');
+    if (l.perso) return this.installPerso(l);
     if (!l.url) throw new Error('Cette livrée n’est pas encore disponible au téléchargement.');
     const com = this.community();
     if (!com) throw new Error('Dossier Community introuvable : choisis-le avec le bouton « Changer ».');
@@ -200,6 +202,17 @@ class Liveries extends EventEmitter {
     } finally {
       try { fs.unlinkSync(zip); } catch (err) { /* rien */ }
     }
+  }
+  // livrée perso : copiée depuis le PC du pilote (pas de téléchargement)
+  async installPerso(l) {
+    const com = this.community();
+    if (!com) throw new Error('Dossier Community introuvable : choisis-le avec le bouton « Changer ».');
+    this.setJob(l.id, { state: 'extract', percent: 0 });
+    await new Promise((res) => setImmediate(res));
+    try {
+      this.perso.install(this.perso.load().find((x) => x.id === l.id) || l, com, MARK, (n, t) => { if (n === t || n % 5 === 0) this.setJob(l.id, { state: 'extract', percent: Math.floor((n / t) * 100) }); });
+      this.setJob(l.id, { state: 'done', percent: 100 });
+    } catch (e) { this.setJob(l.id, { state: 'error', error: String((e && e.message) || e).slice(0, 300) }); }
   }
   remove(id, cat) {
     const l = (cat || this.bundled).find((x) => x.id === id);

@@ -829,9 +829,24 @@ app.whenReady().then(() => {
     bundled: (() => { try { return require('./data/livrees.json').livrees || []; } catch (e) { return []; } })(),
     tmpDir: path.join(dataDir(), 'telechargements'),
     getCommunity: () => (store.settings.community && fs.existsSync(store.settings.community) ? store.settings.community : null),
-    fetch: (u, o) => require('electron').net.fetch(u, o)
+    fetch: (u, o) => require('electron').net.fetch(u, o),
+    perso: new (require('./livperso').Perso)(dataDir(), require('./liveries'))
   });
   liv.on('job', (j) => send('livrees:job', j));
+  // livrée perso depuis le PC : un .zip ou un dossier, installée tout de suite dans Community
+  ipcMain.handle('livrees:addPerso', async (_e, kind) => {
+    const r = await dialog.showOpenDialog(win, kind === 'folder'
+      ? { title: 'Choisir le dossier de la livrée', properties: ['openDirectory'] }
+      : { title: 'Choisir le fichier .zip de la livrée', properties: ['openFile'], filters: [{ name: 'Livrée (.zip)', extensions: ['zip'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    try {
+      const e = liv.perso.add(r.filePaths[0]);
+      if (liv.community()) await liv.installPerso(Object.assign({ perso: true }, e));
+      return { ok: true, id: e.id, name: e.name, type: e.type, installed: !!liv.community() };
+    } catch (err) { return { ok: false, error: String((err && err.message) || err) }; }
+  });
+  ipcMain.handle('livrees:persoType', (_e, id, type) => liv.perso.setType(String(id || ''), String(type || '')));
+  ipcMain.handle('livrees:forgetPerso', (_e, id) => { id = String(id || ''); try { liv.remove(id, liv.perso.list()); } catch (err) { /* pas installée par le tracker */ } return liv.perso.forget(id); });
   ipcMain.handle('livrees:list', (_e, force) => liv.list(!!force));
   ipcMain.handle('livrees:install', (_e, id) => { liv.install(String(id || '')); return true; });
   ipcMain.handle('livrees:remove', async (_e, id) => liv.remove(String(id || ''), await liv.catalogue(false)));

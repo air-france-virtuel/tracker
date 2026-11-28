@@ -2040,9 +2040,14 @@ function renderLiveries() {
     }
     const msg = j.state === 'error' ? '<div class="err">' + esc(j.error) + '</div>' : (j.state === 'done' ? '<div class="muted small">Installée ! Redémarre MSFS 2024 pour la voir dans la sélection de l’avion.</div>' : '');
     const manual = l.manual ? '<div class="muted small">Déjà présente dans ton dossier Community (installée à la main).</div>' : '';
-    return '<div class="liv">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '') +
-      '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + '</span>' + state + '</div>' +
-      '<div class="tags">' + [l.aircraft, l.engine, l.version ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
+    // livrée perso : choix du type d'avion (pour le Hangar) et retrait de la liste
+    if (l.perso && !busy) {
+      acts += '<label class="small muted">Avion : <select data-livtype="' + esc(l.id) + '">' + [['A320', 'Airbus A320'], ['B77W', 'Boeing 777-300ER'], ['AUTRE', 'Autre avion']].map(([k, n]) => '<option value="' + k + '"' + (l.type === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
+        '<button class="btn small ghost" data-livforget="' + esc(l.id) + '">Retirer de ma liste</button>';
+    }
+    return '<div class="liv' + (l.perso ? ' perso' : '') + '">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '<div class="liv-noimg">✈</div>') +
+      '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + (l.perso ? ' <span class="tg perso-tg">Perso</span>' : '') + '</span>' + state + '</div>' +
+      '<div class="tags">' + [l.aircraft, l.engine, l.version && !l.perso ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
       (() => {
         // l'avion de la compagnie qui porte cette livrée (choix de la direction dans le Hangar)
         const used = (S.plan2.company || []).filter((c) => c.liveryId === l.id).map((c) => c.reg);
@@ -2304,7 +2309,7 @@ function renderHangar() {
     '<button data-hgadm="' + (sel.active ? 'retire' : 'restore') + '">' + (sel.active ? 'Retirer de la flotte' : 'Remettre dans la flotte') + '</button>' +
     (() => {
       const cur = liveryOf(sel.reg), opts = (S.livCat || []).filter((l) => planeTypeOf(l) === sel.type);
-      return opts.length ? '<span style="width:12px"></span><select id="hgLivery" aria-label="Livrée de ' + esc(sel.reg) + '">' + opts.map((l) => '<option value="' + esc(l.id) + '"' + (cur && cur.id === l.id ? ' selected' : '') + '>' + esc(l.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'Livrée ')) + (l.version ? ' (v' + esc(l.version) + ')' : '') + '</option>').join('') + '</select><button data-hgadm="livery">Changer la livrée</button>' : '';
+      return opts.length ? '<span style="width:12px"></span><select id="hgLivery" aria-label="Livrée de ' + esc(sel.reg) + '">' + opts.map((l) => '<option value="' + esc(l.id) + '"' + (cur && cur.id === l.id ? ' selected' : '') + '>' + esc(l.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'Livrée ')) + (l.perso ? ' (perso)' : l.version ? ' (v' + esc(l.version) + ')' : '') + '</option>').join('') + '</select><button data-hgadm="livery">Changer la livrée</button>' : '';
     })() +
     '<span style="width:12px"></span><input id="hgAddReg" maxlength="10" placeholder="F-HL.." aria-label="Immatriculation du nouvel avion"><select id="hgAddType" aria-label="Type du nouvel avion"><option value="A320">A320</option><option value="B77W">777-300ER</option></select><button data-hgadm="add">+ Ajouter un avion</button>' +
     (S.hg.msg ? '<span class="msg">' + esc(S.hg.msg) + '</span>' : '');
@@ -2600,3 +2605,23 @@ $('wallVeil').addEventListener('input', () => {
   clearTimeout(wallT); wallT = setTimeout(() => afv.wallSet({ veil: S.wall.veil }), 400);
 });
 afv.wallGet().then((w) => { if (w) { S.wall = w; applyWall(); } }).catch(() => {});
+
+// ---------------- livrées perso (depuis le PC) ----------------
+async function addPersoLivery(kind) {
+  $('livAddMsg').textContent = 'Lecture de la livrée…';
+  let r; try { r = await afv.liveryAddPerso(kind); } catch (e) { r = { ok: false, error: 'Impossible de lire cette livrée.' }; }
+  if (r.canceled) { $('livAddMsg').textContent = ''; return; }
+  $('livAddMsg').textContent = r.ok ? '« ' + r.name + ' » ajoutée' + (r.installed ? ' et installée dans MSFS. Redémarre MSFS 2024 pour la voir.' : '. Choisis ton dossier Community pour l’installer.') : r.error;
+  $('livAddMsg').style.color = r.ok ? '' : 'var(--red)';
+  await loadLiveries(true);
+}
+$('btnLivAddZip').addEventListener('click', () => addPersoLivery('zip'));
+$('btnLivAddDir').addEventListener('click', () => addPersoLivery('folder'));
+$('livList').addEventListener('change', async (e) => {
+  const t = e.target.closest('[data-livtype]'); if (!t) return;
+  await afv.liveryPersoType(t.dataset.livtype, t.value); await loadLiveries(false);
+});
+$('livList').addEventListener('click', async (e) => {
+  const f = e.target.closest('[data-livforget]'); if (!f) return;
+  f.disabled = true; await afv.liveryForgetPerso(f.dataset.livforget); await loadLiveries(true);
+});

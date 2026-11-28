@@ -515,3 +515,7 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .wall-opt.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.12)}
 .wall-grid .btn{grid-column:1/-1;justify-self:start}
 .wall-veil{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--navy)}.wall-veil input{flex:1}
+.liv-add{border:2px dashed #9FB2DA;background:#F8FAFD}
+.liv.perso{box-shadow:inset 4px 0 0 #E0A800}
+.perso-tg{background:#FFF4D6!important;color:#8A5300!important;font-size:11px;vertical-align:middle}
+.liv-noimg{width:100%;min-height:120px;display:grid;place-items:center;font-size:40px;color:#9FB2DA;background:#EEF2F8}

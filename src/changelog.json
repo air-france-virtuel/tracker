@@ -51,7 +51,8 @@
       "Planning du jour : les vols respectent les horaires d’ouverture des aéroports comme dans la réalité (couvre-feu d’Orly de 23 h 30 à 6 h, restrictions de nuit à Francfort, Zurich, Londres-Heathrow, Bruxelles…, petits aéroports régionaux fermés la nuit, grands hubs ouverts 24 h/24), et pas de court ni de moyen-courrier en pleine nuit. Si les aéroports sont fermés, le vol est proposé au premier horaire possible (« demain » s’il le faut). Heures UTC et heures locales affichées",
       "Hangar, barre de la direction : choisir la livrée de chaque avion de la compagnie (réservé à la direction). La photo de l’avion change partout dans le tracker, et la rubrique Livrées indique la livrée actuelle de chaque avion",
       "La livrée A320 « Ruban » revient dans la rubrique Livrées (au choix avec « Oiseau »)",
-      "Fond d’écran : nouveau bouton en bas du menu pour choisir le fond (Cockpit, Ciel, Tricolore, Nuit, Uni) ou mettre ta propre photo, et régler le voile pour que le texte reste lisible"
+      "Fond d’écran : nouveau bouton en bas du menu pour choisir le fond (Cockpit, Ciel, Tricolore, Nuit, Uni) ou mettre ta propre photo, et régler le voile pour que le texte reste lisible",
+      "Livrées : « Ajouter une livrée de mon PC » (fichier .zip ou dossier) : le tracker l’installe dans MSFS, lit son nom et sa photo d’aperçu et l’ajoute à ta liste avec l’étiquette « Perso ». Tu choisis pour quel avion elle est, tu peux la désinstaller ou la retirer de ta liste. Rien n’est envoyé en ligne"
     ],
     "removed": [
       "Historique des versions : les anciennes versions bêta (0.1.0 à 0.9.0) n’apparaissent plus, l’historique commence à la 1.0.0",

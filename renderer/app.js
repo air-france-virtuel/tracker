@@ -2019,10 +2019,13 @@ function renderLiveries() {
   $('livCom').textContent = d.community ? d.community + (d.communityAuto ? ' (trouvé automatiquement)' : '') : 'Introuvable : clique sur « Changer » et choisis le dossier Community de MSFS 2024.';
   $('btnLivAuto').hidden = !d.community || d.communityAuto;
   $('btnLivOpen').disabled = !d.community;
-  const upd = d.livrees.filter((l) => l.outdated).length;
+  const shown = d.livrees.filter((l) => !l.hidden);
+  const upd = shown.filter((l) => l.outdated).length;
   $('chipLiv').hidden = !upd; $('chipLiv').textContent = upd ? 'MAJ' : '';
-  if (!d.livrees.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée disponible pour le moment.</div>'; return; }
-  $('livList').innerHTML = d.livrees.map((l) => {
+  // livrées supprimées de la liste : un lien pour les faire revenir
+  $('livHidden').innerHTML = d.hiddenCount ? d.hiddenCount + ' livrée' + (d.hiddenCount > 1 ? 's supprimées' : ' supprimée') + ' de ta liste · <button class="linkbtn" id="btnLivUnhide">Les réafficher</button>' : '';
+  if (!shown.length) { $('livList').innerHTML = '<div class="empty">Aucune livrée dans ta liste.</div>'; return; }
+  $('livList').innerHTML = shown.map((l) => {
     const j = l.job || {};
     const busy = j.state === 'download' || j.state === 'extract' || j.state === 'upload';
     let state = '<span class="badge">' + (l.outdated ? 'Mise à jour disponible' : 'Installée') + '</span>';
@@ -2047,8 +2050,9 @@ function renderLiveries() {
     if (S.hg.admin && l.shared && !busy) acts += '<button class="btn small ghost" data-livunshare="' + esc(l.id) + '">Retirer pour tous</button>';
     if (l.perso && !busy) {
       acts += '<label class="small muted">Avion : <select data-livtype="' + esc(l.id) + '">' + [['A320', 'Airbus A320'], ['B77W', 'Boeing 777-300ER'], ['AUTRE', 'Autre avion']].map(([k, n]) => '<option value="' + k + '"' + (l.type === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></label>' +
-        '<button class="btn small ghost" data-livforget="' + esc(l.id) + '">Retirer de ma liste</button>';
+        '';
     }
+    if (!busy) acts += '<button class="btn small ghost liv-del" data-livdel="' + esc(l.id) + '" title="Désinstaller et retirer de ta liste">🗑 Supprimer</button>';
     return '<div class="liv' + (l.perso ? ' perso' : '') + '">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '<div class="liv-noimg">✈</div>') +
       '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + (l.perso ? ' <span class="tg perso-tg">Perso' + (d.livrees.some((x) => x.shared && x.folder === l.folder) ? ' · partagée' : '') + '</span>' : l.shared ? ' <span class="tg shared-tg">Partagée par ' + esc(l.sharedBy || 'la direction') + '</span>' : '') + '</span>' + state + '</div>' +
       '<div class="tags">' + [l.aircraft, l.engine, l.version && !l.perso && !l.shared ? 'v' + l.version : '', l.shared && l.size ? mo(l.size) : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
@@ -2630,6 +2634,23 @@ $('livList').addEventListener('click', async (e) => {
   if (sh) { sh.disabled = true; const r = await afv.liveryShare(sh.dataset.livshare); if (r && r.ok) maxSays('C’est envoyé : tous les pilotes peuvent maintenant installer cette livrée depuis leur rubrique Livrées.'); await loadLiveries(true); return; }
   const un = e.target.closest('[data-livunshare]');
   if (un) { un.disabled = true; const r = await afv.liveryUnshare(un.dataset.livunshare); if (r && !r.ok) $('livAddMsg').textContent = r.error || 'Échec.'; await loadLiveries(true); return; }
+  const del = e.target.closest('[data-livdel]');
+  if (del) {
+    const l = LV.data && LV.data.livrees.find((x) => x.id === del.dataset.livdel); if (!l) return;
+    const txt = 'Supprimer « ' + l.name + ' » (' + (l.aircraft || '') + ') ?\n\n' + (l.installed && !l.manual ? 'Elle sera désinstallée de MSFS et retirée de ta liste.' : 'Elle sera retirée de ta liste.') +
+      (l.perso ? '' : '\nTu pourras la faire revenir avec « Les réafficher » en bas de la liste.');
+    if (!window.confirm(txt)) return;
+    del.disabled = true;
+    const r = await afv.liveryDelete(l.id);
+    $('livAddMsg').style.color = r.ok ? '' : 'var(--red)';
+    $('livAddMsg').textContent = r.ok ? '« ' + l.name + ' » supprimée' + (r.manual ? ' de ta liste (installée à la main : ses fichiers restent dans le dossier Community).' : r.uninstalled ? ' et désinstallée de MSFS.' : '.') : r.error;
+    await loadLiveries(false); return;
+  }
   const f = e.target.closest('[data-livforget]'); if (!f) return;
   f.disabled = true; await afv.liveryForgetPerso(f.dataset.livforget); await loadLiveries(true);
+});
+
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#btnLivUnhide')) return;
+  await afv.liveryUnhideAll(); $('livAddMsg').textContent = 'Toutes les livrées sont de nouveau dans ta liste.'; await loadLiveries(false);
 });

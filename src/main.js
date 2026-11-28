@@ -869,7 +869,36 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('livrees:persoType', (_e, id, type) => liv.perso.setType(String(id || ''), String(type || '')));
   ipcMain.handle('livrees:forgetPerso', (_e, id) => { id = String(id || ''); try { liv.remove(id, liv.perso.list()); } catch (err) { /* pas installée par le tracker */ } return liv.perso.forget(id); });
-  ipcMain.handle('livrees:list', (_e, force) => liv.list(!!force));
+  // livrées que le pilote ne veut plus voir (supprimées de sa liste) : le tracker les cache, on peut les réafficher
+  const hiddenLiv = () => (store.settings.hiddenLiveries = Array.isArray(store.settings.hiddenLiveries) ? store.settings.hiddenLiveries : []);
+  ipcMain.handle('livrees:list', async (_e, force) => {
+    const r = await liv.list(!!force);
+    const h = hiddenLiv();
+    r.livrees.forEach((l) => { l.hidden = h.includes(l.id); });
+    r.hiddenCount = r.livrees.filter((l) => l.hidden).length;
+    return r;
+  });
+  // « Supprimer » : désinstalle de MSFS (si le tracker l'a installée) et retire la livrée de la liste
+  ipcMain.handle('livrees:delete', async (_e, id) => {
+    id = String(id || '');
+    const cat = await liv.catalogue(false);
+    const l = cat.find((x) => x.id === id);
+    if (!l) return { ok: false, error: 'Livrée introuvable.' };
+    let uninstalled = false, manual = false;
+    const com = liv.community();
+    const dir = com && l.folder ? path.join(com, l.folder) : null;
+    if (dir && fs.existsSync(dir)) {
+      let mark = null;
+      try { mark = JSON.parse(fs.readFileSync(path.join(dir, require('./liveries').MARK), 'utf8')); } catch (e) { /* pas de marque */ }
+      if (!mark) manual = true;                                  // installée à la main : on ne touche pas à ses fichiers
+      else if (!mark.id || mark.id === id) uninstalled = liv.remove(id, cat);
+      // sinon le dossier contient une AUTRE livrée (ex. A320 Oiseau / Ruban, même dossier) : on n'y touche pas
+    }
+    if (l.perso) liv.perso.forget(id);
+    else { const h = hiddenLiv(); if (!h.includes(id)) h.push(id); saveStore(); }
+    return { ok: true, uninstalled, manual };
+  });
+  ipcMain.handle('livrees:unhideAll', () => { store.settings.hiddenLiveries = []; saveStore(); return true; });
   ipcMain.handle('livrees:install', (_e, id) => { liv.install(String(id || '')); return true; });
   ipcMain.handle('livrees:remove', async (_e, id) => liv.remove(String(id || ''), await liv.catalogue(false)));
   ipcMain.handle('livrees:pickCommunity', async () => {

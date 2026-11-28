@@ -43,6 +43,20 @@
       "description": "Livrée officielle de la compagnie Les Ailes Tricolores.",
       "requires": "PMDG 777-300ER (MSFS 2024)",
       "size": 39054996
+    },
+    {
+      "id": "lat-b77w-oiseau",
+      "name": "Les Ailes Tricolores – Oiseau",
+      "aircraft": "PMDG 777-300ER",
+      "type": "B77W",
+      "engine": "GE90",
+      "version": "1.0",
+      "folder": "lat-livery-pmdg-777-300er-oiseau",
+      "url": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/les-ailes-tricolores-777-300er-oiseau.zip",
+      "image": "https://raw.githubusercontent.com/air-france-virtuel/tracker/livrees-fichiers/lat-b77w-fhlau-oiseau.jpg",
+      "description": "La livrée « Oiseau » de l’A320, sur le 777-300ER : fuselage blanc, logo et titre « Les Ailes Tricolores », rubans bleu et rouge en vague, dérive tricolore, vagues sur les moteurs.",
+      "requires": "PMDG 777-300ER (MSFS 2024), moteurs GE90",
+      "size": 29291542
     }
   ]
 }

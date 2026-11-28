@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('afv', {
   genDay: (o) => ipcRenderer.invoke('gen:day', o),
   liveryAddPerso: (kind) => ipcRenderer.invoke('livrees:addPerso', kind),
   liveryPersoType: (id, type) => ipcRenderer.invoke('livrees:persoType', id, type),
-  liveryDelete: (id) => ipcRenderer.invoke('livrees:delete', id),
+  liveryDelete: (id, definitive) => ipcRenderer.invoke('livrees:delete', id, !!definitive),
   liveryUnhideAll: () => ipcRenderer.invoke('livrees:unhideAll'),
   liveryShare: (id) => ipcRenderer.invoke('livrees:share', id),
   liveryUnshare: (sid) => ipcRenderer.invoke('livrees:unshare', sid),

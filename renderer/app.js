@@ -2316,7 +2316,7 @@ function renderHangar() {
     '<input id="hgMove" maxlength="4" placeholder="OACI" aria-label="Aéroport où déplacer l’avion"><button data-hgadm="move">Déplacer</button>' +
     '<button data-hgadm="' + (sel.active ? 'retire' : 'restore') + '">' + (sel.active ? 'Retirer de la flotte' : 'Remettre dans la flotte') + '</button>' +
     (() => {
-      const cur = liveryOf(sel.reg), opts = (S.livCat || []).filter((l) => planeTypeOf(l) === sel.type);
+      const cur = liveryOf(sel.reg), opts = (S.livCat || []).filter((l) => planeTypeOf(l) === sel.type && (!l.deleted || (cur && cur.id === l.id)));
       return opts.length ? '<span style="width:12px"></span><select id="hgLivery" aria-label="Livrée de ' + esc(sel.reg) + '">' + opts.map((l) => '<option value="' + esc(l.id) + '"' + (cur && cur.id === l.id ? ' selected' : '') + '>' + esc(l.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'Livrée ')) + (l.perso ? ' (perso)' : l.version ? ' (v' + esc(l.version) + ')' : '') + '</option>').join('') + '</select><button data-hgadm="livery">Changer la livrée</button>' : '';
     })() +
     '<span style="width:12px"></span><input id="hgAddReg" maxlength="10" placeholder="F-HL.." aria-label="Immatriculation du nouvel avion"><select id="hgAddType" aria-label="Type du nouvel avion"><option value="A320">A320</option><option value="B77W">777-300ER</option></select><button data-hgadm="add">+ Ajouter un avion</button>' +
@@ -2637,14 +2637,12 @@ $('livList').addEventListener('click', async (e) => {
   const del = e.target.closest('[data-livdel]');
   if (del) {
     const l = LV.data && LV.data.livrees.find((x) => x.id === del.dataset.livdel); if (!l) return;
-    const txt = 'Supprimer « ' + l.name + ' » (' + (l.aircraft || '') + ') ?\n\n' + (l.installed && !l.manual ? 'Elle sera désinstallée de MSFS et retirée de ta liste.' : 'Elle sera retirée de ta liste.') +
-      (l.perso ? '' : '\nTu pourras la faire revenir avec « Les réafficher » en bas de la liste.');
-    if (!window.confirm(txt)) return;
-    del.disabled = true;
-    const r = await afv.liveryDelete(l.id);
-    $('livAddMsg').style.color = r.ok ? '' : 'var(--red)';
-    $('livAddMsg').textContent = r.ok ? '« ' + l.name + ' » supprimée' + (r.manual ? ' de ta liste (installée à la main : ses fichiers restent dans le dossier Community).' : r.uninstalled ? ' et désinstallée de MSFS.' : '.') : r.error;
-    await loadLiveries(false); return;
+    LV.del = l;
+    $('livDelText').textContent = '« ' + l.name + ' » (' + (l.aircraft || '') + ') ' + (l.installed && !l.manual ? 'sera désinstallée de MSFS et retirée de ta liste.' : 'sera retirée de ta liste.') +
+      (l.perso ? ' C’est une livrée perso : elle disparaît pour de bon (le fichier d’origine reste sur ton PC).' : ' « Supprimer définitivement » : elle ne reviendra plus, même avec « Les réafficher ».');
+    $('btnLivDelSoft').hidden = !!l.perso;
+    $('livDelModal').hidden = false;
+    return;
   }
   const f = e.target.closest('[data-livforget]'); if (!f) return;
   f.disabled = true; await afv.liveryForgetPerso(f.dataset.livforget); await loadLiveries(true);
@@ -2654,3 +2652,16 @@ document.addEventListener('click', async (e) => {
   if (!e.target.closest('#btnLivUnhide')) return;
   await afv.liveryUnhideAll(); $('livAddMsg').textContent = 'Toutes les livrées sont de nouveau dans ta liste.'; await loadLiveries(false);
 });
+
+// fenêtre de suppression d'une livrée : réaffichable ou définitive
+async function doLivDelete(definitive) {
+  const l = LV.del; $('livDelModal').hidden = true; if (!l) return;
+  const r = await afv.liveryDelete(l.id, definitive);
+  $('livAddMsg').style.color = r.ok ? '' : 'var(--red)';
+  $('livAddMsg').textContent = r.ok ? '« ' + l.name + ' » supprimée' + (r.definitive ? ' définitivement' : '') +
+    (r.manual ? ' de ta liste (installée à la main : ses fichiers restent dans le dossier Community).' : r.uninstalled ? ' et désinstallée de MSFS.' : '.') : r.error;
+  await loadLiveries(false);
+}
+$('btnLivDelSoft').addEventListener('click', () => doLivDelete(false));
+$('btnLivDelHard').addEventListener('click', () => doLivDelete(true));
+$('btnLivDelCancel').addEventListener('click', () => { $('livDelModal').hidden = true; });

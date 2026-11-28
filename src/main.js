@@ -873,13 +873,16 @@ app.whenReady().then(() => {
   const hiddenLiv = () => (store.settings.hiddenLiveries = Array.isArray(store.settings.hiddenLiveries) ? store.settings.hiddenLiveries : []);
   ipcMain.handle('livrees:list', async (_e, force) => {
     const r = await liv.list(!!force);
+    // supprimées définitivement : elles ne reviennent plus du tout dans la liste
+    const gone = Array.isArray(store.settings.deletedLiveries) ? store.settings.deletedLiveries : [];
+    // (elles restent connues du tracker, sans être affichées : une livrée par défaut définit aussi l'avion de la flotte)
     const h = hiddenLiv();
-    r.livrees.forEach((l) => { l.hidden = h.includes(l.id); });
-    r.hiddenCount = r.livrees.filter((l) => l.hidden).length;
+    r.livrees.forEach((l) => { l.deleted = gone.includes(l.id); l.hidden = l.deleted || h.includes(l.id); });
+    r.hiddenCount = r.livrees.filter((l) => l.hidden && !l.deleted).length;
     return r;
   });
   // « Supprimer » : désinstalle de MSFS (si le tracker l'a installée) et retire la livrée de la liste
-  ipcMain.handle('livrees:delete', async (_e, id) => {
+  ipcMain.handle('livrees:delete', async (_e, id, definitive) => {
     id = String(id || '');
     const cat = await liv.catalogue(false);
     const l = cat.find((x) => x.id === id);
@@ -895,8 +898,13 @@ app.whenReady().then(() => {
       // sinon le dossier contient une AUTRE livrée (ex. A320 Oiseau / Ruban, même dossier) : on n'y touche pas
     }
     if (l.perso) liv.perso.forget(id);
-    else { const h = hiddenLiv(); if (!h.includes(id)) h.push(id); saveStore(); }
-    return { ok: true, uninstalled, manual };
+    else if (definitive) {
+      const g = store.settings.deletedLiveries = Array.isArray(store.settings.deletedLiveries) ? store.settings.deletedLiveries : [];
+      if (!g.includes(id)) g.push(id);
+      store.settings.hiddenLiveries = hiddenLiv().filter((x) => x !== id);
+      saveStore();
+    } else { const h = hiddenLiv(); if (!h.includes(id)) h.push(id); saveStore(); }
+    return { ok: true, uninstalled, manual, definitive: !!definitive || !!l.perso };
   });
   ipcMain.handle('livrees:unhideAll', () => { store.settings.hiddenLiveries = []; saveStore(); return true; });
   ipcMain.handle('livrees:install', (_e, id) => { liv.install(String(id || '')); return true; });

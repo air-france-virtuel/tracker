@@ -194,3 +194,35 @@ begin
 end $$;
 
 grant execute on function public.finish_flight(text, text, text, text, int, int, boolean), public.take_aircraft(text, timestamptz), public.release_aircraft(text, int), public.hangar_admin(text, text, text, text) to authenticated;
+
+-- Livrée de chaque avion choisie par la direction (identifiant du catalogue des livrées ; vide = livrée par défaut)
+alter table public.aircraft_state add column if not exists livery text not null default '' check (char_length(livery) <= 60);
+create or replace function public.hangar_admin(p_action text, p_reg text, p_value text default null, p_type text default null)
+returns public.aircraft_state
+language plpgsql security definer set search_path = public as $$
+declare s public.aircraft_state; me public.pilots;
+begin
+  if not public.is_admin() then raise exception 'DIRECTION_SEULEMENT'; end if;
+  select * into me from public.pilots where id = auth.uid();
+  if p_action = 'add' then
+    insert into public.aircraft_state (reg, type, label, engine, sim, location)
+      values (upper(p_reg), coalesce(nullif(p_type, ''), 'A320'), coalesce(p_value, ''), '', '', 'LFPG')
+      on conflict (reg) do update set active = true returning * into s;
+  elsif p_action = 'end_maint' then
+    delete from public.aircraft_bookings where reg = upper(p_reg) and kind = 'maintenance';
+    update public.aircraft_state set condition = greatest(condition, 60), updated_at = now() where reg = upper(p_reg) returning * into s;
+  elsif p_action = 'move' then
+    update public.aircraft_state set location = upper(left(coalesce(p_value, 'LFPG'), 4)), updated_at = now() where reg = upper(p_reg) returning * into s;
+  elsif p_action = 'retire' then
+    update public.aircraft_state set active = false, updated_at = now() where reg = upper(p_reg) returning * into s;
+  elsif p_action = 'restore' then
+    update public.aircraft_state set active = true, updated_at = now() where reg = upper(p_reg) returning * into s;
+  elsif p_action = 'livery' then
+    if coalesce(p_value, '') !~ '^[a-z0-9-]{0,60}$' then raise exception 'LIVREE_INVALIDE'; end if;
+    update public.aircraft_state set livery = coalesce(p_value, ''), updated_at = now() where reg = upper(p_reg) returning * into s;
+  else
+    raise exception 'ACTION_INCONNUE';
+  end if;
+  insert into public.aircraft_log (reg, kind, user_id, pilot, note) values (upper(p_reg), 'direction', me.id, me.pseudo, p_action || coalesce(' ' || p_value, ''));
+  return s;
+end $$;

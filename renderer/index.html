@@ -47,7 +47,7 @@
       <div class="ring" id="pRing"><span id="pInit">AF</span></div>
       <div class="pt"><b id="pName">Pilote</b><span id="pGrade"></span></div>
     </div>
-    <div class="tools"><button class="nav ico" data-tab="sons" title="Annonces sonores" aria-label="Annonces sonores"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></button><button class="nav ico" data-tab="avis" title="Donner mon avis" aria-label="Donner mon avis"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button class="nav ico" data-tab="maj" title="Mises à jour" aria-label="Mises à jour"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="dotn" id="updDot" hidden></span></button><button class="nav ico" data-tab="reglages" title="Réglages" aria-label="Réglages"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></div>
+    <div class="tools"><button class="nav ico" data-tab="sons" title="Annonces sonores" aria-label="Annonces sonores"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></button><button class="nav ico" data-tab="avis" title="Donner mon avis" aria-label="Donner mon avis"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button class="nav ico" data-tab="maj" title="Mises à jour" aria-label="Mises à jour"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="dotn" id="updDot" hidden></span></button><button class="nav ico" id="btnWall" title="Fond d’écran" aria-label="Fond d’écran"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg></button><button class="nav ico" data-tab="reglages" title="Réglages" aria-label="Réglages"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></div>
     <div class="sim-state" id="simState"><span class="dot"></span><span id="simText">Simulateur non connecté</span></div>
   </nav>
 
@@ -401,6 +401,16 @@
 </div>
 
 <div class="ach-toast" id="achToast" hidden role="status" aria-live="polite"></div>
+<div class="modal" id="wallModal" hidden>
+  <div class="modal-box wall-box" role="dialog" aria-labelledby="wallTitle">
+    <h2 id="wallTitle">Fond d’écran</h2>
+    <div class="wall-grid" id="wallGrid"></div>
+    <label class="wall-veil">Voile clair par-dessus le fond <input type="range" id="wallVeil" min="40" max="97" step="1" aria-label="Intensité du voile"><span id="wallVeilV"></span></label>
+    <div class="muted small" id="wallMsg"></div>
+    <div class="row" style="margin-top:12px"><button class="btn red" id="btnWallOk">Fermer</button></div>
+  </div>
+</div>
+
 <div class="modal" id="newsModal" hidden>
   <div class="modal-box" role="dialog" aria-label="Nouveautés">
     <h2 id="newsTitle">Nouveautés</h2>

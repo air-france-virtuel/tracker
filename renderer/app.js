@@ -1413,13 +1413,26 @@ const hm = (min) => min == null ? '—' : Math.floor(min / 60) + ' h ' + String(
 S.plan2.company = [];
 const TYPE_LABEL = { A320: 'A320', B77W: '777-300ER' };
 const LONG_HAUL = ['B77W', 'B772', 'B789', 'A359', 'A332'];
+// Avions de la compagnie et leur livrée : celle choisie par la direction dans le Hangar, sinon la livrée par défaut du catalogue
+const planeTypeOf = (l) => l.type || ((/\b(A3\d\d)\b/.exec(l.aircraft || '') || [])[1]) || (/777-300/.test(l.aircraft || '') ? 'B77W' : 'A320');
+function liveryOf(reg) {
+  const cat = S.livCat || [], h = hangarState(reg);
+  const def = cat.find((l) => l.reg === reg);
+  const chosen = h && h.livery ? cat.find((l) => l.id === h.livery) : null;
+  return chosen && (!def || planeTypeOf(chosen) === planeTypeOf(def)) ? chosen : def || null;
+}
+function buildCompany() {
+  const regs = [...new Set((S.livCat || []).filter((l) => l.reg).map((l) => l.reg))];
+  S.plan2.company = regs.map((reg) => {
+    const l = liveryOf(reg), type = planeTypeOf(l);
+    return { reg, type, label: TYPE_LABEL[type] || type, long: LONG_HAUL.includes(type), image: l.image || '', name: l.name, liveryId: l.id, aircraft: l.aircraft || '', engine: l.engine || '', installed: !!l.installed };
+  }).sort((a, b) => a.long - b.long || a.reg.localeCompare(b.reg));
+}
 async function loadCompanyFleet() {
   try {
     const r = await afv.listLiveries(false);
-    S.plan2.company = (r.livrees || []).filter((l) => l.reg).map((l) => {
-      const type = l.type || ((/\b(A3\d\d)\b/.exec(l.aircraft || '') || [])[1]) || (/777-300/.test(l.aircraft || '') ? 'B77W' : 'A320');
-      return { reg: l.reg, type, label: TYPE_LABEL[type] || type, long: LONG_HAUL.includes(type), image: l.image || '', name: l.name, aircraft: l.aircraft || '', engine: l.engine || '', installed: !!l.installed };
-    }).sort((a, b) => a.long - b.long || a.reg.localeCompare(b.reg));
+    S.livCat = r.livrees || [];
+    buildCompany();
   } catch (e) { S.plan2.company = []; }
   if (S.plan2.company.length) loadBookings(true);
   if ($('tab-planning').classList.contains('on')) renderPlanning();
@@ -1997,6 +2010,7 @@ const LV = { data: null };
 const mo = (n) => (n ? (n / 1048576).toFixed(0) + ' Mo' : '');
 async function loadLiveries(force) {
   try { LV.data = await afv.listLiveries(force); } catch (e) { LV.data = { community: null, livrees: [], error: String(e.message || e) }; }
+  if (LV.data.livrees && LV.data.livrees.length) { S.livCat = LV.data.livrees; buildCompany(); }
   renderLiveries();
 }
 function renderLiveries() {
@@ -2028,7 +2042,14 @@ function renderLiveries() {
     const manual = l.manual ? '<div class="muted small">Déjà présente dans ton dossier Community (installée à la main).</div>' : '';
     return '<div class="liv">' + (l.image ? '<img src="' + esc(l.image) + '" alt="Aperçu de la livrée ' + esc(l.name) + '">' : '') +
       '<div class="in"><div class="row between"><span class="nm">' + esc(l.name) + '</span>' + state + '</div>' +
-      '<div class="tags">' + [l.aircraft, l.engine, l.reg, l.version ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
+      '<div class="tags">' + [l.aircraft, l.engine, l.version ? 'v' + l.version : ''].filter(Boolean).map((t) => '<span class="tg">' + esc(t) + '</span>').join('') + '</div>' +
+      (() => {
+        // l'avion de la compagnie qui porte cette livrée (choix de la direction dans le Hangar)
+        const used = (S.plan2.company || []).filter((c) => c.liveryId === l.id).map((c) => c.reg);
+        const twin = d.livrees.find((x) => x.id !== l.id && x.folder && x.folder === l.folder);
+        return (used.length ? '<div class="liv-cur">✈ Livrée actuelle de ' + esc(used.join(', ')) + '</div>' : '<div class="muted small">Pas portée par un avion de la flotte en ce moment.</div>') +
+          (twin ? '<div class="muted small">L’installer remplace « ' + esc(twin.name) + ' » dans MSFS (même avion).</div>' : '');
+      })() +
       (l.description ? '<div class="muted">' + esc(l.description) + '</div>' : '') +
       (l.requires ? '<div class="muted small">Nécessite : ' + esc(l.requires) + '</div>' : '') +
       manual + '<div class="acts">' + acts + '</div>' + msg + '</div></div>';
@@ -2214,7 +2235,9 @@ async function loadHangar(force) {
     else S.hg.error = (r && r.error) || 'Serveur injoignable.';
   } catch (e) { S.hg.error = 'Serveur injoignable.'; }
   if (S.hg.bookings.length || !S.hg.error) S.plan2.book.list = S.hg.bookings.length ? S.hg.bookings : S.plan2.book.list;
+  if (S.livCat) buildCompany(); // la livrée choisie par la direction
   renderHangar();
+  if ($('tab-livrees') && $('tab-livrees').classList.contains('on')) renderLiveries();
   if ($('tab-planning').classList.contains('on')) renderPlanning();
 }
 const hangarState = (reg) => (S.hg.fleet || []).find((a) => a.reg === reg) || null;
@@ -2279,6 +2302,10 @@ function renderHangar() {
     '<button data-hgadm="end_maint">Terminer la maintenance</button>' +
     '<input id="hgMove" maxlength="4" placeholder="OACI" aria-label="Aéroport où déplacer l’avion"><button data-hgadm="move">Déplacer</button>' +
     '<button data-hgadm="' + (sel.active ? 'retire' : 'restore') + '">' + (sel.active ? 'Retirer de la flotte' : 'Remettre dans la flotte') + '</button>' +
+    (() => {
+      const cur = liveryOf(sel.reg), opts = (S.livCat || []).filter((l) => planeTypeOf(l) === sel.type);
+      return opts.length ? '<span style="width:12px"></span><select id="hgLivery" aria-label="Livrée de ' + esc(sel.reg) + '">' + opts.map((l) => '<option value="' + esc(l.id) + '"' + (cur && cur.id === l.id ? ' selected' : '') + '>' + esc(l.name.replace(/^Les Ailes Tricolores\s*[–-]\s*/, 'Livrée ')) + (l.version ? ' (v' + esc(l.version) + ')' : '') + '</option>').join('') + '</select><button data-hgadm="livery">Changer la livrée</button>' : '';
+    })() +
     '<span style="width:12px"></span><input id="hgAddReg" maxlength="10" placeholder="F-HL.." aria-label="Immatriculation du nouvel avion"><select id="hgAddType" aria-label="Type du nouvel avion"><option value="A320">A320</option><option value="B77W">777-300ER</option></select><button data-hgadm="add">+ Ajouter un avion</button>' +
     (S.hg.msg ? '<span class="msg">' + esc(S.hg.msg) + '</span>' : '');
   tickHangar();
@@ -2302,6 +2329,7 @@ document.addEventListener('click', async (e) => {
   if (a && S.hg.sel) {
     const act = a.dataset.hgadm;
     let reg = S.hg.sel, val = null, type = null;
+    if (act === 'livery') val = $('hgLivery').value;
     if (act === 'move') { val = ($('hgMove').value || '').trim().toUpperCase(); if (!/^[A-Z]{4}$/.test(val)) { S.hg.msg = 'Indique un code OACI de 4 lettres.'; renderHangar(); return; } }
     if (act === 'add') { reg = ($('hgAddReg').value || '').trim().toUpperCase(); type = $('hgAddType').value; val = type === 'B77W' ? 'Boeing 777-300ER' : 'Airbus A320'; if (!/^[A-Z0-9-]{3,10}$/.test(reg)) { S.hg.msg = 'Immatriculation invalide.'; renderHangar(); return; } }
     a.disabled = true;
@@ -2528,3 +2556,47 @@ setInterval(async () => {
   S.taxi.saidFlight = S.flight;
   try { const d = await afv.getRoulage(i.ap, i.rwy, i.pos); if (d && d.ok && d.route) { S.taxi.data = d; S.taxi.vb = null; maxSays(d.say); } } catch (e) { /* plan de l'aéroport indisponible */ }
 }, 4000);
+
+// ---------------- fond d'écran ----------------
+const WALLS = [
+  ['cockpit', 'Cockpit', 'url(assets/fond-cockpit.jpg) center/cover'],
+  ['ciel', 'Ciel', 'linear-gradient(180deg,#5B8FD6 0%,#A9C8EE 45%,#EAF2FB 100%)'],
+  ['tricolore', 'Tricolore', 'linear-gradient(115deg,#1F3E9C 0%,#1F3E9C 30%,#FFFFFF 30%,#FFFFFF 70%,#C8102E 70%,#C8102E 100%)'],
+  ['nuit', 'Nuit', 'radial-gradient(ellipse at 30% 20%,#2B4C9B 0%,#0A1E4A 55%,#050E26 100%)'],
+  ['uni', 'Uni', '#F2F4F8'],
+  ['photo', 'Ma photo', '']
+];
+S.wall = { kind: 'cockpit', veil: 0.88, photo: null, hasPhoto: false };
+function applyWall() {
+  const w = S.wall, def = WALLS.find((x) => x[0] === w.kind) || WALLS[0];
+  const bg = w.kind === 'photo' && w.photo ? 'url("' + w.photo + '") center/cover' : def[2];
+  const v = w.kind === 'uni' ? 0 : w.veil;
+  document.querySelectorAll('.content').forEach((el) => { el.style.background = 'linear-gradient(rgba(242,244,248,' + v + '),rgba(242,244,248,' + v + ')),' + bg; el.style.backgroundAttachment = 'fixed'; });
+}
+function renderWall() {
+  $('wallGrid').innerHTML = WALLS.map(([k, l, bg]) => {
+    const prev = k === 'photo' ? (S.wall.photo ? 'url("' + S.wall.photo + '") center/cover' : '') : bg;
+    return '<button class="wall-opt' + (S.wall.kind === k ? ' on' : '') + '" data-wall="' + k + '" aria-pressed="' + (S.wall.kind === k) + '"><span class="pv" style="background:' + esc(prev || '#E4E9F3') + '">' + (k === 'photo' && !S.wall.photo ? '+' : '') + '</span>' + l + '</button>';
+  }).join('') + '<button class="btn small ghost" data-wallpick>' + (S.wall.hasPhoto ? 'Changer ma photo…' : 'Choisir une photo sur mon PC…') + '</button>';
+  $('wallVeil').value = Math.round(S.wall.veil * 100); $('wallVeilV').textContent = Math.round(S.wall.veil * 100) + ' %';
+  $('wallVeil').disabled = S.wall.kind === 'uni';
+}
+async function pickWallPhoto() {
+  let r; try { r = await afv.wallPick(); } catch (e) { r = { ok: false, error: 'Impossible d’utiliser cette image.' }; }
+  if (r && r.ok) { S.wall = r; applyWall(); renderWall(); $('wallMsg').textContent = 'Ta photo est en fond d’écran. Règle le voile si le texte est difficile à lire.'; }
+  else if (r && r.error) $('wallMsg').textContent = r.error;
+}
+$('btnWall').addEventListener('click', () => { $('wallMsg').textContent = ''; renderWall(); $('wallModal').hidden = false; });
+$('btnWallOk').addEventListener('click', () => { $('wallModal').hidden = true; });
+$('wallGrid').addEventListener('click', async (e) => {
+  if (e.target.closest('[data-wallpick]')) { pickWallPhoto(); return; }
+  const b = e.target.closest('[data-wall]'); if (!b) return;
+  if (b.dataset.wall === 'photo' && !S.wall.hasPhoto) { pickWallPhoto(); return; }
+  S.wall = await afv.wallSet({ kind: b.dataset.wall }); applyWall(); renderWall();
+});
+let wallT = 0;
+$('wallVeil').addEventListener('input', () => {
+  S.wall.veil = +$('wallVeil').value / 100; $('wallVeilV').textContent = $('wallVeil').value + ' %'; applyWall();
+  clearTimeout(wallT); wallT = setTimeout(() => afv.wallSet({ veil: S.wall.veil }), 400);
+});
+afv.wallGet().then((w) => { if (w) { S.wall = w; applyWall(); } }).catch(() => {});

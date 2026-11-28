@@ -141,7 +141,9 @@ class Liveries extends EventEmitter {
       community: com,
       communityAuto: !this.getCommunity() && !!com,
       livrees: cat.map((l) => {
-        const inst = this.installed(l, com);
+        // deux livrées peuvent partager le même dossier (ex. A320 « Oiseau » et « Ruban ») : la marque dit laquelle est installée
+        let inst = this.installed(l, com);
+        if (inst && inst.id && inst.id !== l.id) inst = null;
         return Object.assign({}, l, {
           installed: !!inst,
           installedVersion: inst ? inst.version : null,

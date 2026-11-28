@@ -726,6 +726,31 @@ app.whenReady().then(() => {
   ipcMain.handle('update:failedSeen', () => { upd.failed = null; return true; });
   ipcMain.handle('changelog:get', () => CHANGELOG);
   ipcMain.handle('changelog:seen', () => { store.lastSeenVersion = VERSION; saveStore(); return true; });
+  // fond d'écran : un fond intégré, ou la photo choisie par le pilote (copiée dans le dossier du tracker)
+  const WALL_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+  const wallFile = () => { for (const x of WALL_EXT) { const f = path.join(app.getPath('userData'), 'fond-perso.' + x); if (fs.existsSync(f)) return f; } return null; };
+  const wallData = () => { const f = wallFile(); if (!f) return null; const x = path.extname(f).slice(1).replace('jpg', 'jpeg'); return 'data:image/' + x + ';base64,' + fs.readFileSync(f).toString('base64'); };
+  ipcMain.handle('wall:get', () => { const w = store.settings.wallpaper || { kind: 'cockpit', veil: 0.88 }; return Object.assign({}, w, { photo: w.kind === 'photo' ? wallData() : null, hasPhoto: !!wallFile() }); });
+  ipcMain.handle('wall:set', (_e, w) => {
+    const kinds = ['cockpit', 'ciel', 'tricolore', 'nuit', 'uni', 'photo'];
+    const cur = store.settings.wallpaper || { kind: 'cockpit', veil: 0.88 };
+    const next = { kind: kinds.includes(w && w.kind) ? w.kind : cur.kind, veil: Math.max(0.4, Math.min(0.97, +((w && w.veil) != null ? w.veil : cur.veil) || 0.88)) };
+    if (next.kind === 'photo' && !wallFile()) next.kind = cur.kind === 'photo' ? 'cockpit' : cur.kind;
+    store.settings.wallpaper = next; saveStore();
+    return Object.assign({}, next, { photo: next.kind === 'photo' ? wallData() : null, hasPhoto: !!wallFile() });
+  });
+  ipcMain.handle('wall:pick', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choisir une photo pour le fond d’écran', properties: ['openFile'], filters: [{ name: 'Images', extensions: WALL_EXT }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    const src = r.filePaths[0], ext = path.extname(src).slice(1).toLowerCase();
+    if (!fs.existsSync(src)) return { ok: false, error: 'Image introuvable.' };
+    if (!WALL_EXT.includes(ext)) return { ok: false, error: 'Choisis une image JPG, PNG ou WebP.' };
+    if (fs.statSync(src).size > 15 * 1024 * 1024) return { ok: false, error: 'Image trop lourde (15 Mo maximum).' };
+    for (const x of WALL_EXT) { try { fs.unlinkSync(path.join(app.getPath('userData'), 'fond-perso.' + x)); } catch (e) { /* rien */ } }
+    fs.copyFileSync(src, path.join(app.getPath('userData'), 'fond-perso.' + ext));
+    store.settings.wallpaper = { kind: 'photo', veil: (store.settings.wallpaper || {}).veil || 0.8 }; saveStore();
+    return Object.assign({ ok: true }, store.settings.wallpaper, { photo: wallData(), hasPhoto: true });
+  });
   ipcMain.handle('settings:set', (_e, s) => { store.settings = Object.assign({}, store.settings, s); saveStore(); discordApply(); trayRefresh(); chatUpdate(); return store.settings; });
   ipcMain.handle('fleet:set', (_e, fleet) => { store.fleet = Array.isArray(fleet) ? fleet : []; saveStore(); return store.fleet; });
   ipcMain.handle('simbrief:load', async () => fetchOfp(store.settings.simbrief));

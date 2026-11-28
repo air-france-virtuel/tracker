@@ -506,3 +506,12 @@ h3.caps{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:upperc
 .gen-legs-list .gl.next{background:#FDECEE;box-shadow:inset 3px 0 0 var(--red)}.gen-legs-list .gl.next .i{background:var(--red)}
 .gen-facts small+small,.gen-facts span>small:last-child:not(:first-child){font-size:10.5px;color:#8A93A6;font-weight:400}
 .gen-tom{display:block;font-style:normal;font-size:10.5px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.04em}
+.liv-cur{display:inline-block;margin:2px 0;padding:3px 10px;border-radius:999px;background:#E8F5EC;color:#1B5E32;font-weight:700;font-size:12.5px}
+/* fond d'écran */
+.wall-box{max-width:560px}
+.wall-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 14px;align-items:end}
+.wall-opt{display:flex;flex-direction:column;gap:6px;align-items:stretch;border:2px solid var(--line);border-radius:10px;background:#fff;padding:6px;cursor:pointer;font:inherit;font-weight:600;color:var(--navy)}
+.wall-opt .pv{height:70px;border-radius:6px;display:grid;place-items:center;font-size:26px;color:#5B667D}
+.wall-opt.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.12)}
+.wall-grid .btn{grid-column:1/-1;justify-self:start}
+.wall-veil{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--navy)}.wall-veil input{flex:1}

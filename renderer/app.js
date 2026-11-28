@@ -1371,7 +1371,8 @@ function renderStrip(o) {
   const ph = S.phase != null ? PHASES[S.phase] : '';
   const cell = (k, v, sub, cls) => '<div><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s ' + (cls || '') + '">' + (sub || '&nbsp;') + '</div></div>';
   const cs = (pl && (pl.callsign || pl.flightNumber)) || 'Vol libre';
-  let h = ''; void cs; void ph; // l'indicatif, la phase et le trajet sont dans l'en-tête « Oiseau » (renderHero)
+  let h = '<div><div class="cs">' + esc(cs) + (ph ? '<span class="stat">' + esc(ph.toUpperCase()) + '</span>' : '') + '</div><div class="muted small">' +
+    (pl ? esc(pl.origin.icao) + ' → ' + esc(pl.destination.icao) + ' · ' : '') + esc(S.flight && S.flight.aircraft ? S.flight.aircraft : (pl && pl.aircraft) || '') + '</div></div>';
   h += cell('Out · parking', utc(S.oooi && S.oooi.out), S.oooi && S.oooi.out ? 'départ du parking' : 'en attente', 'mut');
   h += cell('Off · décollage', utc(S.oooi && S.oooi.off), pl && pl.origin.rwy ? 'piste ' + esc(pl.origin.rwy) : '', 'mut');
   let etaSub = 'arrivée estimée', etaCls = 'mut';
@@ -1386,41 +1387,6 @@ function renderStrip(o) {
   h += cell('Carburant', t ? fmt(t.fuelKg / 1000, 1) + ' t' : '—', fSub, fCls);
   h += cell('Arrivée prévue', pl && pl.destination.rwy ? 'Piste ' + esc(pl.destination.rwy) : (pl ? esc(pl.destination.icao) : '—'), pl ? esc(windOf(pl.metarArr)) : '', 'mut');
   $('strip').innerHTML = h;
-  renderHero(o);
-}
-// En-tête « Oiseau » du vol en cours : photo de l'avion, trajet en grand, rubans bleu et rouge = progression.
-const PH_KIND = (ph) => /croisi/i.test(ph) ? 'cruise' : /mont|décoll/i.test(ph) ? 'climb' : /desc|appro|atterr/i.test(ph) ? 'desc' : 'ground';
-function heroImage() {
-  const C = S.plan2.company || [];
-  const own = companyPlane(S.plan2.myReg); if (own && own.image) return own.image;
-  const ac = ((S.flight && S.flight.aircraft) || (S.plan && S.plan.aircraft) || '') + '';
-  const long = /777|B77|787|B78|A35|A33/i.test(ac);
-  const c = C.find((x) => x.long === long && x.image) || C.find((x) => x.image);
-  return c ? c.image : 'assets/livrees/lat-a320-iae-fhlat.jpg';
-}
-function heroReg() { const own = companyPlane(S.plan2.myReg); return own ? own.reg : ''; }
-const RIB_B = 'M0 44 C 180 44, 300 18, 520 24 S 830 46, 1000 20', RIB_R = 'M0 54 C 200 54, 330 32, 540 36 S 840 56, 1000 32';
-function renderHero(o) {
-  const el = $('hero'); if (!el) return;
-  const pl = S.plan, R = S.route;
-  const ph = S.phase != null ? PHASES[S.phase] : '';
-  const cs = (pl && (pl.callsign || pl.flightNumber)) || 'Vol libre';
-  const pct = R && o && o.remaining != null && R.total ? Math.max(0, Math.min(1, 1 - o.remaining / R.total)) : 0;
-  const ap = (a, side) => '<div class="ap"><b>' + esc(a ? a.icao : '----') + '</b><span>' + esc(a && a.name ? a.name : side) + '</span></div>';
-  const ac = esc((S.flight && S.flight.aircraft) || (pl && pl.aircraft) || '');
-  const reg = heroReg();
-  const img = heroImage();
-  el.innerHTML = '<div class="hero-img" style="background-image:url(\'' + esc(img) + '\')"></div><div class="hero-fade"></div>' +
-    '<div class="hero-txt"><div class="row">' + (ph ? '<span class="hero-ph ' + PH_KIND(ph) + '"><i></i>' + esc(ph.toUpperCase()) + '</span>' : '') +
-    (S.flight && S.flight.mode === 'demo' ? '<span class="hero-sim">Vol de démonstration</span>' : '') + '</div>' +
-    '<div class="hero-route">' + ap(pl && pl.origin, 'Départ') + '<svg width="54" height="20" viewBox="0 0 54 20" aria-hidden="true"><path d="M2 10 H44" stroke="#185CB0" stroke-width="2.4" stroke-linecap="round"/><path d="M38 4 L46 10 L38 16" fill="none" stroke="#CE202D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' + ap(pl && pl.destination, 'Arrivée') + '</div>' +
-    '<div class="hero-line"><b>' + esc(cs) + '</b>' + (ac ? ' · ' + ac : '') + (reg ? ' · ' + esc(reg) : '') + '</div></div>' +
-    '<div class="hero-prog"><svg viewBox="0 0 1000 64" preserveAspectRatio="none" role="img" aria-label="Progression du vol : ' + Math.round(pct * 100) + ' %">' +
-    '<defs><clipPath id="heroDone"><rect x="0" y="0" width="' + Math.round(pct * 1000) + '" height="64"/></clipPath></defs>' +
-    '<path d="' + RIB_B + '" fill="none" stroke="#DCE4F1" stroke-width="9" stroke-linecap="round"/><path d="' + RIB_R + '" fill="none" stroke="#F1DDE0" stroke-width="6" stroke-linecap="round"/>' +
-    '<g clip-path="url(#heroDone)"><path d="' + RIB_B + '" fill="none" stroke="#185CB0" stroke-width="9" stroke-linecap="round"/><path d="' + RIB_R + '" fill="none" stroke="#CE202D" stroke-width="6" stroke-linecap="round"/></g></svg>' +
-    '<div class="hero-plane" style="left:' + (pct * 100).toFixed(1) + '%"><svg width="18" height="18" viewBox="-11 -11 22 22" aria-hidden="true"><path d="M10 0 L3 -2 L-1 -9 L-3 -9 L-1 -2 L-6 -1.5 L-8 -4 L-9.5 -4 L-8.5 0 L-9.5 4 L-8 4 L-6 1.5 L-1 2 L-3 9 L-1 9 L3 2 Z" fill="#fff"/></svg></div>' +
-    '<div class="hero-times"><span>Décollage <b>' + (S.oooi && S.oooi.off ? utc(S.oooi.off) : '—') + '</b></span><span><b class="b">' + Math.round(pct * 100) + ' %</b>' + (o && o.remaining != null ? ' · ' + fmt(o.remaining) + ' NM restants' : '') + '</span><span>Arrivée prévue <b>' + (o && o.eta ? utc(o.eta) : '—') + '</b></span></div></div>';
 }
 function renderNavlog() {
   const R = S.route, el = $('navlog');
